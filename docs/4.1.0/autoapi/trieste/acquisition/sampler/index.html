@@ -1,0 +1,807 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>trieste.acquisition.sampler &#8212; trieste 4.1.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=42d1b3bd"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'autoapi/trieste/acquisition/sampler/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.1.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="trieste.models" href="../../models/index.html" />
+    <link rel="prev" title="trieste.acquisition.rule" href="../rule/index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="trieste 4.1.0 documentation - Home"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="trieste 4.1.0 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../../index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html">trieste.acquisition</a><details open="open"><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../function/index.html">trieste.acquisition.function</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../function/active_learning/index.html">trieste.acquisition.function.active_learning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/continuous_thompson_sampling/index.html">trieste.acquisition.function.continuous_thompson_sampling</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/entropy/index.html">trieste.acquisition.function.entropy</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/function/index.html">trieste.acquisition.function.function</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/greedy_batch/index.html">trieste.acquisition.function.greedy_batch</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/multi_objective/index.html">trieste.acquisition.function.multi_objective</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../function/utils/index.html">trieste.acquisition.function.utils</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../multi_objective/index.html">trieste.acquisition.multi_objective</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../multi_objective/dominance/index.html">trieste.acquisition.multi_objective.dominance</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi_objective/pareto/index.html">trieste.acquisition.multi_objective.pareto</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../multi_objective/partition/index.html">trieste.acquisition.multi_objective.partition</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../interface/index.html">trieste.acquisition.interface</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../optimizer/index.html">trieste.acquisition.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../rule/index.html">trieste.acquisition.rule</a></li>
+<li class="toctree-l2 current active"><a class="current reference internal" href="#">trieste.acquisition.sampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../models/index.html">trieste.models</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../models/gpflow/index.html">trieste.models.gpflow</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/builders/index.html">trieste.models.gpflow.builders</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/inducing_point_selectors/index.html">trieste.models.gpflow.inducing_point_selectors</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/optimizer/index.html">trieste.models.gpflow.optimizer</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflow/sampler/index.html">trieste.models.gpflow.sampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../models/gpflux/index.html">trieste.models.gpflux</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../models/gpflux/builders/index.html">trieste.models.gpflux.builders</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../models/keras/index.html">trieste.models.keras</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../models/keras/architectures/index.html">trieste.models.keras.architectures</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/keras/builders/index.html">trieste.models.keras.builders</a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../models/keras/sampler/index.html">trieste.models.keras.sampler</a></li>
+</ul>
+</details></li>
+<li class="toctree-l2"><a class="reference internal" href="../../models/optimizer/index.html">trieste.models.optimizer</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../models/utils/index.html">trieste.models.utils</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../objectives/index.html">trieste.objectives</a><details><summary><span class="toctree-toggle" role="presentation"><i class="fa-solid fa-chevron-down"></i></span></summary><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/multi_objectives/index.html">trieste.objectives.multi_objectives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/multifidelity_objectives/index.html">trieste.objectives.multifidelity_objectives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/single_objectives/index.html">trieste.objectives.single_objectives</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/utils/index.html">trieste.objectives.utils</a></li>
+</ul>
+</details></li>
+<li class="toctree-l1"><a class="reference internal" href="../../utils/index.html">trieste.utils</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../ask_tell_optimization/index.html">trieste.ask_tell_optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bayesian_optimizer/index.html">trieste.bayesian_optimizer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data/index.html">trieste.data</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../logging/index.html">trieste.logging</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../observer/index.html">trieste.observer</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../space/index.html">trieste.space</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../types/index.html">trieste.types</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../version/index.html">trieste.version</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">trieste</a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link">trieste.acquisition</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.acqu...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="module-trieste.acquisition.sampler">
+<span id="trieste-acquisition-sampler"></span><h1>trieste.acquisition.sampler<a class="headerlink" href="#module-trieste.acquisition.sampler" title="Link to this heading">#</a></h1>
+<p>This module is the home of the sampling functionality required by Trieste’s
+acquisition functions.</p>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Link to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ThompsonSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ThompsonSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_min_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ThompsonSampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ThompsonSampler" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">Generic</span></code>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></code>]</p>
+<p>A <a class="reference internal" href="#trieste.acquisition.sampler.ThompsonSampler" title="trieste.acquisition.sampler.ThompsonSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">ThompsonSampler</span></code></a> samples either the minimum values or minimisers of a function
+modeled by an underlying <code class="xref py py-class docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code> across a  discrete set of points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sample_min_value<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If True then sample from the minimum value of the function,
+else sample the function’s minimiser.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ThompsonSampler.sample_min_value">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sample_min_value</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ThompsonSampler.sample_min_value"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ThompsonSampler.sample_min_value" title="Link to this definition">#</a></dt>
+<dd><p>Whether this samples from the minimum value of the function
+(as opposed to the function’s minimiser).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ThompsonSampler.__repr__">
+<span class="sig-name descname"><span class="pre">__repr__</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ThompsonSampler.__repr__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ThompsonSampler.__repr__" title="Link to this definition">#</a></dt>
+<dd><p>Return repr(self).</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ThompsonSampler.sample">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.models.interfaces.ProbabilisticModelType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">select_nth_output</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ThompsonSampler.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ThompsonSampler.sample" title="Link to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>sample_size</strong> – The desired number of samples.</p></li>
+<li><p><strong>at</strong> – Input points that define the sampler.</p></li>
+<li><p><strong>select_output</strong> – A method that returns the desired output from the model sampler, with
+shape <cite>[S, N]</cite> where <cite>S</cite> is the number of samples and <cite>N</cite> is the number of locations.
+Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+output dimension 0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Samples.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ExactThompsonSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ExactThompsonSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_min_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ExactThompsonSampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ExactThompsonSampler" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.sampler.ThompsonSampler" title="trieste.acquisition.sampler.ThompsonSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ThompsonSampler</span></code></a>[<a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>This sampler provides exact Thompson samples of the objective function’s
+minimiser <span class="math notranslate nohighlight">\(x^*\)</span> over a discrete set of input locations.
+Although exact Thompson sampling is costly (incuring with an <span class="math notranslate nohighlight">\(O(N^3)\)</span> complexity to
+sample over a set of <cite>N</cite> locations), this method can be used for any probabilistic model
+with a sampling method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sample_min_value<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If True then sample from the minimum value of the function,
+else sample the function’s minimiser.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ExactThompsonSampler.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">select_nth_output</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ExactThompsonSampler.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ExactThompsonSampler.sample" title="Link to this definition">#</a></dt>
+<dd><p>Return exact samples from either the objective function’s minimiser or its minimal value
+over the candidate set <cite>at</cite>. Note that minimiser ties aren’t broken randomly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>sample_size</strong> – The desired number of samples.</p></li>
+<li><p><strong>at</strong> – Where to sample the predictive distribution, with shape <cite>[N, D]</cite>, for points
+of dimension <cite>D</cite>.</p></li>
+<li><p><strong>select_output</strong> – A method that returns the desired output from the model sampler, with
+shape <cite>[S, N]</cite> where <cite>S</cite> is the number of samples and <cite>N</cite> is the number of locations.
+Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+output dimension 0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples, of shape <cite>[S, D]</cite> (where <cite>S</cite> is the <cite>sample_size</cite>) if sampling
+the function’s minimiser or shape <cite>[S, 1]</cite> if sampling the function’s mimimal value.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">at</span></code> has an invalid shape or if <code class="docutils literal notranslate"><span class="pre">sample_size</span></code> is not positive.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.GumbelSampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GumbelSampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_min_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#GumbelSampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.GumbelSampler" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.sampler.ThompsonSampler" title="trieste.acquisition.sampler.ThompsonSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ThompsonSampler</span></code></a>[<a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>This sampler follows <span id="id1">[<a class="reference internal" href="../../../../bibliography.html#id11" title="Zi Wang and Stefanie Jegelka. Max-value entropy search for efficient bayesian optimization. arXiv preprint arXiv:1703.01968, 2017.">WJ17</a>]</span> and yields approximate samples of the objective
+minimum value <span class="math notranslate nohighlight">\(y^*\)</span> via the empirical cdf <span class="math notranslate nohighlight">\(\operatorname{Pr}(y^*&lt;y)\)</span>. The cdf
+is approximated by a Gumbel distribution
+.. math:: mathcal G(y; a, b) = 1 - e^{-e^frac{y - a}{b}}
+where <span class="math notranslate nohighlight">\(a, b \in \mathbb R\)</span> are chosen such that the quartiles of the Gumbel and cdf match.
+Samples are obtained via the Gumbel distribution by sampling <span class="math notranslate nohighlight">\(r\)</span> uniformly from
+<span class="math notranslate nohighlight">\([0, 1]\)</span> and applying the inverse probability integral transform
+<span class="math notranslate nohighlight">\(y = \mathcal G^{-1}(r; a, b)\)</span>.
+Note that the <a class="reference internal" href="#trieste.acquisition.sampler.GumbelSampler" title="trieste.acquisition.sampler.GumbelSampler"><code class="xref py py-class docutils literal notranslate"><span class="pre">GumbelSampler</span></code></a> can only sample a function’s minimal value and not
+its minimiser.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sample_min_value<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If True then sample from the minimum value of the function,
+else sample the function’s minimiser.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.GumbelSampler.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">select_nth_output</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#GumbelSampler.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.GumbelSampler.sample" title="Link to this definition">#</a></dt>
+<dd><p>Return approximate samples from of the objective function’s minimum value.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>sample_size</strong> – The desired number of samples.</p></li>
+<li><p><strong>at</strong> – Points at where to fit the Gumbel distribution, with shape <cite>[N, D]</cite>, for points
+of dimension <cite>D</cite>. We recommend scaling <cite>N</cite> with search space dimension.</p></li>
+<li><p><strong>select_output</strong> – A method that returns the desired output from the model sampler, with
+shape <cite>[S, N]</cite> where <cite>S</cite> is the number of samples and <cite>N</cite> is the number of locations.
+Currently unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples, of shape <cite>[S, 1]</cite>, where <cite>S</cite> is the <cite>sample_size</cite>.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">at</span></code> has an invalid shape or if <code class="docutils literal notranslate"><span class="pre">sample_size</span></code> is not positive.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ThompsonSamplerFromTrajectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ThompsonSamplerFromTrajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_min_value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ThompsonSamplerFromTrajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ThompsonSamplerFromTrajectory" title="Link to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.acquisition.sampler.ThompsonSampler" title="trieste.acquisition.sampler.ThompsonSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ThompsonSampler</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.HasTrajectorySampler</span></code>]</p>
+<p>This sampler provides approximate Thompson samples of the objective function’s
+minimiser <span class="math notranslate nohighlight">\(x^*\)</span> by minimizing approximate trajectories sampled from the
+underlying probabilistic model. This sampling method can be used for any
+probabilistic model with a <code class="xref py py-meth docutils literal notranslate"><span class="pre">trajectory_sampler()</span></code> method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Sample_min_value<span class="colon">:</span></dt>
+<dd class="field-odd"><p>If True then sample from the minimum value of the function,
+else sample the function’s minimiser.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.acquisition.sampler.ThompsonSamplerFromTrajectory.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">at</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">select_output</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">select_nth_output</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/sampler.html#ThompsonSamplerFromTrajectory.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.sampler.ThompsonSamplerFromTrajectory.sample" title="Link to this definition">#</a></dt>
+<dd><p>Return approximate samples from either the objective function’s minimser or its minimal
+value over the candidate set <cite>at</cite>. Note that minimiser ties aren’t broken randomly.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model to sample from.</p></li>
+<li><p><strong>sample_size</strong> – The desired number of samples.</p></li>
+<li><p><strong>at</strong> – Where to sample the predictive distribution, with shape <cite>[N, D]</cite>, for points
+of dimension <cite>D</cite>.</p></li>
+<li><p><strong>select_output</strong> – A method that returns the desired output from the model sampler, with
+shape <cite>[S, N]</cite> where <cite>S</cite> is the number of samples and <cite>N</cite> is the number of locations.
+Defaults to the :func:~`trieste.acquisition.utils.select_nth_output` function with
+output dimension 0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples, of shape <cite>[S, D]</cite> (where <cite>S</cite> is the <cite>sample_size</cite>) if sampling
+the function’s minimser or shape <cite>[S, 1]</cite> if sampling the function’s mimimal value.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">at</span></code> has an invalid shape or if <code class="docutils literal notranslate"><span class="pre">sample_size</span></code> is not positive.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-contents">Module Contents</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ThompsonSampler"><code class="docutils literal notranslate"><span class="pre">ThompsonSampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ThompsonSampler.sample_min_value"><code class="docutils literal notranslate"><span class="pre">ThompsonSampler.sample_min_value</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ThompsonSampler.__repr__"><code class="docutils literal notranslate"><span class="pre">ThompsonSampler.__repr__()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ThompsonSampler.sample"><code class="docutils literal notranslate"><span class="pre">ThompsonSampler.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ExactThompsonSampler"><code class="docutils literal notranslate"><span class="pre">ExactThompsonSampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ExactThompsonSampler.sample"><code class="docutils literal notranslate"><span class="pre">ExactThompsonSampler.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.GumbelSampler"><code class="docutils literal notranslate"><span class="pre">GumbelSampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.GumbelSampler.sample"><code class="docutils literal notranslate"><span class="pre">GumbelSampler.sample()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ThompsonSamplerFromTrajectory"><code class="docutils literal notranslate"><span class="pre">ThompsonSamplerFromTrajectory</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.acquisition.sampler.ThompsonSamplerFromTrajectory.sample"><code class="docutils literal notranslate"><span class="pre">ThompsonSamplerFromTrajectory.sample()</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

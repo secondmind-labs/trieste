@@ -1,0 +1,979 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Multifidelity modelling &#8212; trieste 4.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/multifidelity_modelling';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.0.0';
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="High-dimensional Bayesian optimization" href="rembo.html" />
+    <link rel="prev" title="Batching with Sharpe Ratio" href="qhsri-tutorial.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      4.0.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      4.0.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_ensembles.html">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="feasible_sets.html">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="recovering_from_errors.html">Recovering from errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_greedy_multiprocessing.html">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualizing_with_tensorboard.html">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_overview.html">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Multifidelity modelling</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">gpflow.kernels</span>
+</pre></div>
+</div>
+</div>
+<section id="Multifidelity-modelling">
+<h1>Multifidelity modelling<a class="headerlink" href="#Multifidelity-modelling" title="Permalink to this heading">#</a></h1>
+<p>This tutorial demonstrates the usage of the <code class="docutils literal notranslate"><span class="pre">MultifidelityAutoregressive</span></code> model for fitting multifidelity data. This is an implementation of the AR1 model initially described in <span id="id1">[<a class="reference internal" href="../bibliography.html#id8" title="M.C. Kennedy and A O'Hagan. Predicting the output from a complex computer code when fast approximations are available. Biometrika, 87:1–13, 03 2000.">KOHagan00</a>]</span>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="Describe-the-problem">
+<h2>Describe the problem<a class="headerlink" href="#Describe-the-problem" title="Permalink to this heading">#</a></h2>
+<p>In this tutorial we will consider the scenario where we have a simulator that can be run at three fidelities, with the ability to get cheap but coarse results at the lowest fidelity, more expensive but more refined results at a middle fidelity and very accurate but very expensive results at the highest fidelity.</p>
+<p>We define the true functions for the fidelities as:</p>
+<div class="math notranslate nohighlight">
+\[f_{i} : [0, 1] \rightarrow \mathbb{R}\]</div>
+<div class="math notranslate nohighlight">
+\[f_0(x) = \frac{\sin(12x -4)(6x - 2)^2 + 10(x-1)}{2}, \quad x \in [0,1]\]</div>
+<div class="math notranslate nohighlight">
+\[f_i(x) =  f_{i-1}(x) + i(f_{i-1}(x) - 20(x - 1)), \quad  x \in [0,1] , \quad  i \in \mathbb{N}\]</div>
+<p>Note that noise is optionally added to any observations in all but the lowest fidelity. There are a few modelling assumptions: 1. The lowest fidelity is noise-free 2. The data is cascading, e.g any point that has an observation at a high fidelity also has one at the lower fidelities.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Define the multifidelity simulator</span>
+<span class="k">def</span> <span class="nf">linear_simulator</span><span class="p">(</span><span class="n">x_input</span><span class="p">,</span> <span class="n">fidelity</span><span class="p">,</span> <span class="n">add_noise</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">((</span><span class="mf">6.0</span> <span class="o">*</span> <span class="n">x_input</span> <span class="o">-</span> <span class="mf">2.0</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span>
+        <span class="mf">12.0</span> <span class="o">*</span> <span class="n">x_input</span> <span class="o">-</span> <span class="mf">4.0</span>
+    <span class="p">)</span> <span class="o">+</span> <span class="mf">10.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">x_input</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">)</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">f</span> <span class="o">+</span> <span class="n">fidelity</span> <span class="o">*</span> <span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="mf">20.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">x_input</span> <span class="o">-</span> <span class="mf">1.0</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">add_noise</span><span class="p">:</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">1e-1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">f</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">noise</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">fidelity</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">f</span> <span class="o">+</span> <span class="n">noise</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">f</span>
+
+
+<span class="c1"># Plot the fidelities</span>
+<span class="n">x</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">400</span><span class="p">)</span>
+
+<span class="n">y0</span> <span class="o">=</span> <span class="n">linear_simulator</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">y1</span> <span class="o">=</span> <span class="n">linear_simulator</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+<span class="n">y2</span> <span class="o">=</span> <span class="n">linear_simulator</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y0</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fidelity 0&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y1</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fidelity 1&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">y2</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fidelity 2&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_multifidelity_modelling_4_0.png" src="../_images/notebooks_multifidelity_modelling_4_0.png" />
+</div>
+</div>
+<p>Trieste handles fidelities by adding an extra column to the data containing the fidelity information of the query point. The function <code class="docutils literal notranslate"><span class="pre">check_and_extract_fidelity_query_points</span></code> will check that the fidelity column is valid, and if so, will separate the query points and the fidelity information.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.data</span> <span class="kn">import</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">check_and_extract_fidelity_query_points</span>
+
+
+<span class="c1"># Create an observer class to deal with multifidelity input query points</span>
+<span class="k">class</span> <span class="nc">Observer</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">simulator</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span> <span class="o">=</span> <span class="n">simulator</span>
+
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">add_noise</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="c1"># Extract raw input and fidelity columns</span>
+        <span class="n">x_input</span><span class="p">,</span> <span class="n">x_fidelity</span> <span class="o">=</span> <span class="n">check_and_extract_fidelity_query_points</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="c1"># note: this assumes that my_simulator broadcasts, i.e. accept matrix inputs.</span>
+        <span class="c1"># If not you need to replace this by a for loop over all rows of &quot;input&quot;</span>
+        <span class="n">observations</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">simulator</span><span class="p">(</span><span class="n">x_input</span><span class="p">,</span> <span class="n">x_fidelity</span><span class="p">,</span> <span class="n">add_noise</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">query_points</span><span class="o">=</span><span class="n">x</span><span class="p">,</span> <span class="n">observations</span><span class="o">=</span><span class="n">observations</span><span class="p">)</span>
+
+
+<span class="c1"># Instantiate the observer</span>
+<span class="n">observer</span> <span class="o">=</span> <span class="n">Observer</span><span class="p">(</span><span class="n">linear_simulator</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Now we can define the other parameters of our problem, such as the input dimension, search space and number of fidelities.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.space</span> <span class="kn">import</span> <span class="n">Box</span>
+
+<span class="n">input_dim</span> <span class="o">=</span> <span class="mi">1</span>
+<span class="n">n_fidelities</span> <span class="o">=</span> <span class="mi">3</span>
+
+<span class="n">lb</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">input_dim</span><span class="p">)</span>
+<span class="n">ub</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">input_dim</span><span class="p">)</span>
+
+<span class="n">input_search_space</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span><span class="n">lb</span><span class="p">,</span> <span class="n">ub</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Create-initial-dataset">
+<h2>Create initial dataset<a class="headerlink" href="#Create-initial-dataset" title="Permalink to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.data</span> <span class="kn">import</span> <span class="n">add_fidelity_column</span>
+
+<span class="c1"># Define sample sizes of low, mid and high fidelities</span>
+<span class="n">sample_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">18</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">6</span><span class="p">]</span>
+
+<span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sample_sizes</span><span class="p">[</span><span class="mi">0</span><span class="p">])[:,</span> <span class="kc">None</span><span class="p">]]</span>
+
+<span class="c1"># Take a subsample of each lower fidelity to sample at the next fidelity up</span>
+<span class="k">for</span> <span class="n">fidelity</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_fidelities</span><span class="p">):</span>
+    <span class="n">samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+            <span class="n">xs</span><span class="p">[</span><span class="n">fidelity</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">sample_sizes</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+    <span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+    <span class="n">xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">samples</span><span class="p">)</span>
+<span class="c1"># Add fidelity columns to training data</span>
+<span class="n">initial_samples_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">add_fidelity_column</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xs</span><span class="p">)]</span>
+
+<span class="n">initial_sample</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">initial_samples_list</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">initial_sample</span><span class="p">,</span> <span class="n">add_noise</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We can plot the initial data. We separate the dataset into individual fidelities using the <code class="docutils literal notranslate"><span class="pre">split_dataset_by_fidelity</span></code> function.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.data</span> <span class="kn">import</span> <span class="n">split_dataset_by_fidelity</span>
+
+<span class="n">data</span> <span class="o">=</span> <span class="n">split_dataset_by_fidelity</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">num_fidelities</span><span class="o">=</span><span class="n">n_fidelities</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fidelity 0&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fidelity 1&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Fidelity 2&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_multifidelity_modelling_12_0.png" src="../_images/notebooks_multifidelity_modelling_12_0.png" />
+</div>
+</div>
+</section>
+<section id="Fit-AR(1)-model">
+<h2>Fit AR(1) model<a class="headerlink" href="#Fit-AR(1)-model" title="Permalink to this heading">#</a></h2>
+<p>Now we can fit the <code class="docutils literal notranslate"><span class="pre">MultifidelityAutoregressive</span></code> model to this data. We use the <code class="docutils literal notranslate"><span class="pre">build_multifidelity_autoregressive_models</span></code> to create the sub-models required by the multifidelity model.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.models.gpflow</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MultifidelityAutoregressive</span><span class="p">,</span>
+    <span class="n">build_multifidelity_autoregressive_models</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Initialise model</span>
+<span class="n">multifidelity_model</span> <span class="o">=</span> <span class="n">MultifidelityAutoregressive</span><span class="p">(</span>
+    <span class="n">build_multifidelity_autoregressive_models</span><span class="p">(</span>
+        <span class="n">initial_data</span><span class="p">,</span> <span class="n">n_fidelities</span><span class="p">,</span> <span class="n">input_search_space</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Update and optimize model</span>
+<span class="n">multifidelity_model</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+<span class="n">multifidelity_model</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Plot-Results">
+<h2>Plot Results<a class="headerlink" href="#Plot-Results" title="Permalink to this heading">#</a></h2>
+<p>Now we can plot the results to have a look at the fit. The <code class="docutils literal notranslate"><span class="pre">MultifidelityAutoregressive.predict</span></code> method requires data with a fidelity column that specifies the fidelity for each data point to be predicted at. We use the <code class="docutils literal notranslate"><span class="pre">add_fidelity_column</span></code> function to add this.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">X</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">200</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">X_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">add_fidelity_column</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_fidelities</span><span class="p">)]</span>
+<span class="n">predictions</span> <span class="o">=</span> <span class="p">[</span><span class="n">multifidelity_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">X_list</span><span class="p">]</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+
+<span class="n">pred_colors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">,</span> <span class="s2">&quot;tab:orange&quot;</span><span class="p">,</span> <span class="s2">&quot;tab:green&quot;</span><span class="p">]</span>
+<span class="n">gt_colors</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;tab:red&quot;</span><span class="p">,</span> <span class="s2">&quot;tab:purple&quot;</span><span class="p">,</span> <span class="s2">&quot;tab:brown&quot;</span><span class="p">]</span>
+
+<span class="k">for</span> <span class="n">fidelity</span><span class="p">,</span> <span class="n">prediction</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">predictions</span><span class="p">):</span>
+    <span class="n">mean</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="n">prediction</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">X</span><span class="p">,</span>
+        <span class="n">mean</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Predicted fidelity </span><span class="si">{</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">pred_colors</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">X</span><span class="p">,</span>
+        <span class="n">mean</span> <span class="o">+</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">pred_colors</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">X</span><span class="p">,</span>
+        <span class="n">mean</span> <span class="o">-</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">pred_colors</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+        <span class="n">X</span><span class="p">,</span>
+        <span class="n">observer</span><span class="p">(</span><span class="n">X_list</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span> <span class="n">add_noise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;True fidelity </span><span class="si">{</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">gt_colors</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span>
+    <span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">fidelity</span><span class="p">]</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span>
+        <span class="n">data</span><span class="p">[</span><span class="n">fidelity</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+        <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;fidelity </span><span class="si">{</span><span class="n">fidelity</span><span class="si">}</span><span class="s2"> data&quot;</span><span class="p">,</span>
+        <span class="n">color</span><span class="o">=</span><span class="n">gt_colors</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span>
+    <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;center left&quot;</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_multifidelity_modelling_17_0.png" src="../_images/notebooks_multifidelity_modelling_17_0.png" />
+</div>
+</div>
+</section>
+<section id="Comparison-with-naive-model-fit-on-high-fidelity">
+<h2>Comparison with naive model fit on high fidelity<a class="headerlink" href="#Comparison-with-naive-model-fit-on-high-fidelity" title="Permalink to this heading">#</a></h2>
+<p>We can compare with a model that was fit just on the high fidelity data, and see the gains from using the low fidelity data.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.models.gpflow</span> <span class="kn">import</span> <span class="n">GaussianProcessRegression</span><span class="p">,</span> <span class="n">build_gpr</span>
+<span class="kn">from</span> <span class="nn">trieste.data</span> <span class="kn">import</span> <span class="n">add_fidelity_column</span>
+
+<span class="c1"># Get high fidleity data</span>
+<span class="n">hf_data</span> <span class="o">=</span> <span class="n">data</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span>
+
+<span class="c1"># Fit simple gpr model to high fidelity data</span>
+<span class="n">gpr_model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">build_gpr</span><span class="p">(</span><span class="n">hf_data</span><span class="p">,</span> <span class="n">input_search_space</span><span class="p">))</span>
+
+<span class="n">gpr_model</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">hf_data</span><span class="p">)</span>
+<span class="n">gpr_model</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">hf_data</span><span class="p">)</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">200</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="c1"># Turn X into high fidelity query points for the multifidelity model</span>
+<span class="n">X_for_multifid</span> <span class="o">=</span> <span class="n">add_fidelity_column</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="n">gpr_predictions</span> <span class="o">=</span> <span class="n">gpr_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="n">multifidelity_predictions</span> <span class="o">=</span> <span class="n">multifidelity_model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">X_for_multifid</span><span class="p">)</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+
+<span class="s2">&quot;tab:blue&quot;</span><span class="p">,</span> <span class="s2">&quot;tab:orange&quot;</span><span class="p">,</span> <span class="s2">&quot;tab:green&quot;</span>
+
+<span class="c1"># Plot gpr results</span>
+<span class="n">mean</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="n">gpr_predictions</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;GPR&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span> <span class="o">+</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span> <span class="o">-</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">)</span>
+
+<span class="c1"># Plot gpr results</span>
+<span class="n">mean</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="n">multifidelity_predictions</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;MultifidelityAutoregressive&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:orange&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span> <span class="o">+</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:orange&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span> <span class="o">-</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:orange&quot;</span><span class="p">)</span>
+
+
+<span class="c1"># Plot true function</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+    <span class="n">X</span><span class="p">,</span>
+    <span class="n">observer</span><span class="p">(</span><span class="n">X_for_multifid</span><span class="p">,</span> <span class="n">add_noise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;True function&quot;</span><span class="p">,</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:green&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Scatter the data</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+    <span class="n">hf_data</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">hf_data</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;Data&quot;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:green&quot;</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">legend</span><span class="p">()</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_multifidelity_modelling_19_0.png" src="../_images/notebooks_multifidelity_modelling_19_0.png" />
+</div>
+</div>
+<p>It’s clear that there is a large benefit to being able to make use of the low fidelity data, and this is particularly noticable in the greatly reduced confidence intervals.</p>
+</section>
+<section id="A-more-complex-model-for-non-linear-problems">
+<h2>A more complex model for non-linear problems<a class="headerlink" href="#A-more-complex-model-for-non-linear-problems" title="Permalink to this heading">#</a></h2>
+<p>A more complex multifidelity model (NARGP, here <code class="docutils literal notranslate"><span class="pre">MultifidelityNonlinearAutoregressive</span></code>), originally proposed in :cite:<code class="docutils literal notranslate"><span class="pre">perdikaris2017nonlinear</span></code> is also available, to tackle the case where the relation between fidelities is strongly non-linear.</p>
+<p>We start by defining a new multi-fidelity problem, with two fidelities, for <span class="math notranslate nohighlight">\(x \in [0,1]\)</span>:</p>
+<div class="math notranslate nohighlight">
+\[f_0(x) = \sin(8 \pi x)\]</div>
+<div class="math notranslate nohighlight">
+\[f_1(x) = x - \sqrt{2} \times f_0(x)^2\]</div>
+<p>Contrary to the previous case, the high-fidelity level follows the square of the low-fidelity one. As the low fidelity values oscillate between positive and negative ones, it makes inferring this relationship particularly difficult for the AR(1) model, as we see below.</p>
+<p>As previously, we create an observer, and some initial data.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span> <span class="nf">nonlinear_simulator</span><span class="p">(</span><span class="n">x_input</span><span class="p">,</span> <span class="n">fidelity</span><span class="p">,</span> <span class="n">add_noise</span><span class="p">):</span>
+    <span class="n">bad_fidelities</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">fidelity</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">,</span> <span class="n">fidelity</span> <span class="o">!=</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">bad_fidelities</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Nonlinear simulator only supports 2 fidelities (0 and 1)&quot;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">8</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">x_input</span><span class="p">)</span>
+        <span class="n">fh</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">x_input</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="mf">2.0</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">square</span><span class="p">(</span><span class="n">f</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">fidelity</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">,</span> <span class="n">fh</span><span class="p">,</span> <span class="n">f</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">add_noise</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="n">stddev</span><span class="o">=</span><span class="mf">1e-2</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">f</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">f</span>
+
+
+<span class="n">observation_noise</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="n">observer</span> <span class="o">=</span> <span class="n">Observer</span><span class="p">(</span><span class="n">nonlinear_simulator</span><span class="p">)</span>
+
+<span class="n">n_fidelities</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="n">sample_sizes</span> <span class="o">=</span> <span class="p">[</span><span class="mi">50</span><span class="p">,</span> <span class="mi">14</span><span class="p">]</span>
+
+<span class="n">xs</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">sample_sizes</span><span class="p">[</span><span class="mi">0</span><span class="p">])[:,</span> <span class="kc">None</span><span class="p">]]</span>
+<span class="n">xh</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">xs</span><span class="p">[</span><span class="mi">0</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">size</span><span class="o">=</span><span class="n">sample_sizes</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">replace</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">xs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">xh</span><span class="p">)</span>
+
+<span class="n">initial_samples_list</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">x</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">i</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span>
+<span class="p">]</span>
+<span class="n">initial_sample</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">initial_samples_list</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">initial_sample</span><span class="p">,</span> <span class="n">add_noise</span><span class="o">=</span><span class="n">observation_noise</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We create an AR(1) model as before, and use the <code class="docutils literal notranslate"><span class="pre">build_multifidelity_nonlinear_autoregressive_models</span></code> to create the NARGP. We then train both model on the same data.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.models.gpflow</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">MultifidelityNonlinearAutoregressive</span><span class="p">,</span>
+    <span class="n">build_multifidelity_nonlinear_autoregressive_models</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">ar1</span> <span class="o">=</span> <span class="n">MultifidelityAutoregressive</span><span class="p">(</span>
+    <span class="n">build_multifidelity_autoregressive_models</span><span class="p">(</span>
+        <span class="n">initial_data</span><span class="p">,</span> <span class="n">n_fidelities</span><span class="p">,</span> <span class="n">input_search_space</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+<span class="n">nargp</span> <span class="o">=</span> <span class="n">MultifidelityNonlinearAutoregressive</span><span class="p">(</span>
+    <span class="n">build_multifidelity_nonlinear_autoregressive_models</span><span class="p">(</span>
+        <span class="n">initial_data</span><span class="p">,</span> <span class="n">n_fidelities</span><span class="p">,</span> <span class="n">input_search_space</span>
+    <span class="p">)</span>
+<span class="p">)</span>
+
+<span class="n">ar1</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+<span class="n">ar1</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+
+<span class="n">nargp</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+<span class="n">nargp</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Now we can plot the two model predictions.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><span></span><span class="n">data</span> <span class="o">=</span> <span class="n">split_dataset_by_fidelity</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">n_fidelities</span><span class="p">)</span>
+
+<span class="n">X</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">200</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">]</span>
+<span class="n">X_list</span> <span class="o">=</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">X</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">X</span><span class="p">)</span> <span class="o">*</span> <span class="n">i</span><span class="p">],</span> <span class="mi">1</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_fidelities</span><span class="p">)]</span>
+<span class="n">predictions_ar1</span> <span class="o">=</span> <span class="p">[</span><span class="n">ar1</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">X_list</span><span class="p">]</span>
+<span class="n">predictions_nargp</span> <span class="o">=</span> <span class="p">[</span><span class="n">nargp</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">X_list</span><span class="p">]</span>
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">7</span><span class="p">))</span>
+<span class="k">for</span> <span class="n">ax_id</span><span class="p">,</span> <span class="n">model_predictions</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">([</span><span class="n">predictions_ar1</span><span class="p">,</span> <span class="n">predictions_nargp</span><span class="p">]):</span>
+    <span class="k">for</span> <span class="n">fidelity</span><span class="p">,</span> <span class="n">prediction</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">model_predictions</span><span class="p">):</span>
+        <span class="n">mean</span><span class="p">,</span> <span class="n">var</span> <span class="o">=</span> <span class="n">prediction</span>
+        <span class="n">ax</span><span class="p">[</span><span class="n">ax_id</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;Predicted fidelity </span><span class="si">{</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="n">ax_id</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span> <span class="o">+</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="n">ax_id</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">mean</span> <span class="o">-</span> <span class="mf">1.96</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">var</span><span class="p">),</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.2</span><span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="n">ax_id</span><span class="p">]</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+            <span class="n">X</span><span class="p">,</span>
+            <span class="n">observer</span><span class="p">(</span><span class="n">X_list</span><span class="p">[</span><span class="n">fidelity</span><span class="p">],</span> <span class="n">add_noise</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;True fidelity </span><span class="si">{</span><span class="n">fidelity</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="n">ax_id</span><span class="p">]</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">fidelity</span><span class="p">]</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span>
+            <span class="n">data</span><span class="p">[</span><span class="n">fidelity</span><span class="p">]</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span>
+            <span class="n">label</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;fidelity </span><span class="si">{</span><span class="n">fidelity</span><span class="si">}</span><span class="s2"> data&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="n">ax_id</span><span class="p">]</span><span class="o">.</span><span class="n">title</span><span class="o">.</span><span class="n">set_text</span><span class="p">(</span>
+            <span class="s2">&quot;MultifidelityAutoregressive&quot;</span> <span class="k">if</span> <span class="n">ax_id</span> <span class="o">==</span> <span class="mi">0</span> <span class="k">else</span> <span class="s2">&quot;NARGP&quot;</span>
+        <span class="p">)</span>
+    <span class="n">ax</span><span class="p">[</span><span class="n">ax_id</span><span class="p">]</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">loc</span><span class="o">=</span><span class="s2">&quot;center left&quot;</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">))</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">suptitle</span><span class="p">(</span><span class="s2">&quot;Non-Linear Problem&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_multifidelity_modelling_27_0.png" src="../_images/notebooks_multifidelity_modelling_27_0.png" />
+</div>
+</div>
+<p>The AR(1) model is incapable of using the lower fidelity data and its prediction for the high fidelity level simply returns to the prior when there is no high-fidelity data. In contrast, the NARGP model clearly captures the non-linear relashionship and is able to predict accurately the high-fideility level everywhere.</p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Describe-the-problem">Describe the problem</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Create-initial-dataset">Create initial dataset</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Fit-AR(1)-model">Fit AR(1) model</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Plot-Results">Plot Results</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Comparison-with-naive-model-fit-on-high-fidelity">Comparison with naive model fit on high fidelity</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#A-more-complex-model-for-non-linear-problems">A more complex model for non-linear problems</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

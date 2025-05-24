@@ -1,0 +1,694 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Bibliography &#8212; trieste 3.3.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'bibliography';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.3.1';
+        </script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="An overview of Trieste types" href="notebooks/code_overview.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.3.1  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.3.1  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Bibliography</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="bibliography">
+<h1>Bibliography<a class="headerlink" href="#bibliography" title="Permalink to this heading">#</a></h1>
+<div class="docutils container" id="id1">
+<div role="list" class="citation-list">
+<div class="citation" id="id20" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>ARC+19<span class="fn-bracket">]</span></span>
+<p>Ahsan Alvi, Binxin Ru, Jan-Peter Calliess, Stephen Roberts, and Michael A Osborne. Asynchronous batch bayesian optimisation with improved local penalisation. In <em>International Conference on Machine Learning</em>. 2019.</p>
+</div>
+<div class="citation" id="id42" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>ASSR19<span class="fn-bracket">]</span></span>
+<p>Alexander Amini, Wilko Schwarting, Ava Soleimany, and Daniela Rus. Deep evidential regression. <em>arXiv preprint arXiv:1910.02600</em>, 2019.</p>
+</div>
+<div class="citation" id="id32" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>BGL+12<span class="fn-bracket">]</span></span>
+<p>Julien Bect, David Ginsbourger, Ling Li, Victor Picheny, and Emmanuel Vazquez. Sequential design of computer experiments for the estimation of a probability of failure. <em>Statistics and Computing</em>, 22(3):773–793, 2012.</p>
+</div>
+<div class="citation" id="id31" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>BES+08<span class="fn-bracket">]</span></span>
+<p>Barron J Bichon, Michael S Eldred, Laura Painton Swiler, Sandaran Mahadevan, and John M McFarland. Efficient global reliability analysis for nonlinear implicit performance functions. <em>AIAA journal</em>, 46(10):2459–2468, 2008.</p>
+</div>
+<div class="citation" id="id52" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>BCO21<span class="fn-bracket">]</span></span>
+<p>Mickael Binois, Nicholson Collier, and Jonathan Ozik. A portfolio approach to massively parallel bayesian optimization. <em>arXiv preprint arXiv:2110.09334</em>, 2021.</p>
+</div>
+<div class="citation" id="id46" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>BCKW15<span class="fn-bracket">]</span></span>
+<p>Charles Blundell, Julien Cornebise, Koray Kavukcuoglu, and Daan Wierstra. Weight uncertainty in neural network. In <em>International Conference on Machine Learning</em>, 1613–1622. PMLR, 2015.</p>
+</div>
+<div class="citation" id="id55" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>BRVDW19<span class="fn-bracket">]</span></span>
+<p>David Burt, Carl Edward Rasmussen, and Mark Van Der Wilk. Rates of convergence for sparse variational gaussian process regression. In <em>International Conference on Machine Learning</em>, 862–871. PMLR, 2019.</p>
+</div>
+<div class="citation" id="id56" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>CZZ18<span class="fn-bracket">]</span></span>
+<p>Laming Chen, Guoxin Zhang, and Eric Zhou. Fast greedy map inference for determinantal point process to improve recommendation diversity. <em>Advances in Neural Information Processing Systems</em>, 2018.</p>
+</div>
+<div class="citation" id="id2" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>CG13<span class="fn-bracket">]</span></span>
+<p>Clément Chevalier and David Ginsbourger. Fast computation of the multi-points expected improvement with applications in batch selection. In <em>International Conference on Learning and Intelligent Optimization</em>, 59–69. Springer, 2013.</p>
+</div>
+<div class="citation" id="id34" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>CGE14<span class="fn-bracket">]</span></span>
+<p>Clément Chevalier, David Ginsbourger, and Xavier Emery. Corrected kriging update formulae for batch-sequential data assimilation. In <em>Mathematics of Planet Earth</em>, pages 119–122. Springer, 2014.</p>
+</div>
+<div class="citation" id="id15" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>CDD12<span class="fn-bracket">]</span></span>
+<p>Ivo Couckuyt, Dirk Deschrijver, and Tom Dhaene. Towards efficient multiobjective optimization: multiobjective statistical criterions. <em>2012 IEEE Congress on Evolutionary Computation, CEC 2012</em>, pages 10–15, 2012. <a class="reference external" href="https://doi.org/10.1109/CEC.2012.6256586">doi:10.1109/CEC.2012.6256586</a>.</p>
+</div>
+<div class="citation" id="id12" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>DBB20<span class="fn-bracket">]</span></span>
+<p>Samuel Daulton, Maximilian Balandat, and Eytan Bakshy. Differentiable expected hypervolume improvement for parallel multi-objective bayesian optimization. <em>arXiv preprint arXiv:2006.05078</em>, 2020.</p>
+</div>
+<div class="citation" id="id14" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>DTLZ02<span class="fn-bracket">]</span></span>
+<p>Kalyanmoy Deb, Lothar Thiele, Marco Laumanns, and Eckart Zitzler. Scalable multi-objective optimization test problems. In <em>Proceedings of the 2002 Congress on Evolutionary Computation. CEC'02 (Cat. No. 02TH8600)</em>, volume 1, 825–830. IEEE, 2002.</p>
+</div>
+<div class="citation" id="id61" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>DPRP22<span class="fn-bracket">]</span></span>
+<p>Youssef Diouane, Victor Picheny, Rodolphe Le Riche, and Alexandre Scotto Di Perrotolo. Trego: a trust-region framework for efficient global optimization. 2022. <a class="reference external" href="https://arxiv.org/abs/2101.06808">arXiv:2101.06808</a>.</p>
+</div>
+<div class="citation" id="id26" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>DKvdH+17<span class="fn-bracket">]</span></span>
+<p>Vincent Dutordoir, Nicolas Knudde, Joachim van der Herten, Ivo Couckuyt, and Tom Dhaene. Deep Gaussian process metamodeling of sequentially sampled non-stationary response surfaces. In <em>2017 Winter Simulation Conference (WSC)</em>, volume, 1728–1739. 2017. <a class="reference external" href="https://doi.org/10.1109/WSC.2017.8247911">doi:10.1109/WSC.2017.8247911</a>.</p>
+</div>
+<div class="citation" id="id38" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>EPG+19<span class="fn-bracket">]</span></span>
+<p>David Eriksson, Michael Pearce, Jacob Gardner, Ryan D Turner, and Matthias Poloczek. Scalable global optimization via local Bayesian optimization. In <em>Advances in Neural Information Processing Systems</em>, 5496–5507. 2019. URL: <a class="reference external" href="http://papers.nips.cc/paper/8788-scalable-global-optimization-via-local-bayesian-optimization.pdf">http://papers.nips.cc/paper/8788-scalable-global-optimization-via-local-bayesian-optimization.pdf</a>.</p>
+</div>
+<div class="citation" id="id16" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>FF95<span class="fn-bracket">]</span></span>
+<p>C.M. Fonseca and P.J. Fleming. Multiobjective genetic algorithms made easy: selection sharing and mating restriction. In <em>First International Conference on Genetic Algorithms in Engineering Systems: Innovations and Applications</em>, volume, 45–52. 1995. <a class="reference external" href="https://doi.org/10.1049/cp:19951023">doi:10.1049/cp:19951023</a>.</p>
+</div>
+<div class="citation" id="id45" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>GG16<span class="fn-bracket">]</span></span>
+<p>Yarin Gal and Zoubin Ghahramani. Dropout as a bayesian approximation: representing model uncertainty in deep learning. In <em>International Conference on Machine Learning</em>, 1050–1059. PMLR, 2016.</p>
+</div>
+<div class="citation" id="id6" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>GKZ+14<span class="fn-bracket">]</span></span>
+<p>Jacob Gardner, Matt Kusner, Zhixiang, Kilian Weinberger, and John Cunningham. Bayesian optimization with inequality constraints. In <em>Proceedings of the 31st International Conference on Machine Learning</em>, volume 32 of Proceedings of Machine Learning Research. PMLR, 22–24 Jun 2014. URL: <a class="reference external" href="http://proceedings.mlr.press/v32/gardner14.html">http://proceedings.mlr.press/v32/gardner14.html</a>.</p>
+</div>
+<div class="citation" id="id3" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>GT16<span class="fn-bracket">]</span></span>
+<p>Alan Genz and Giang Trinh. Numerical computation of multivariate normal probabilities using bivariate conditioning. In <em>Monte Carlo and Quasi-Monte Carlo Methods</em>, pages 289–302. Springer, 2016.</p>
+</div>
+<div class="citation" id="id9" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>GLRC10a<span class="fn-bracket">]</span></span>
+<p>David Ginsbourger, Rodolphe Le Riche, and Laurent Carraro. <em>Kriging Is Well-Suited to Parallelize Optimization</em>, pages 131–162. Springer Berlin Heidelberg, Berlin, Heidelberg, 2010. URL: <a class="reference external" href="https://doi.org/10.1007/978-3-642-10701-6_6">https://doi.org/10.1007/978-3-642-10701-6_6</a>, <a class="reference external" href="https://doi.org/10.1007/978-3-642-10701-6_6">doi:10.1007/978-3-642-10701-6_6</a>.</p>
+</div>
+<div class="citation" id="id35" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>GLRC10b<span class="fn-bracket">]</span></span>
+<p>David Ginsbourger, Rodolphe Le Riche, and Laurent Carraro. Kriging is well-suited to parallelize optimization. In <em>Computational intelligence in expensive optimization problems</em>, pages 131–162. Springer, 2010.</p>
+</div>
+<div class="citation" id="id18" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>GonzalezDHL16<span class="fn-bracket">]</span></span>
+<p>Javier González, Zhenwen Dai, Philipp Hennig, and Neil Lawrence. Batch bayesian optimization via local penalization. In <em>Artificial intelligence and statistics</em>. 2016.</p>
+</div>
+<div class="citation" id="id19" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>GL12<span class="fn-bracket">]</span></span>
+<p>Robert B Gramacy and Herbert KH Lee. Cases for the nugget in modeling computer experiments. <em>Statistics and Computing</em>, 22(3):713–722, 2012.</p>
+</div>
+<div class="citation" id="id27" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>HBB+19<span class="fn-bracket">]</span></span>
+<p>Ali Hebbal, Loic Brevault, Mathieu Balesdent, El-Ghazali Talbi, and Nouredine Melab. Bayesian optimization using deep Gaussian processes. <em>arXiv preprint arXiv:1905.03350</em>, 2019.</p>
+</div>
+<div class="citation" id="id22" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>HernandezLHG14<span class="fn-bracket">]</span></span>
+<p>JM Hernández-Lobato, MW Hoffman, and Z Ghahramani. Predictive entropy search for efficient global optimization of black-box functions. <em>Advances in Neural Information Processing Systems</em>, 2014.</p>
+</div>
+<div class="citation" id="id43" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>HernandezLA15<span class="fn-bracket">]</span></span>
+<p>José Miguel Hernández-Lobato and Ryan Adams. Probabilistic backpropagation for scalable learning of bayesian neural networks. In <em>International Conference on Machine Learning</em>, 1861–1869. PMLR, 2015.</p>
+</div>
+<div class="citation" id="id48" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>HernandezLRPKAG17<span class="fn-bracket">]</span></span>
+<p>José Miguel Hernández-Lobato, James Requeima, Edward O Pyzer-Knapp, and Alán Aspuru-Guzik. Parallel and distributed thompson sampling for large-scale accelerated exploration of chemical space. In <em>International conference on machine learning</em>. 2017.</p>
+</div>
+<div class="citation" id="id51" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>HHGL11<span class="fn-bracket">]</span></span>
+<p>Neil Houlsby, Ferenc Huszár, Zoubin Ghahramani, and Máté Lengyel. Bayesian active learning for classification and preference learning. 2011. <a class="reference external" href="https://arxiv.org/abs/1112.5745">arXiv:1112.5745</a>.</p>
+</div>
+<div class="citation" id="id21" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>HANZ06<span class="fn-bracket">]</span></span>
+<p>Deng Huang, Theodore T Allen, William I Notz, and Ning Zeng. Global optimization of stochastic black-box systems via sequential kriging meta-models. <em>Journal of global optimization</em>, 2006.</p>
+</div>
+<div class="citation" id="id4" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>JSW98<span class="fn-bracket">]</span></span>
+<p>Donald R Jones, Matthias Schonlau, and William J Welch. Efficient global optimization of expensive black-box functions. <em>Journal of Global optimization</em>, 13(4):455–492, 1998.</p>
+</div>
+<div class="citation" id="id47" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>KLHG21<span class="fn-bracket">]</span></span>
+<p>Arlind Kadra, Marius Lindauer, Frank Hutter, and Josif Grabocka. Well-tuned simple nets excel on tabular datasets. <em>Advances in Neural Information Processing Systems</em>, 2021.</p>
+</div>
+<div class="citation" id="id29" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>KKSP18<span class="fn-bracket">]</span></span>
+<p>Kirthevasan Kandasamy, Akshay Krishnamurthy, Jeff Schneider, and Barnabas Poczos. Parallelised bayesian optimisation via thompson sampling. In Amos Storkey and Fernando Perez-Cruz, editors, <em>Proceedings of the Twenty-First International Conference on Artificial Intelligence and Statistics</em>, volume 84 of Proceedings of Machine Learning Research, 133–142. PMLR, 2018. URL: <a class="reference external" href="https://proceedings.mlr.press/v84/kandasamy18a.html">https://proceedings.mlr.press/v84/kandasamy18a.html</a>.</p>
+</div>
+<div class="citation" id="id8" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>KOHagan00<span class="fn-bracket">]</span></span>
+<p>M.C. Kennedy and A O'Hagan. Predicting the output from a complex computer code when fast approximations are available. <em>Biometrika</em>, 87:1–13, 03 2000.</p>
+</div>
+<div class="citation" id="id44" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>LPB16<span class="fn-bracket">]</span></span>
+<p>Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell. Simple and scalable predictive uncertainty estimation using deep ensembles. <em>arXiv preprint arXiv:1612.01474</em>, 2016.</p>
+</div>
+<div class="citation" id="id25" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>Mac92<span class="fn-bracket">]</span></span>
+<p>David J. C. MacKay. Information-based objective functions for active data selection. <em>Neural Computation</em>, 4(4):590–604, 1992.</p>
+</div>
+<div class="citation" id="id59" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>MOP23<span class="fn-bracket">]</span></span>
+<p>H. B. Moss, S. W. Ober, and V. Picheny. Inducing point allocation for sparse gaussian processes in high-throughput \B\ayesian optimisation. In <em>Proceedings of the Twenty-Fith International Conference on Artificial Intelligence and Statistics</em>. 2023.</p>
+</div>
+<div class="citation" id="id36" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>MLGR21<span class="fn-bracket">]</span></span>
+<p>Henry B Moss, David S Leslie, Javier Gonzalez, and Paul Rayson. Gibbon: general-purpose information-based bayesian optimisation. <em>Journal of Machine Learning Research</em>, 22:1–49, 2021.</p>
+</div>
+<div class="citation" id="id58" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>MLR21<span class="fn-bracket">]</span></span>
+<p>Henry B Moss, David S Leslie, and Paul Rayson. Mumbo: multi-task max-value bayesian optimization. In <em>Machine Learning and Knowledge Discovery in Databases: European Conference, ECML PKDD 2020, Ghent, Belgium, September 14–18, 2020, Proceedings, Part III</em>. 2021.</p>
+</div>
+<div class="citation" id="id39" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>MLR20<span class="fn-bracket">]</span></span>
+<p>Henry B. Moss, David S. Leslie, and Paul Rayson. Bosh: bayesian optimization by sampling hierarchically. <em>ArXiv</em>, 2020.</p>
+</div>
+<div class="citation" id="id53" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>NR08<span class="fn-bracket">]</span></span>
+<p>Hannes Nickisch and Carl Edward Rasmussen. Approximations for binary gaussian process classification. <em>Journal of Machine Learning Research</em>, 9(67):2035–2078, 2008. URL: <a class="reference external" href="http://jmlr.org/papers/v9/nickisch08a.html">http://jmlr.org/papers/v9/nickisch08a.html</a>.</p>
+</div>
+<div class="citation" id="id23" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>OA09<span class="fn-bracket">]</span></span>
+<p>Manfred Opper and Cédric Archambeau. The variational gaussian approximation revisited. <em>Neural computation</em>, 2009.</p>
+</div>
+<div class="citation" id="id41" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>OWA+21<span class="fn-bracket">]</span></span>
+<p>Ian Osband, Zheng Wen, Mohammad Asghari, Morteza Ibrahimi, Xiyuan Lu, and Benjamin Van Roy. Epistemic neural networks. <em>arXiv preprint arXiv:2107.08924</em>, 2021.</p>
+</div>
+<div class="citation" id="id57" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>PRD+17<span class="fn-bracket">]</span></span>
+<p>P. Perdikaris, M. Raissi, A. Damianou, N.D. Lawrence, and G.E Karniadakis. Nonlinear information fusion algorithms for data-efficient multi-fidelity modelling. <em>Proceedings of the Royal Society A: Mathematical, Physical and Engineering Sciences</em>, 2017.</p>
+</div>
+<div class="citation" id="id33" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>PGR+10<span class="fn-bracket">]</span></span>
+<p>Victor Picheny, David Ginsbourger, Olivier Roustant, Raphael T Haftka, and Nam-Ho Kim. Adaptive designs of experiments for accurate approximation of target regions. <em>Journal of Mechanical Design</em>, 2010.</p>
+</div>
+<div class="citation" id="id10" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>PWG13<span class="fn-bracket">]</span></span>
+<p>Victor Picheny, Tobias Wagner, and David Ginsbourger. A benchmark of kriging-based infill criteria for noisy optimization. <em>Structural and Multidisciplinary Optimization</em>, 48:, 09 2013. <a class="reference external" href="https://doi.org/10.1007/s00158-013-0919-4">doi:10.1007/s00158-013-0919-4</a>.</p>
+</div>
+<div class="citation" id="id30" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>RBM08<span class="fn-bracket">]</span></span>
+<p>Pritam Ranjan, Derek Bingham, and George Michailidis. Sequential experiment design for contour estimation from complex computer codes. <em>Technometrics</em>, 50(4):527–541, 2008.</p>
+</div>
+<div class="citation" id="id24" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>SEH18<span class="fn-bracket">]</span></span>
+<p>Hugh Salimbeni, Stefanos Eleftheriadis, and James Hensman. Natural gradients in practice: non-conjugate variational inference in gaussian process models. <em>International Conference on Artificial Intelligence and Statistics</em>, 2018.</p>
+</div>
+<div class="citation" id="id7" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>SWJ98<span class="fn-bracket">]</span></span>
+<p>Matthias Schonlau, William J Welch, and Donald R Jones. Global versus local search in constrained optimization of computer models. <em>Lecture Notes-Monograph Series</em>, pages 11–25, 1998.</p>
+</div>
+<div class="citation" id="id5" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>SKSK10<span class="fn-bracket">]</span></span>
+<p>Niranjan Srinivas, Andreas Krause, Matthias Seeger, and Sham M. Kakade. Gaussian Process Optimization in the Bandit Setting: No Regret and Experimental Design. In Johannes Fürnkranz and Thorsten Joachims, editors, <em>Proceedings of the 27th International Conference on Machine Learning (ICML-10)</em>, 1015–1022. Omnipress, 2010.</p>
+</div>
+<div class="citation" id="id50" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>Tit09<span class="fn-bracket">]</span></span>
+<p>Michalis Titsias. Variational learning of inducing variables in sparse gaussian processes. In <em>Artificial intelligence and statistics</em>. 2009.</p>
+</div>
+<div class="citation" id="id40" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>TPD20<span class="fn-bracket">]</span></span>
+<p>Léonard Torossian, Victor Picheny, and Nicolas Durrande. Bayesian quantile and expectile optimisation. <em>arXiv preprint arXiv:2001.04833</em>, 2020.</p>
+</div>
+<div class="citation" id="id54" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>VMA+21<span class="fn-bracket">]</span></span>
+<p>Sattar Vakili, Henry Moss, Artem Artemev, Vincent Dutordoir, and Victor Picheny. Scalable thompson sampling using sparse gaussian process models. <em>Advances in Neural Information Processing Systems</em>, 2021.</p>
+</div>
+<div class="citation" id="id13" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>VVL99<span class="fn-bracket">]</span></span>
+<p>David A Van Veldhuizen and Gary B Lamont. Multiobjective evolutionary algorithm test suites. In <em>Proceedings of the 1999 ACM symposium on Applied computing</em>, 351–357. 1999.</p>
+</div>
+<div class="citation" id="id11" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>WJ17<span class="fn-bracket">]</span></span>
+<p>Zi Wang and Stefanie Jegelka. Max-value entropy search for efficient bayesian optimization. <em>arXiv preprint arXiv:1703.01968</em>, 2017.</p>
+</div>
+<div class="citation" id="id60" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>WZH+13<span class="fn-bracket">]</span></span>
+<p>Ziyu Wang, Masrour Zoghi, Frank Hutter, David Matheson, and Nando de Freitas. Bayesian optimization in high dimensions via random embeddings. In <em>IJCAI</em>, volume 13, 1778–1784. 2013.</p>
+</div>
+<div class="citation" id="id49" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>WBT+20<span class="fn-bracket">]</span></span>
+<p>James Wilson, Viacheslav Borovitskiy, Alexander Terenin, Peter Mostowsky, and Marc Deisenroth. Efficiently sampling functions from gaussian process posteriors. In <em>International Conference on Machine Learning</em>. 2020.</p>
+</div>
+<div class="citation" id="id37" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>WHD18<span class="fn-bracket">]</span></span>
+<p>James Wilson, Frank Hutter, and Marc Deisenroth. Maximizing acquisition functions for bayesian optimization. <em>Advances in Neural Information Processing Systems</em>, 2018.</p>
+</div>
+<div class="citation" id="id17" role="doc-biblioentry">
+<span class="label"><span class="fn-bracket">[</span>YEDBack19<span class="fn-bracket">]</span></span>
+<p>Kaifeng Yang, Michael Emmerich, André Deutz, and Thomas Bäck. Efficient computation of expected hypervolume improvement using box decomposition algorithms. <em>Journal of Global Optimization</em>, 75(1):3–34, 2019.</p>
+</div>
+</div>
+</div>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

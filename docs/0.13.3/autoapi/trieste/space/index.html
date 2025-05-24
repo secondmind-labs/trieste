@@ -1,0 +1,1993 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.space &#8212; trieste 0.13.3 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <link rel="next" title="trieste.types" href="../types/index.html" />
+    <link rel="prev" title="trieste.observer" href="../observer/index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../index.html">
+  <img src="../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.13.3  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables autoapi/trieste/space/index and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.13.3'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "autoapi/trieste/space/index.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "autoapi/trieste/space/index.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.13.3") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="nav bd-sidenav">
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../acquisition/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../acquisition/function/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/function/active_learning/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.active_learning
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/function/continuous_thompson_sampling/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.continuous_thompson_sampling
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/function/entropy/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.entropy
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/function/function/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.function
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/function/greedy_batch/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.greedy_batch
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/function/multi_objective/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.multi_objective
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/function/utils/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.utils
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../acquisition/multi_objective/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.multi_objective
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/multi_objective/dominance/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.dominance
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/multi_objective/pareto/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.pareto
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../acquisition/multi_objective/partition/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.partition
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../acquisition/interface/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.interface
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../acquisition/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../acquisition/rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../acquisition/sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../models/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../models/gpflow/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflow
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/gpflow/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/gpflow/inducing_point_selectors/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.inducing_point_selectors
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/gpflow/optimizer/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.optimizer
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/gpflow/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../models/gpflux/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflux
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/gpflux/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflux.builders
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../models/keras/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.keras
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/keras/architectures/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.architectures
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/keras/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../models/keras/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../models/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../objectives/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.objectives
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+  <label for="toctree-checkbox-8">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../objectives/multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../objectives/single_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.single_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../objectives/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../utils/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../ask_tell_optimization/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.ask_tell_optimization
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../logging/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.logging
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../types/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.types
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../version/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.version
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.SearchSpaceType">
+     SearchSpaceType
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.DEFAULT_DTYPE">
+     DEFAULT_DTYPE
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.SampleTimeoutError">
+     SampleTimeoutError
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.NonlinearConstraint">
+     NonlinearConstraint
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.NonlinearConstraint.residual">
+       residual
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.NonlinearConstraint.__eq__">
+       __eq__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.LinearConstraint">
+     LinearConstraint
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.LinearConstraint.residual">
+       residual
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.LinearConstraint.__eq__">
+       __eq__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.Constraint">
+     Constraint
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.SearchSpace">
+     SearchSpace
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.sample">
+       sample
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.__contains__">
+       __contains__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.dimension">
+       dimension
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.lower">
+       lower
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.upper">
+       upper
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.product">
+       product
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.__mul__">
+       __mul__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.__pow__">
+       __pow__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.discretize">
+       discretize
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.__eq__">
+       __eq__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.constraints_residuals">
+       constraints_residuals
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.is_feasible">
+       is_feasible
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.SearchSpace.has_constraints">
+       has_constraints
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace">
+     DiscreteSearchSpace
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.lower">
+       lower
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.upper">
+       upper
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.points">
+       points
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.dimension">
+       dimension
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.__contains__">
+       __contains__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.sample">
+       sample
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.product">
+       product
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.DiscreteSearchSpace.__eq__">
+       __eq__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.Box">
+     Box
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.lower">
+       lower
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.upper">
+       upper
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.dimension">
+       dimension
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.constraints">
+       constraints
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.__contains__">
+       __contains__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.sample">
+       sample
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.sample_halton">
+       sample_halton
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.sample_sobol">
+       sample_sobol
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box._sample_feasible_loop">
+       _sample_feasible_loop
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.sample_feasible">
+       sample_feasible
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.sample_halton_feasible">
+       sample_halton_feasible
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.sample_sobol_feasible">
+       sample_sobol_feasible
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.product">
+       product
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.__eq__">
+       __eq__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.constraints_residuals">
+       constraints_residuals
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.is_feasible">
+       is_feasible
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.Box.has_constraints">
+       has_constraints
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace">
+     TaggedProductSearchSpace
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.lower">
+       lower
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.upper">
+       upper
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.subspace_tags">
+       subspace_tags
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.dimension">
+       dimension
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.get_subspace">
+       get_subspace
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.fix_subspace">
+       fix_subspace
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.get_subspace_component">
+       get_subspace_component
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.__contains__">
+       __contains__
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.sample">
+       sample
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.product">
+       product
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.space.TaggedProductSearchSpace.__eq__">
+       __eq__
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.space">
+<span id="trieste-space"></span><h1><a class="reference internal" href="#module-trieste.space" title="trieste.space"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.space</span></code></a><a class="headerlink" href="#module-trieste.space" title="Permalink to this headline">#</a></h1>
+<p>This module contains implementations of various types of search space.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">#</a></h2>
+<dl class="py data">
+<dt id="trieste.space.SearchSpaceType">
+<code class="sig-name descname"><span class="pre">SearchSpaceType</span></code><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpaceType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpaceType" title="Permalink to this definition">#</a></dt>
+<dd><p>A type variable bound to <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.space.DEFAULT_DTYPE">
+<code class="sig-name descname"><span class="pre">DEFAULT_DTYPE</span></code><em class="property"> <span class="pre">:tensorflow.DType</span></em><a class="reference internal" href="../../../_modules/trieste/space.html#DEFAULT_DTYPE"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DEFAULT_DTYPE" title="Permalink to this definition">#</a></dt>
+<dd><p>Default dtype to use when none is provided.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt id="trieste.space.SampleTimeoutError">
+<em class="property"><span class="pre">exception</span> </em><code class="sig-name descname"><span class="pre">SampleTimeoutError</span></code><a class="reference internal" href="../../../_modules/trieste/space.html#SampleTimeoutError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SampleTimeoutError" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.11)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
+<p>Raised when sampling from a search space has timed out.</p>
+<p>Initialize self.  See help(type(self)) for accurate signature.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.space.NonlinearConstraint">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">NonlinearConstraint</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">fun</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">lb</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ub</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_feasible</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/trieste/space.html#NonlinearConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.NonlinearConstraint" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.optimize.NonlinearConstraint</span></code></p>
+<p>A wrapper class for nonlinear constraints on variables. The constraints expression is of the
+form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lb</span> <span class="o">&lt;=</span> <span class="n">fun</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">&lt;=</span> <span class="n">ub</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>fun</strong> – The function defining the nonlinear constraints; with input shape […, D] and
+output shape […, M], where M is the number of constraints.</p></li>
+<li><p><strong>lb</strong> – The lower bound of the constraint. Should be a scalar or of shape [M].</p></li>
+<li><p><strong>ub</strong> – The upper bound of the constraint. Should be a scalar or of shape [M].</p></li>
+<li><p><strong>keep_feasible</strong> – Keep the constraints feasible throughout optimization iterations if this
+is <cite>True</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.space.NonlinearConstraint.residual">
+<code class="sig-name descname"><span class="pre">residual</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#NonlinearConstraint.residual"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.NonlinearConstraint.residual" title="Permalink to this definition">#</a></dt>
+<dd><p>Calculate the residuals between the constraint function and its lower/upper limits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>points</strong> – The points to calculate the residuals for, with shape […, D].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tensor containing the lower and upper residual values with shape […, M*2].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.NonlinearConstraint.__eq__">
+<code class="sig-name descname"><span class="pre">__eq__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#NonlinearConstraint.__eq__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.NonlinearConstraint.__eq__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A constraint.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Whether the constraint is identical to this one.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.space.LinearConstraint">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">LinearConstraint</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">A</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">lb</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ub</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">keep_feasible</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/trieste/space.html#LinearConstraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.LinearConstraint" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">scipy.optimize.LinearConstraint</span></code></p>
+<p>A wrapper class for linear constraints on variables. The constraints expression is of the form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">lb</span> <span class="o">&lt;=</span> <span class="n">A</span> <span class="o">@</span> <span class="n">x</span> <span class="o">&lt;=</span> <span class="n">ub</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>A</strong> – The matrix defining the linear constraints with shape [M, D], where M is the
+number of constraints.</p></li>
+<li><p><strong>lb</strong> – The lower bound of the constraint. Should be a scalar or of shape [M].</p></li>
+<li><p><strong>ub</strong> – The upper bound of the constraint. Should be a scalar or of shape [M].</p></li>
+<li><p><strong>keep_feasible</strong> – Keep the constraints feasible throughout optimization iterations if this
+is <cite>True</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.space.LinearConstraint.residual">
+<code class="sig-name descname"><span class="pre">residual</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#LinearConstraint.residual"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.LinearConstraint.residual" title="Permalink to this definition">#</a></dt>
+<dd><p>Calculate the residuals between the constraint function and its lower/upper limits.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>points</strong> – The points to calculate the residuals for, with shape […, D].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tensor containing the lower and upper residual values with shape […, M*2].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.LinearConstraint.__eq__">
+<code class="sig-name descname"><span class="pre">__eq__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#LinearConstraint.__eq__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.LinearConstraint.__eq__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A constraint.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Whether the constraint is identical to this one.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.space.Constraint">
+<code class="sig-name descname"><span class="pre">Constraint</span></code><a class="reference internal" href="../../../_modules/trieste/space.html#Constraint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Constraint" title="Permalink to this definition">#</a></dt>
+<dd><p>Type alias for constraints.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.space.SearchSpace">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">SearchSpace</span></code><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.11)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
+<p>A <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> represents the domain over which an objective function is optimized.</p>
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.sample">
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">sample</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.sample" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of points to sample from this search space.</p></li>
+<li><p><strong>seed</strong> – Random seed for reproducibility.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> i.i.d. random points, sampled uniformly from this search space.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.__contains__">
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">__contains__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.__contains__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.__contains__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>value</strong> – A point to check for membership of this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><cite>True</cite> if <code class="docutils literal notranslate"><span class="pre">value</span></code> is a member of this search space, else <cite>False</cite>. May return a
+scalar boolean <cite>TensorType</cite> instead of the <cite>bool</cite> itself.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>tf.errors.InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">value</span></code> has a different
+dimensionality from this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.dimension">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dimension</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.dimension"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.dimension" title="Permalink to this definition">#</a></dt>
+<dd><p>The number of inputs in this search space.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.lower">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">lower</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.lower"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.lower" title="Permalink to this definition">#</a></dt>
+<dd><p>The lowest value taken by each search space dimension.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.upper">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">upper</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.upper"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.upper" title="Permalink to this definition">#</a></dt>
+<dd><p>The highest value taken by each search space dimension.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.product">
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">product</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">SearchSpaceType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">SearchSpaceType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.product"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.product" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A search space of the same type as this search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Cartesian product of this search space with the <code class="docutils literal notranslate"><span class="pre">other</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.__mul__">
+<code class="sig-name descname"><span class="pre">__mul__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">SearchSpaceType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">SearchSpaceType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.__mul__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.__mul__" title="Permalink to this definition">#</a></dt>
+<dt>
+<code class="sig-name descname"><span class="pre">__mul__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">SearchSpace</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">SearchSpace</span></a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Cartesian product of this search space with the <code class="docutils literal notranslate"><span class="pre">other</span></code>.
+If both spaces are of the same type then this calls the <a class="reference internal" href="#trieste.space.SearchSpace.product" title="trieste.space.SearchSpace.product"><code class="xref py py-meth docutils literal notranslate"><span class="pre">product()</span></code></a> method.
+Otherwise, it generates a <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.__pow__">
+<code class="sig-name descname"><span class="pre">__pow__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">SearchSpaceType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.__pow__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.__pow__" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the Cartesian product of <code class="docutils literal notranslate"><span class="pre">other</span></code> instances of this search space. For example, for
+an exponent of <cite>3</cite>, and search space <cite>s</cite>, this is <cite>s ** 3</cite>, which is equivalent to
+<cite>s * s * s</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – The exponent, or number of instances of this search space to multiply
+together. Must be strictly positive.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Cartesian product of <code class="docutils literal notranslate"><span class="pre">other</span></code> instances of this search space.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>tf.errors.InvalidArgumentError</strong> – If the exponent <code class="docutils literal notranslate"><span class="pre">other</span></code> is less than 1.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.discretize">
+<code class="sig-name descname"><span class="pre">discretize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><span class="pre">DiscreteSearchSpace</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.discretize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.discretize" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>num_samples</strong> – The number of points in the <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A discrete search space consisting of <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> points sampled uniformly from
+this search space.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.11)"><strong>NotImplementedError</strong></a> – If this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> has constraints.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.__eq__">
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">__eq__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.__eq__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.__eq__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Whether the search space is identical to this one.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.constraints_residuals">
+<em class="property"><span class="pre">abstract</span> </em><code class="sig-name descname"><span class="pre">constraints_residuals</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.constraints_residuals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.constraints_residuals" title="Permalink to this definition">#</a></dt>
+<dd><p>Return residuals for all the constraints in this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>points</strong> – The points to get the residuals for, with shape […, D].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tensor of all the residuals with shape […, C], where C is the total number of
+constraints.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.11)"><strong>NotImplementedError</strong></a> – If this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> does not support constraints.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.is_feasible">
+<code class="sig-name descname"><span class="pre">is_feasible</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.is_feasible"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.is_feasible" title="Permalink to this definition">#</a></dt>
+<dd><p>Checks if points satisfy the explicit constraints of this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.
+Note membership of the search space is not checked.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>points</strong> – The points to check constraints feasibility for, with shape […, D].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tensor of booleans. Returns <cite>True</cite> for each point if it is feasible in this
+search space, else <cite>False</cite>.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.11)"><strong>NotImplementedError</strong></a> – If this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> has constraints.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.SearchSpace.has_constraints">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">has_constraints</span></code> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#SearchSpace.has_constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.SearchSpace.has_constraints" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns <cite>True</cite> if this search space has any explicit constraints specified.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.space.DiscreteSearchSpace">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">DiscreteSearchSpace</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SearchSpace</span></code></a></p>
+<p>A discrete <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> representing a finite set of <span class="math notranslate nohighlight">\(D\)</span>-dimensional points in
+<span class="math notranslate nohighlight">\(\mathbb{R}^D\)</span>.</p>
+<p>For example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">],</span> <span class="p">[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">search_space</span> <span class="o">=</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">assert</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">])</span> <span class="ow">in</span> <span class="n">search_space</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="k">assert</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">])</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">search_space</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>points</strong> – The points that define the discrete space, with shape (‘N’, ‘D’).</p>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>tf.errors.InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">points</span></code> has an invalid shape.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.lower">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">lower</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.lower"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.lower" title="Permalink to this definition">#</a></dt>
+<dd><p>The lowest value taken across all points by each search space dimension.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.upper">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">upper</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.upper"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.upper" title="Permalink to this definition">#</a></dt>
+<dd><p>The highest value taken across all points by each search space dimension.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.points">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">points</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.points" title="Permalink to this definition">#</a></dt>
+<dd><p>All the points in this space.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.dimension">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dimension</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.dimension"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.dimension" title="Permalink to this definition">#</a></dt>
+<dd><p>The number of inputs in this search space.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.__contains__">
+<code class="sig-name descname"><span class="pre">__contains__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.__contains__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.__contains__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>value</strong> – A point to check for membership of this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><cite>True</cite> if <code class="docutils literal notranslate"><span class="pre">value</span></code> is a member of this search space, else <cite>False</cite>. May return a
+scalar boolean <cite>TensorType</cite> instead of the <cite>bool</cite> itself.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>tf.errors.InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">value</span></code> has a different
+dimensionality from this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.sample">
+<code class="sig-name descname"><span class="pre">sample</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.sample" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of points to sample from this search space.</p></li>
+<li><p><strong>seed</strong> – Random seed for reproducibility.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> i.i.d. random points, sampled uniformly,
+from this search space.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.product">
+<code class="sig-name descname"><span class="pre">product</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><span class="pre">DiscreteSearchSpace</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><span class="pre">DiscreteSearchSpace</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.product"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.product" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the Cartesian product of the two <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code></a>s. For example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">sa</span> <span class="o">=</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">]]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">sb</span> <span class="o">=</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">]]))</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="p">(</span><span class="n">sa</span> <span class="o">*</span> <span class="n">sb</span><span class="p">)</span><span class="o">.</span><span class="n">points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="go">array([[0, 1, 4, 5, 6],</span>
+<span class="go">       [0, 1, 7, 8, 9],</span>
+<span class="go">       [2, 3, 4, 5, 6],</span>
+<span class="go">       [2, 3, 7, 8, 9]], dtype=int32)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code></a> with <a class="reference internal" href="#trieste.space.DiscreteSearchSpace.points" title="trieste.space.DiscreteSearchSpace.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">points</span></code></a> of the same dtype as this
+search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Cartesian product of the two <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code></a>s.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.11)"><strong>TypeError</strong></a> – If one <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code></a> has <a class="reference internal" href="#trieste.space.DiscreteSearchSpace.points" title="trieste.space.DiscreteSearchSpace.points"><code class="xref py py-attr docutils literal notranslate"><span class="pre">points</span></code></a> of a different
+dtype to the other.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.DiscreteSearchSpace.__eq__">
+<code class="sig-name descname"><span class="pre">__eq__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#DiscreteSearchSpace.__eq__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.DiscreteSearchSpace.__eq__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Whether the search space is identical to this one.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.space.Box">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">Box</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="pre">lower:</span> <span class="pre">Sequence[float],</span> <span class="pre">upper:</span> <span class="pre">Sequence[float],</span> <span class="pre">constraints:</span> <span class="pre">Optional[Sequence[Constraint]]</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">ctol:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">TensorType</span> <span class="pre">=</span> <span class="pre">1e-07)</span>&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160; <span class="pre">Box(lower:</span> <span class="pre">trieste.types.TensorType,</span> <span class="pre">upper:</span> <span class="pre">trieste.types.TensorType,</span> <span class="pre">constraints:</span> <span class="pre">Optional[Sequence[Constraint]]</span> <span class="pre">=</span> <span class="pre">None,</span> <span class="pre">ctol:</span> <span class="pre">float</span> <span class="pre">|</span> <span class="pre">TensorType</span> <span class="pre">=</span> <span class="pre">1e-07</span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/trieste/space.html#Box"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SearchSpace</span></code></a></p>
+<p>Continuous <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> representing a <span class="math notranslate nohighlight">\(D\)</span>-dimensional box in
+<span class="math notranslate nohighlight">\(\mathbb{R}^D\)</span>. Mathematically it is equivalent to the Cartesian product of <span class="math notranslate nohighlight">\(D\)</span>
+closed bounded intervals in <span class="math notranslate nohighlight">\(\mathbb{R}\)</span>.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">lower</span></code> and <code class="docutils literal notranslate"><span class="pre">upper</span></code> are <cite>Sequence</cite>s of floats (such as lists or tuples),
+they will be converted to tensors of dtype <cite>DEFAULT_DTYPE</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>lower</strong> – The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
+and if a tensor, must have float type.</p></li>
+<li><p><strong>upper</strong> – The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
+and if a tensor, must have float type.</p></li>
+<li><p><strong>constraints</strong> – Sequence of explicit input constraints for this search space.</p></li>
+<li><p><strong>ctol</strong> – Tolerance to use to check constraints satisfaction.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>tf.errors.InvalidArgumentError</strong><strong>)</strong> – <p>If any of the following are true:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">lower</span></code> and <code class="docutils literal notranslate"><span class="pre">upper</span></code> have invalid shapes.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">lower</span></code> and <code class="docutils literal notranslate"><span class="pre">upper</span></code> do not have the same floating point type.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">upper</span></code> is not greater than <code class="docutils literal notranslate"><span class="pre">lower</span></code> across all dimensions.</p></li>
+</ul>
+</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.space.Box.lower">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">lower</span></code> &#x2192; <span class="pre">tensorflow.Tensor</span><a class="reference internal" href="../../../_modules/trieste/space.html#Box.lower"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.lower" title="Permalink to this definition">#</a></dt>
+<dd><p>The lower bounds of the box.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.upper">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">upper</span></code> &#x2192; <span class="pre">tensorflow.Tensor</span><a class="reference internal" href="../../../_modules/trieste/space.html#Box.upper"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.upper" title="Permalink to this definition">#</a></dt>
+<dd><p>The upper bounds of the box.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.dimension">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dimension</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.dimension"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.dimension" title="Permalink to this definition">#</a></dt>
+<dd><p>The number of inputs in this search space.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.constraints">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">constraints</span></code> &#x2192; <span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#trieste.space.Constraint" title="trieste.space.Constraint"><span class="pre">Constraint</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../_modules/trieste/space.html#Box.constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.constraints" title="Permalink to this definition">#</a></dt>
+<dd><p>The sequence of explicit constraints specified in this search space.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.__contains__">
+<code class="sig-name descname"><span class="pre">__contains__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span><a class="reference internal" href="../../../_modules/trieste/space.html#Box.__contains__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.__contains__" title="Permalink to this definition">#</a></dt>
+<dd><p>Return <cite>True</cite> if <code class="docutils literal notranslate"><span class="pre">value</span></code> is a member of this search space, else <cite>False</cite>. A point is a
+member if all of its coordinates lie in the closed intervals bounded by the lower and upper
+bounds.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>value</strong> – A point to check for membership of this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><cite>True</cite> if <code class="docutils literal notranslate"><span class="pre">value</span></code> is a member of this search space, else <cite>False</cite>. May return a
+scalar boolean <cite>TensorType</cite> instead of the <cite>bool</cite> itself.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>tf.errors.InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">value</span></code> has a different
+dimensionality from the search space.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.sample">
+<code class="sig-name descname"><span class="pre">sample</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.sample" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample randomly from the space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of points to sample from this search space.</p></li>
+<li><p><strong>seed</strong> – Random seed for reproducibility.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> i.i.d. random points, sampled uniformly,
+from this search space with shape ‘[num_samples, D]’ , where D is the search space
+dimension.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.sample_halton">
+<code class="sig-name descname"><span class="pre">sample_halton</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.sample_halton"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.sample_halton" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample from the space using a Halton sequence. The resulting samples are guaranteed to be
+diverse and are reproducible by using the same choice of <code class="docutils literal notranslate"><span class="pre">seed</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of points to sample from this search space.</p></li>
+<li><p><strong>seed</strong> – Random seed for the halton sequence</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> of points, using halton sequence with shape ‘[num_samples, D]’ ,
+where D is the search space dimension.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.sample_sobol">
+<code class="sig-name descname"><span class="pre">sample_sobol</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.sample_sobol"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.sample_sobol" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample a diverse set from the space using a Sobol sequence.
+If <code class="docutils literal notranslate"><span class="pre">skip</span></code> is specified, then the resulting samples are reproducible.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of points to sample from this search space.</p></li>
+<li><p><strong>skip</strong> – The number of initial points of the Sobol sequence to skip</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> of points, using sobol sequence with shape ‘[num_samples, D]’ ,
+where D is the search space dimension.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box._sample_feasible_loop">
+<code class="sig-name descname"><span class="pre">_sample_feasible_loop</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampler</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tries</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box._sample_feasible_loop"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box._sample_feasible_loop" title="Permalink to this definition">#</a></dt>
+<dd><p>Rejection sampling using provided callable. Try <code class="docutils literal notranslate"><span class="pre">max_tries</span></code> number of times to find
+<code class="docutils literal notranslate"><span class="pre">num_samples</span></code> feasible points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of feasible points to sample from this search space.</p></li>
+<li><p><strong>sampler</strong> – Callable to return samples. Called potentially multiple times.</p></li>
+<li><p><strong>max_tries</strong> – Maximum attempts to sample the requested number of points.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> feasible points sampled using <code class="docutils literal notranslate"><span class="pre">sampler</span></code>.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#trieste.space.SampleTimeoutError" title="trieste.space.SampleTimeoutError"><strong>SampleTimeoutError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">max_tries</span></code> are exhausted before <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> are
+sampled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.sample_feasible">
+<code class="sig-name descname"><span class="pre">sample_feasible</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tries</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.sample_feasible"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.sample_feasible" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample feasible points randomly from the space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of feasible points to sample from this search space.</p></li>
+<li><p><strong>seed</strong> – Random seed for reproducibility.</p></li>
+<li><p><strong>max_tries</strong> – Maximum attempts to sample the requested number of points.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> i.i.d. random points, sampled uniformly,
+from this search space with shape ‘[num_samples, D]’ , where D is the search space
+dimension.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#trieste.space.SampleTimeoutError" title="trieste.space.SampleTimeoutError"><strong>SampleTimeoutError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">max_tries</span></code> are exhausted before <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> are
+sampled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.sample_halton_feasible">
+<code class="sig-name descname"><span class="pre">sample_halton_feasible</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tries</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.sample_halton_feasible"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.sample_halton_feasible" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample feasible points from the space using a Halton sequence. The resulting samples are
+guaranteed to be diverse and are reproducible by using the same choice of <code class="docutils literal notranslate"><span class="pre">seed</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of feasible points to sample from this search space.</p></li>
+<li><p><strong>seed</strong> – Random seed for the halton sequence</p></li>
+<li><p><strong>max_tries</strong> – Maximum attempts to sample the requested number of points.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> of points, using halton sequence with shape ‘[num_samples, D]’ ,
+where D is the search space dimension.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#trieste.space.SampleTimeoutError" title="trieste.space.SampleTimeoutError"><strong>SampleTimeoutError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">max_tries</span></code> are exhausted before <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> are
+sampled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.sample_sobol_feasible">
+<code class="sig-name descname"><span class="pre">sample_sobol_feasible</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">skip</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_tries</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">100</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.sample_sobol_feasible"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.sample_sobol_feasible" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample a diverse set of feasible points from the space using a Sobol sequence.
+If <code class="docutils literal notranslate"><span class="pre">skip</span></code> is specified, then the resulting samples are reproducible.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of feasible points to sample from this search space.</p></li>
+<li><p><strong>skip</strong> – The number of initial points of the Sobol sequence to skip</p></li>
+<li><p><strong>max_tries</strong> – Maximum attempts to sample the requested number of points.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> of points, using sobol sequence with shape ‘[num_samples, D]’ ,
+where D is the search space dimension.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference internal" href="#trieste.space.SampleTimeoutError" title="trieste.space.SampleTimeoutError"><strong>SampleTimeoutError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">max_tries</span></code> are exhausted before <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> are
+sampled.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.product">
+<code class="sig-name descname"><span class="pre">product</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><span class="pre">Box</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><span class="pre">Box</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.product"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.product" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the Cartesian product of the two <a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">Box</span></code></a>es (concatenating their respective
+lower and upper bounds). For example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">unit_interval</span> <span class="o">=</span> <span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">square_at_origin</span> <span class="o">=</span> <span class="n">Box</span><span class="p">([</span><span class="o">-</span><span class="mf">2.0</span><span class="p">,</span> <span class="o">-</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">new_box</span> <span class="o">=</span> <span class="n">unit_interval</span> <span class="o">*</span> <span class="n">square_at_origin</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">new_box</span><span class="o">.</span><span class="n">lower</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="go">array([ 0., -2., -2.])</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">new_box</span><span class="o">.</span><span class="n">upper</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="go">array([1., 2., 2.])</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A <a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">Box</span></code></a> with bounds of the same type as this <a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">Box</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Cartesian product of the two <a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">Box</span></code></a>es.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#TypeError" title="(in Python v3.11)"><strong>TypeError</strong></a> – If the bounds of one <a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">Box</span></code></a> have different dtypes to those of
+the other <a class="reference internal" href="#trieste.space.Box" title="trieste.space.Box"><code class="xref py py-class docutils literal notranslate"><span class="pre">Box</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.__eq__">
+<code class="sig-name descname"><span class="pre">__eq__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.__eq__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.__eq__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Whether the search space is identical to this one.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.constraints_residuals">
+<code class="sig-name descname"><span class="pre">constraints_residuals</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.constraints_residuals"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.constraints_residuals" title="Permalink to this definition">#</a></dt>
+<dd><p>Return residuals for all the constraints in this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>points</strong> – The points to get the residuals for, with shape […, D].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tensor of all the residuals with shape […, C], where C is the total number of
+constraints.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.is_feasible">
+<code class="sig-name descname"><span class="pre">is_feasible</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.is_feasible"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.is_feasible" title="Permalink to this definition">#</a></dt>
+<dd><p>Checks if points satisfy the explicit constraints of this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.
+Note membership of the search space is not checked.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>points</strong> – The points to check constraints feasibility for, with shape […, D].</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tensor of booleans. Returns <cite>True</cite> for each point if it is feasible in this
+search space, else <cite>False</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.Box.has_constraints">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">has_constraints</span></code> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#Box.has_constraints"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.Box.has_constraints" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns <cite>True</cite> if this search space has any explicit constraints specified.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.space.TaggedProductSearchSpace">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">TaggedProductSearchSpace</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">spaces</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">SearchSpace</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tags</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-obj docutils literal notranslate"><span class="pre">SearchSpace</span></code></a></p>
+<p>Product <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> consisting of a product of
+multiple <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>. This class provides functionality for
+accessing either the resulting combined search space or each individual space.</p>
+<p>Note that this class assumes that individual points in product spaces are
+represented with their inputs in the same order as specified when initializing
+the space.</p>
+<p>Build a <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code></a> from a list <code class="docutils literal notranslate"><span class="pre">spaces</span></code> of other spaces. If
+<code class="docutils literal notranslate"><span class="pre">tags</span></code> are provided then they form the identifiers of the subspaces, otherwise the
+subspaces are labelled numerically.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>spaces</strong> – A sequence of <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a> objects representing the space’s subspaces</p></li>
+<li><p><strong>tags</strong> – An optional list of tags giving the unique identifiers of
+the space’s subspaces.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>tf.errors.InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">spaces</span></code> has a different
+length to <code class="docutils literal notranslate"><span class="pre">tags</span></code> when <code class="docutils literal notranslate"><span class="pre">tags</span></code> is provided or if <code class="docutils literal notranslate"><span class="pre">tags</span></code> contains duplicates.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.lower">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">lower</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.lower"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.lower" title="Permalink to this definition">#</a></dt>
+<dd><p>The lowest values taken by each space dimension, concatenated across subspaces.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.upper">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">upper</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.upper"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.upper" title="Permalink to this definition">#</a></dt>
+<dd><p>The highest values taken by each space dimension, concatenated across subspaces.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.subspace_tags">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">subspace_tags</span></code> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Ellipsis</span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.subspace_tags"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.subspace_tags" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the names of the subspaces contained in this product space.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.dimension">
+<em class="property"><span class="pre">property</span> </em><code class="sig-name descname"><span class="pre">dimension</span></code> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.dimension"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.dimension" title="Permalink to this definition">#</a></dt>
+<dd><p>The number of inputs in this product search space.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.get_subspace">
+<code class="sig-name descname"><span class="pre">get_subspace</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">SearchSpace</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.get_subspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.get_subspace" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the domain of a particular subspace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>tag</strong> – The tag specifying the target subspace.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Target subspace.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.fix_subspace">
+<code class="sig-name descname"><span class="pre">fix_subspace</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><span class="pre">TaggedProductSearchSpace</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.fix_subspace"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.fix_subspace" title="Permalink to this definition">#</a></dt>
+<dd><p>Return a new <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code></a> with the specified subspace replaced with
+a <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code></a> containing <code class="docutils literal notranslate"><span class="pre">values</span></code> as its points. This is useful if you
+wish to restrict subspaces to sets of representative points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tag</strong> – The tag specifying the target subspace.</p></li>
+<li><p><strong>values</strong> – The  values used to populate the new discrete subspace.z</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>New <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code></a> with the specified subspace replaced with
+a <a class="reference internal" href="#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code></a> containing <code class="docutils literal notranslate"><span class="pre">values</span></code> as its points.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.get_subspace_component">
+<code class="sig-name descname"><span class="pre">get_subspace_component</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">values</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.get_subspace_component"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.get_subspace_component" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the components of <code class="docutils literal notranslate"><span class="pre">values</span></code> lying in a particular subspace.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tag</strong> – Subspace tag.</p></li>
+<li><p><strong>values</strong> – Points from the <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code></a> of shape [N,Dprod].</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The sub-components of <code class="docutils literal notranslate"><span class="pre">values</span></code> lying in the specified subspace, of shape
+[N, Dsub], where Dsub is the dimensionality of the specified subspace.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.__contains__">
+<code class="sig-name descname"><span class="pre">__contains__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.__contains__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.__contains__" title="Permalink to this definition">#</a></dt>
+<dd><p>Return <cite>True</cite> if <code class="docutils literal notranslate"><span class="pre">value</span></code> is a member of this search space, else <cite>False</cite>. A point is a
+member if each of its subspace components lie in each subspace.</p>
+<p>Recall that individual points in product spaces are represented with their inputs in the
+same order as specified when initializing the space.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>value</strong> – A point to check for membership of this <a class="reference internal" href="#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><cite>True</cite> if <code class="docutils literal notranslate"><span class="pre">value</span></code> is a member of this search space, else <cite>False</cite>. May return a
+scalar boolean <cite>TensorType</cite> instead of the <cite>bool</cite> itself.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>tf.errors.InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">value</span></code> has a different
+dimensionality from the search space.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.sample">
+<code class="sig-name descname"><span class="pre">sample</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.sample" title="Permalink to this definition">#</a></dt>
+<dd><p>Sample randomly from the space by sampling from each subspace
+and concatenating the resulting samples.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_samples</strong> – The number of points to sample from this search space.</p></li>
+<li><p><strong>seed</strong> – Optional tf.random seed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">num_samples</span></code> i.i.d. random points, sampled uniformly,
+from this search space with shape ‘[num_samples, D]’ , where D is the search space
+dimension.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.product">
+<code class="sig-name descname"><span class="pre">product</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><span class="pre">TaggedProductSearchSpace</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><span class="pre">TaggedProductSearchSpace</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.product"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.product" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the Cartesian product of the two <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code></a>s,
+building a tree of <a class="reference internal" href="#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code></a>s.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A search space of the same type as this search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Cartesian product of this search space with the <code class="docutils literal notranslate"><span class="pre">other</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.space.TaggedProductSearchSpace.__eq__">
+<code class="sig-name descname"><span class="pre">__eq__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">other</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#object" title="(in Python v3.11)"><span class="pre">object</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a><a class="reference internal" href="../../../_modules/trieste/space.html#TaggedProductSearchSpace.__eq__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.space.TaggedProductSearchSpace.__eq__" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>other</strong> – A search space.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Whether the search space is identical to this one.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

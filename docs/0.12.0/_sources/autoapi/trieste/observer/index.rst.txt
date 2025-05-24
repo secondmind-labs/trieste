@@ -1,0 +1,62 @@
+:py:mod:`trieste.observer`
+==========================
+
+.. py:module:: trieste.observer
+
+.. autoapi-nested-parse::
+
+   Definitions and utilities for observers of objective functions. 
+
+
+
+Module Contents
+---------------
+
+.. py:data:: SingleObserver
+   
+
+   Type alias for an observer of the objective function (that takes query points and returns an
+   unlabelled dataset).
+
+
+.. py:data:: MultiObserver
+   
+
+   Type alias for an observer of the objective function (that takes query points and returns labelled
+   datasets).
+
+
+.. py:data:: Observer
+   
+
+   Type alias for an observer, returning either labelled datasets or a single unlabelled dataset.
+
+
+.. py:data:: OBJECTIVE
+   :annotation: :typing_extensions.Final[str] = OBJECTIVE
+
+   A tag typically used by acquisition rules to denote the data sets and models corresponding to the
+   optimization objective.
+
+
+.. py:function:: filter_finite(query_points: trieste.types.TensorType, observations: trieste.types.TensorType) -> trieste.data.Dataset
+
+   :param query_points: A tensor of shape (N x M).
+   :param observations: A tensor of shape (N x 1).
+   :return: A :class:`~trieste.data.Dataset` containing all the rows in ``query_points`` and
+       ``observations`` where the ``observations`` are finite numbers.
+   :raise ValueError or InvalidArgumentError: If ``query_points`` or ``observations`` have invalid
+       shapes.
+
+
+.. py:function:: map_is_finite(query_points: trieste.types.TensorType, observations: trieste.types.TensorType) -> trieste.data.Dataset
+
+   :param query_points: A tensor.
+   :param observations: A tensor.
+   :return: A :class:`~trieste.data.Dataset` containing all the rows in ``query_points``,
+       along with the tensor result of mapping the elements of ``observations`` to: `1` if they are
+       a finite number, else `0`, with dtype `tf.uint8`.
+   :raise ValueError or InvalidArgumentError: If ``query_points`` and ``observations`` do not
+       satisfy the shape constraints of :class:`~trieste.data.Dataset`.
+
+

@@ -1,0 +1,273 @@
+:py:mod:`trieste.acquisition.optimizer`
+=======================================
+
+.. py:module:: trieste.acquisition.optimizer
+
+.. autoapi-nested-parse::
+
+   This module contains functionality for optimizing
+   :data:`~trieste.acquisition.AcquisitionFunction`\ s over :class:`~trieste.space.SearchSpace`\ s.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: NUM_SAMPLES_MIN
+   :type: int
+   :value: 5000
+
+   The default minimum number of initial samples for :func:`generate_continuous_optimizer` and
+   :func:`generate_random_search_optimizer` function, used for determining the number of initial
+   samples in the multi-start acquisition function optimization.
+
+
+.. py:data:: NUM_SAMPLES_DIM
+   :type: int
+   :value: 1000
+
+   The default minimum number of initial samples per dimension of the search space for
+   :func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
+   determining the number of initial samples in the multi-start acquisition function optimization.
+
+
+.. py:data:: NUM_RUNS_DIM
+   :type: int
+   :value: 10
+
+   The default minimum number of optimization runs per dimension of the search space for
+   :func:`generate_continuous_optimizer` function in :func:`automatic_optimizer_selector`, used for
+   determining the number of acquisition function optimizations to be performed in parallel.
+
+
+.. py:exception:: FailedOptimizationError
+
+
+   Bases: :py:obj:`Exception`
+
+   Raised when an acquisition optimizer fails to optimize
+
+   Initialize self.  See help(type(self)) for accurate signature.
+
+
+.. py:data:: AcquisitionOptimizer
+
+   Type alias for a function that returns the single point that maximizes an acquisition function over
+   a search space or the V points that maximize a vectorized acquisition function (as represented by an
+   acquisition-int tuple).
+
+   If this function receives a search space with points of shape [D] and an acquisition function
+   with input shape [..., 1, D] output shape [..., 1], the :const:`AcquisitionOptimizer` return shape
+   should be [1, D].
+
+   If instead it receives a search space and a tuple containing the acquisition function and its
+   vectorization V then the :const:`AcquisitionOptimizer` return shape should be [V, D].
+
+
+.. py:function:: automatic_optimizer_selector(space: trieste.space.SearchSpace, target_func: Union[trieste.acquisition.interface.AcquisitionFunction, Tuple[trieste.acquisition.interface.AcquisitionFunction, int]]) -> trieste.types.TensorType
+
+   A wrapper around our :const:`AcquisitionOptimizer`s. This class performs
+   an :const:`AcquisitionOptimizer` appropriate for the
+   problem's :class:`~trieste.space.SearchSpace`.
+
+   :param space: The space of points over which to search, for points with shape [D].
+   :param target_func: The function to maximise, with input shape [..., 1, D] and output shape
+           [..., 1].
+   :return: The batch of points in ``space`` that maximises ``target_func``, with shape [1, D].
+
+
+.. py:function:: optimize_discrete(space: trieste.space.DiscreteSearchSpace, target_func: Union[trieste.acquisition.interface.AcquisitionFunction, Tuple[trieste.acquisition.interface.AcquisitionFunction, int]]) -> trieste.types.TensorType
+
+   An :const:`AcquisitionOptimizer` for :class:'DiscreteSearchSpace' spaces.
+
+   When this functions receives an acquisition-integer tuple as its `target_func`,it evaluates
+   all the points in the search space for each of the individual V functions making
+   up `target_func`.
+
+   :param space: The space of points over which to search, for points with shape [D].
+   :param target_func: The function to maximise, with input shape [..., V, D] and output shape
+           [..., V].
+   :return: The V points in ``space`` that maximises ``target_func``, with shape [V, D].
+
+
+.. py:data:: InitialPointSampler
+
+   Type alias for a function that returns initial point candidates for an optimization.
+   Candidates are returned in one or more batches, and each batch should have the shape [N, D],
+   even when N=1.
+
+   For simplicity and memory usage, it is recommended to define these as generators. For example,
+   the following initial point sampler returns both a set of pre-optimized points and 50,000
+   random samples:
+
+       def sampler(space: SearchSpace) -> Iterable[TensorType]:
+           yield pre_optimized_points
+           yield space.sample(50_000)
+
+   While the following does the same but groups the random samples into batches of size 1,000
+   to conserve memory:
+
+       def sampler(space: SearchSpace) -> Iterable[TensorType]:
+           yield pre_optimized_points
+           yield from sample_from_space(50_000, batch_size=1_000)(space)
+
+
+.. py:function:: sample_from_space(num_samples: int, batch_size: Optional[int] = None) -> InitialPointSampler
+
+   An initial point sampler that returns `num_samples` points. If `batch_size` is specified,
+   then these are returned in batches of that size, to preserve memory usage.
+
+
+.. py:function:: generate_initial_points(num_initial_points: int, initial_sampler: InitialPointSampler, space: trieste.space.SearchSpace, target_func: trieste.acquisition.interface.AcquisitionFunction, vectorization: int = 1) -> trieste.types.TensorType
+
+   Return the best starting points for an optimization from those generated by a given sampler.
+
+   :param num_initial_points: Number of best starting points to return.
+   :param initial_sampler: Initial point sampler.
+   :param space: Search space.
+   :param target_func: Target function being optimized.
+   :param vectorization: Vectorization of the target function.
+
+
+.. py:function:: generate_continuous_optimizer(num_initial_samples: int | InitialPointSampler = NUM_SAMPLES_MIN, num_optimization_runs: int = 10, num_recovery_runs: int = 10, optimizer_args: Optional[dict[str, Any]] = None) -> AcquisitionOptimizer[trieste.space.Box | trieste.space.CollectionSearchSpace]
+
+   Generate a gradient-based optimizer for :class:'Box' and :class:'CollectionSearchSpace'
+   spaces and batches of size 1. In the case of a :class:'CollectionSearchSpace', We perform
+   gradient-based optimization across all :class:'Box' subspaces, starting from the best location
+   found across a sample of `num_initial_samples` random points.
+
+   We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_initial_samples`, or
+   `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is greater.
+   Similarly, for `num_optimization_runs`, we recommend using `NUM_RUNS_DIM` times the
+   dimensionality of the search space.
+
+   This optimizer uses Scipy's L-BFGS-B optimizer. We run `num_optimization_runs` separate
+   optimizations in parallel, each starting from one of the best `num_optimization_runs` initial
+   query points.
+
+   If all `num_optimization_runs` optimizations fail to converge then we run
+   `num_recovery_runs` additional runs starting from random locations (also ran in parallel).
+
+   **Note:** using a large number of `num_initial_samples` and `num_optimization_runs` with a
+   high-dimensional search space can consume a large amount of CPU memory (RAM).
+
+   :param num_initial_samples: The starting point(s) of the optimization. This can be either
+       the number of random samples to use, or a function that given the search space returns
+       the points to use. The latter can be used for example to add pre-optimized starting points
+       to the random points, as well as to batch point generation to reduce memory usage for
+       high-dimensional problems.
+   :param num_optimization_runs: The number of separate optimizations to run.
+   :param num_recovery_runs: The maximum number of recovery optimization runs in case of failure.
+   :param optimizer_args: The keyword arguments to pass to the Scipy L-BFGS-B optimizer.
+       Check `minimize` method  of :class:`~scipy.optimize` for details of which arguments
+       can be passed. Note that method, jac and bounds cannot/should not be changed.
+   :return: The acquisition optimizer.
+
+
+.. py:function:: _perform_parallel_continuous_optimization(target_func: trieste.acquisition.interface.AcquisitionFunction, space: trieste.space.SearchSpace, starting_points: trieste.types.TensorType, optimizer_args: dict[str, Any]) -> Tuple[trieste.types.TensorType, trieste.types.TensorType, trieste.types.TensorType, trieste.types.TensorType]
+
+   A function to perform parallel optimization of our acquisition functions
+   using Scipy. We perform L-BFGS-B starting from each of the locations contained
+   in `starting_points`, i.e. the number of individual optimization runs is
+   given by the leading dimension of `starting_points`.
+
+   To provide a parallel implementation of Scipy's L-BFGS-B that can leverage
+   batch calculations with TensorFlow, this function uses the Greenlet package
+   to run each individual optimization on micro-threads.
+
+   L-BFGS-B updates for each individual optimization are performed by
+   independent greenlets working with Numpy arrays, however, the evaluation
+   of our acquisition function (and its gradients) is calculated in parallel
+   (for each optimization step) using Tensorflow.
+
+   For :class:'CollectionSearchSpace' we only apply gradient updates to
+   its :class:'Box' subspaces, fixing the discrete elements to the best values
+   found across the initial random search. To fix these discrete elements, we
+   optimize over a continuous :class:'Box' relaxation of the discrete subspaces
+   which has equal upper and lower bounds, i.e. we specify an equality constraint
+   for this dimension in the scipy optimizer.
+
+   This function also support the maximization of vectorized target functions (with
+   vectorization V).
+
+   :param target_func: The function(s) to maximise, with input shape [..., V, D] and
+       output shape [..., V].
+   :param space: The original search space.
+   :param starting_points: The points at which to begin our optimizations of shape
+       [num_optimization_runs, V, D]. The leading dimension of
+       `starting_points` controls the number of individual optimization runs
+       for each of the V target functions.
+   :param optimizer_args: Keyword arguments to pass to the Scipy optimizer.
+   :return: A tuple containing the failure statuses, maximum values, maximisers and
+       number of evaluations for each of our optimizations.
+
+
+.. py:class:: ScipyOptimizerGreenlet
+
+
+   Bases: :py:obj:`greenlet.greenlet`
+
+   Worker greenlet that runs a single Scipy L-BFGS-B (by default). Each greenlet performs all the
+   optimizer update steps required for an individual optimization. However, the evaluation
+   of our acquisition function (and its gradients) is delegated back to the main Tensorflow
+   process (the parent greenlet) where evaluations can be made efficiently in parallel.
+
+   .. py:method:: run(start: numpy.ndarray[Any, Any], bounds: scipy.optimize.Bounds, constraints: Sequence[trieste.space.Constraint], optimizer_args: Optional[dict[str, Any]] = None) -> scipy.optimize.OptimizeResult
+
+      Greenlet run method.
+
+
+
+.. py:function:: get_bounds_of_box_relaxation_around_point(space: trieste.space.TaggedProductSearchSpace, current_point: trieste.types.TensorType) -> scipy.optimize.Bounds
+
+   A function to return the bounds of a continuous relaxation of
+   a :class:'TaggedProductSearchSpace' space, i.e. replacing discrete
+   spaces with continuous spaces. In particular, all :class:'DiscreteSearchSpace'
+   subspaces are replaced with a new :class:'DiscreteSearchSpace' fixed at their
+   respective component of the specified 'current_point'. Note that
+   all :class:'Box' subspaces remain the same.
+
+   :param space: The original search space.
+   :param current_point: The point at which to make the continuous relaxation.
+   :return: Bounds for the Scipy optimizer.
+
+
+.. py:function:: batchify_joint(batch_size_one_optimizer: AcquisitionOptimizer[trieste.space.SearchSpaceType], batch_size: int) -> AcquisitionOptimizer[trieste.space.SearchSpaceType]
+
+   A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+   :const:`AcquisitionOptimizer` to allow it to jointly optimize the batch elements considered
+   by a batch acquisition function.
+
+   :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+           single point with shape [1, D].
+   :param batch_size: The number of points in the batch.
+   :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [B, D].
+
+
+.. py:function:: batchify_vectorize(batch_size_one_optimizer: AcquisitionOptimizer[trieste.space.SearchSpaceType], batch_size: int) -> AcquisitionOptimizer[trieste.space.SearchSpaceType]
+
+   A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+   :const:`AcquisitionOptimizer` to allow it to optimize batch acquisition functions.
+
+   Unlike :func:`batchify_joint`, :func:`batchify_vectorize` is suitable
+   for a :class:`AcquisitionFunction` whose individual batch element can be
+   optimized independently (i.e. they can be vectorized).
+
+   :param batch_size_one_optimizer: An optimizer that returns only batch size one, i.e. produces a
+           single point with shape [1, D].
+   :param batch_size: The number of points in the batch.
+   :return: An :const:`AcquisitionOptimizer` that will provide a batch of points with shape [V, D].
+
+
+.. py:function:: generate_random_search_optimizer(num_samples: int = NUM_SAMPLES_MIN) -> AcquisitionOptimizer[trieste.space.SearchSpace]
+
+   Generate an acquisition optimizer that samples `num_samples` random points across the space.
+   The default is to sample at `NUM_SAMPLES_MIN` locations.
+
+   We advise the user to either use the default `NUM_SAMPLES_MIN` for `num_samples`, or
+   `NUM_SAMPLES_DIM` times the dimensionality of the search space, whichever is smaller.
+
+   :param num_samples: The number of random points to sample.
+   :return: The acquisition optimizer.
+
+

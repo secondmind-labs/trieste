@@ -1,0 +1,415 @@
+:py:mod:`trieste.space`
+=======================
+
+.. py:module:: trieste.space
+
+.. autoapi-nested-parse::
+
+   This module contains implementations of various types of search space. 
+
+
+
+Module Contents
+---------------
+
+.. py:data:: SearchSpaceType
+   
+
+   A type variable bound to :class:`SearchSpace`. 
+
+
+.. py:class:: SearchSpace
+
+   Bases: :py:obj:`abc.ABC`
+
+   A :class:`SearchSpace` represents the domain over which an objective function is optimized.
+
+   .. py:method:: sample(self, num_samples: int, seed: Optional[int] = None) -> trieste.types.TensorType
+      :abstractmethod:
+
+      :param num_samples: The number of points to sample from this search space.
+      :param seed: Random seed for reproducibility.
+      :return: ``num_samples`` i.i.d. random points, sampled uniformly from this search space.
+
+
+   .. py:method:: __contains__(self, value: trieste.types.TensorType) -> bool | TensorType
+      :abstractmethod:
+
+      :param value: A point to check for membership of this :class:`SearchSpace`.
+      :return: `True` if ``value`` is a member of this search space, else `False`. May return a
+          scalar boolean `TensorType` instead of the `bool` itself.
+      :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+          dimensionality from this :class:`SearchSpace`.
+
+
+   .. py:method:: dimension(self) -> trieste.types.TensorType
+      :property:
+
+      The number of inputs in this search space.
+
+
+   .. py:method:: lower(self) -> trieste.types.TensorType
+      :property:
+
+      The lowest value taken by each search space dimension.
+
+
+   .. py:method:: upper(self) -> trieste.types.TensorType
+      :property:
+
+      The highest value taken by each search space dimension.
+
+
+   .. py:method:: product(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType
+      :abstractmethod:
+
+      :param other: A search space of the same type as this search space.
+      :return: The Cartesian product of this search space with the ``other``.
+
+
+   .. py:method:: __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType
+               __mul__(self: SearchSpaceType, other: SearchSpace) -> SearchSpace
+
+      :param other: A search space.
+      :return: The Cartesian product of this search space with the ``other``.
+          If both spaces are of the same type then this calls the :meth:`product` method.
+          Otherwise, it generates a :class:`TaggedProductSearchSpace`.
+
+
+   .. py:method:: __pow__(self: SearchSpaceType, other: int) -> SearchSpaceType
+
+      Return the Cartesian product of ``other`` instances of this search space. For example, for
+      an exponent of `3`, and search space `s`, this is `s ** 3`, which is equivalent to
+      `s * s * s`.
+
+      :param other: The exponent, or number of instances of this search space to multiply
+          together. Must be strictly positive.
+      :return: The Cartesian product of ``other`` instances of this search space.
+      :raise tf.errors.InvalidArgumentError: If the exponent ``other`` is less than 1.
+
+
+   .. py:method:: discretize(self, num_samples: int) -> DiscreteSearchSpace
+
+      :param num_samples: The number of points in the :class:`DiscreteSearchSpace`.
+      :return: A discrete search space consisting of ``num_samples`` points sampled uniformly from
+          this search space.
+
+
+   .. py:method:: __eq__(self, other: object) -> bool
+      :abstractmethod:
+
+      :param other: A search space.
+      :return: Whether the search space is identical to this one.
+
+
+
+.. py:class:: DiscreteSearchSpace(points: trieste.types.TensorType)
+
+   Bases: :py:obj:`SearchSpace`
+
+   A discrete :class:`SearchSpace` representing a finite set of :math:`D`-dimensional points in
+   :math:`\mathbb{R}^D`.
+
+   For example:
+
+       >>> points = tf.constant([[-1.0, 0.4], [-1.0, 0.6], [0.0, 0.4]])
+       >>> search_space = DiscreteSearchSpace(points)
+       >>> assert tf.constant([0.0, 0.4]) in search_space
+       >>> assert tf.constant([1.0, 0.5]) not in search_space
+
+
+   :param points: The points that define the discrete space, with shape ('N', 'D').
+   :raise ValueError (or tf.errors.InvalidArgumentError): If ``points`` has an invalid shape.
+
+   .. py:method:: lower(self) -> trieste.types.TensorType
+      :property:
+
+      The lowest value taken across all points by each search space dimension.
+
+
+   .. py:method:: upper(self) -> trieste.types.TensorType
+      :property:
+
+      The highest value taken across all points by each search space dimension.
+
+
+   .. py:method:: points(self) -> trieste.types.TensorType
+      :property:
+
+      All the points in this space.
+
+
+   .. py:method:: dimension(self) -> trieste.types.TensorType
+      :property:
+
+      The number of inputs in this search space.
+
+
+   .. py:method:: __contains__(self, value: trieste.types.TensorType) -> bool | TensorType
+
+      :param value: A point to check for membership of this :class:`SearchSpace`.
+      :return: `True` if ``value`` is a member of this search space, else `False`. May return a
+          scalar boolean `TensorType` instead of the `bool` itself.
+      :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+          dimensionality from this :class:`SearchSpace`.
+
+
+   .. py:method:: sample(self, num_samples: int, seed: Optional[int] = None) -> trieste.types.TensorType
+
+      :param num_samples: The number of points to sample from this search space.
+      :param seed: Random seed for reproducibility.
+      :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+          from this search space.
+
+
+   .. py:method:: product(self, other: DiscreteSearchSpace) -> DiscreteSearchSpace
+
+      Return the Cartesian product of the two :class:`DiscreteSearchSpace`\ s. For example:
+
+          >>> sa = DiscreteSearchSpace(tf.constant([[0, 1], [2, 3]]))
+          >>> sb = DiscreteSearchSpace(tf.constant([[4, 5, 6], [7, 8, 9]]))
+          >>> (sa * sb).points.numpy()
+          array([[0, 1, 4, 5, 6],
+                 [0, 1, 7, 8, 9],
+                 [2, 3, 4, 5, 6],
+                 [2, 3, 7, 8, 9]], dtype=int32)
+
+      :param other: A :class:`DiscreteSearchSpace` with :attr:`points` of the same dtype as this
+          search space.
+      :return: The Cartesian product of the two :class:`DiscreteSearchSpace`\ s.
+      :raise TypeError: If one :class:`DiscreteSearchSpace` has :attr:`points` of a different
+          dtype to the other.
+
+
+   .. py:method:: __eq__(self, other: object) -> bool
+
+      :param other: A search space.
+      :return: Whether the search space is identical to this one.
+
+
+
+.. py:class:: Box(lower: Sequence[float], upper: Sequence[float])           Box(lower: trieste.types.TensorType, upper: trieste.types.TensorType)
+
+   Bases: :py:obj:`SearchSpace`
+
+   Continuous :class:`SearchSpace` representing a :math:`D`-dimensional box in
+   :math:`\mathbb{R}^D`. Mathematically it is equivalent to the Cartesian product of :math:`D`
+   closed bounded intervals in :math:`\mathbb{R}`.
+
+   If ``lower`` and ``upper`` are `Sequence`\ s of floats (such as lists or tuples),
+   they will be converted to tensors of dtype `tf.float64`.
+
+   :param lower: The lower (inclusive) bounds of the box. Must have shape [D] for positive D,
+       and if a tensor, must have float type.
+   :param upper: The upper (inclusive) bounds of the box. Must have shape [D] for positive D,
+       and if a tensor, must have float type.
+   :raise ValueError (or tf.errors.InvalidArgumentError): If any of the following are true:
+
+       - ``lower`` and ``upper`` have invalid shapes.
+       - ``lower`` and ``upper`` do not have the same floating point type.
+       - ``upper`` is not greater than ``lower`` across all dimensions.
+
+   .. py:method:: lower(self) -> tensorflow.Tensor
+      :property:
+
+      The lower bounds of the box.
+
+
+   .. py:method:: upper(self) -> tensorflow.Tensor
+      :property:
+
+      The upper bounds of the box.
+
+
+   .. py:method:: dimension(self) -> trieste.types.TensorType
+      :property:
+
+      The number of inputs in this search space.
+
+
+   .. py:method:: __contains__(self, value: trieste.types.TensorType) -> bool | TensorType
+
+      Return `True` if ``value`` is a member of this search space, else `False`. A point is a
+      member if all of its coordinates lie in the closed intervals bounded by the lower and upper
+      bounds.
+
+      :param value: A point to check for membership of this :class:`SearchSpace`.
+      :return: `True` if ``value`` is a member of this search space, else `False`. May return a
+          scalar boolean `TensorType` instead of the `bool` itself.
+      :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+          dimensionality from the search space.
+
+
+   .. py:method:: sample(self, num_samples: int, seed: Optional[int] = None) -> trieste.types.TensorType
+
+      Sample randomly from the space.
+
+      :param num_samples: The number of points to sample from this search space.
+      :param seed: Random seed for reproducibility.
+      :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+          from this search space with shape '[num_samples, D]' , where D is the search space
+          dimension.
+
+
+   .. py:method:: sample_halton(self, num_samples: int, seed: Optional[int] = None) -> trieste.types.TensorType
+
+      Sample from the space using a Halton sequence. The resulting samples are guaranteed to be
+      diverse and are reproducible by using the same choice of ``seed``.
+
+      :param num_samples: The number of points to sample from this search space.
+      :param seed: Random seed for the halton sequence
+      :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
+          where D is the search space dimension.
+
+
+   .. py:method:: sample_sobol(self, num_samples: int, skip: Optional[int] = None) -> trieste.types.TensorType
+
+      Sample a diverse set from the space using a Sobol sequence.
+      If ``skip`` is specified, then the resulting samples are reproducible.
+
+      :param num_samples: The number of points to sample from this search space.
+      :param skip: The number of initial points of the Sobol sequence to skip
+      :return: ``num_samples`` of points, using sobol sequence with shape '[num_samples, D]' ,
+          where D is the search space dimension.
+
+
+   .. py:method:: product(self, other: Box) -> Box
+
+      Return the Cartesian product of the two :class:`Box`\ es (concatenating their respective
+      lower and upper bounds). For example:
+
+          >>> unit_interval = Box([0.0], [1.0])
+          >>> square_at_origin = Box([-2.0, -2.0], [2.0, 2.0])
+          >>> new_box = unit_interval * square_at_origin
+          >>> new_box.lower.numpy()
+          array([ 0., -2., -2.])
+          >>> new_box.upper.numpy()
+          array([1., 2., 2.])
+
+      :param other: A :class:`Box` with bounds of the same type as this :class:`Box`.
+      :return: The Cartesian product of the two :class:`Box`\ es.
+      :raise TypeError: If the bounds of one :class:`Box` have different dtypes to those of
+          the other :class:`Box`.
+
+
+   .. py:method:: __eq__(self, other: object) -> bool
+
+      :param other: A search space.
+      :return: Whether the search space is identical to this one.
+
+
+
+.. py:class:: TaggedProductSearchSpace(spaces: Sequence[SearchSpace], tags: Optional[Sequence[str]] = None)
+
+   Bases: :py:obj:`SearchSpace`
+
+   Product :class:`SearchSpace` consisting of a product of
+   multiple :class:`SearchSpace`. This class provides functionality for
+   accessing either the resulting combined search space or each individual space.
+
+   Note that this class assumes that individual points in product spaces are
+   represented with their inputs in the same order as specified when initializing
+   the space.
+
+   Build a :class:`TaggedProductSearchSpace` from a list ``spaces`` of other spaces. If
+   ``tags`` are provided then they form the identifiers of the subspaces, otherwise the
+   subspaces are labelled numerically.
+
+   :param spaces: A sequence of :class:`SearchSpace` objects representing the space's subspaces
+   :param tags: An optional list of tags giving the unique identifiers of
+       the space's subspaces.
+   :raise ValueError (or tf.errors.InvalidArgumentError): If ``spaces`` has a different
+       length to ``tags`` when ``tags`` is provided or if ``tags`` contains duplicates.
+
+   .. py:method:: lower(self) -> trieste.types.TensorType
+      :property:
+
+      The lowest values taken by each space dimension, concatenated across subspaces.
+
+
+   .. py:method:: upper(self) -> trieste.types.TensorType
+      :property:
+
+      The highest values taken by each space dimension, concatenated across subspaces.
+
+
+   .. py:method:: subspace_tags(self) -> tuple[str, Ellipsis]
+      :property:
+
+      Return the names of the subspaces contained in this product space.
+
+
+   .. py:method:: dimension(self) -> trieste.types.TensorType
+      :property:
+
+      The number of inputs in this product search space.
+
+
+   .. py:method:: get_subspace(self, tag: str) -> SearchSpace
+
+      Return the domain of a particular subspace.
+
+      :param tag: The tag specifying the target subspace.
+
+
+   .. py:method:: fix_subspace(self, tag: str, values: trieste.types.TensorType) -> TaggedProductSearchSpace
+
+      Return a new :class:`TaggedProductSearchSpace` with the specified subspace replaced with
+      a :class:`DiscreteSearchSpace` containing ``values`` as its points. This is useful if you
+      wish to restrict subspaces to sets of representative points.
+
+      :param tag: The tag specifying the target subspace.
+      :param values: The  values used to populate the new discrete subspace.z
+
+
+   .. py:method:: get_subspace_component(self, tag: str, values: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Returns the components of ``values`` lying in a particular subspace.
+
+      :param value: Points from the :class:`TaggedProductSearchSpace` of shape [N,Dprod].
+      :return: The sub-components of ``values`` lying in the specified subspace, of shape
+          [N, Dsub], where Dsub is the dimensionality of the specified subspace.
+
+
+   .. py:method:: __contains__(self, value: trieste.types.TensorType) -> bool | TensorType
+
+      Return `True` if ``value`` is a member of this search space, else `False`. A point is a
+      member if each of its subspace components lie in each subspace.
+
+      Recall that individual points in product spaces are represented with their inputs in the
+      same order as specified when initializing the space.
+
+      :param value: A point to check for membership of this :class:`SearchSpace`.
+      :return: `True` if ``value`` is a member of this search space, else `False`. May return a
+          scalar boolean `TensorType` instead of the `bool` itself.
+      :raise ValueError (or tf.errors.InvalidArgumentError): If ``value`` has a different
+          dimensionality from the search space.
+
+
+   .. py:method:: sample(self, num_samples: int, seed: Optional[int] = None) -> trieste.types.TensorType
+
+      Sample randomly from the space by sampling from each subspace
+      and concatenating the resulting samples.
+
+      :param num_samples: The number of points to sample from this search space.
+      :return: ``num_samples`` i.i.d. random points, sampled uniformly,
+          from this search space with shape '[num_samples, D]' , where D is the search space
+          dimension.
+
+
+   .. py:method:: product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace
+
+      Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
+      building a tree of :class:`TaggedProductSearchSpace`\ s.
+
+      :param other: A search space of the same type as this search space.
+      :return: The Cartesian product of this search space with the ``other``.
+
+
+   .. py:method:: __eq__(self, other: object) -> bool
+
+      :param other: A search space.
+      :return: Whether the search space is identical to this one.
+
+
+

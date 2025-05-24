@@ -1,0 +1,113 @@
+:orphan:
+
+:py:mod:`trieste.models.gpflow.utils`
+=====================================
+
+.. py:module:: trieste.models.gpflow.utils
+
+
+Module Contents
+---------------
+
+.. py:function:: assert_data_is_compatible(new_data: trieste.data.Dataset, existing_data: trieste.data.Dataset) -> None
+
+   Checks that new data is compatible with existing data.
+
+   :param new_data: New data.
+   :param existing_data: Existing data.
+   :raise ValueError: if trailing dimensions of the query point or observation differ.
+
+
+.. py:function:: randomize_hyperparameters(object: gpflow.Module) -> None
+
+   Sets hyperparameters to random samples from their constrained domains or (if not constraints
+   are available) their prior distributions.
+
+   :param object: Any gpflow Module.
+
+
+.. py:function:: squeeze_hyperparameters(object: gpflow.Module, alpha: float = 0.01, epsilon: float = 1e-07) -> None
+
+   Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
+   or strictly greater than the limit defined by the Shift+Softplus.
+   This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
+
+   :param object: Any gpflow Module.
+   :param alpha: the proportion of the range with which to squeeze for the Sigmoid case
+   :param epsilon: the value with which to offset the shift for the Softplus case.
+   :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
+
+
+.. py:function:: check_optimizer(optimizer: Union[trieste.models.optimizer.BatchOptimizer, trieste.models.optimizer.Optimizer]) -> None
+
+   Check that the optimizer for the GPflow models is using a correct optimizer wrapper.
+
+   Stochastic gradient descent based methods implemented in TensorFlow would not
+   work properly without mini-batches and hence :class:`~trieste.models.optimizers.BatchOptimizer`
+   that prepares mini-batches and calls the optimizer iteratively needs to be used. GPflow's
+   :class:`~gpflow.optimizers.Scipy` optimizer on the other hand should use the non-batch wrapper
+   :class:`~trieste.models.optimizers.Optimizer`.
+
+   :param optimizer: An instance of the optimizer wrapper with the underlying optimizer.
+   :raise ValueError: If :class:`~tf.optimizers.Optimizer` is not using
+       :class:`~trieste.models.optimizers.BatchOptimizer` or :class:`~gpflow.optimizers.Scipy` is
+       using :class:`~trieste.models.optimizers.BatchOptimizer`.
+
+
+.. py:function:: _covariance_between_points_for_variational_models(kernel: gpflow.kernels.Kernel, inducing_points: trieste.types.TensorType, q_sqrt: trieste.types.TensorType, query_points_1: trieste.types.TensorType, query_points_2: trieste.types.TensorType, whiten: bool) -> trieste.types.TensorType
+
+   Compute the posterior covariance between sets of query points.
+
+   .. math:: \Sigma_{12} = K_{1x}BK_{x2} + K_{12} - K_{1x}K_{xx}^{-1}K_{x2}
+
+   where :math:`B = K_{xx}^{-1}(q_{sqrt}q_{sqrt}^T)K_{xx}^{-1}`
+   or :math:`B = L^{-1}(q_{sqrt}q_{sqrt}^T)(L^{-1})^T` if we are using
+   a whitened representation in our variational approximation. Here
+   :math:`L` is the Cholesky decomposition of :math:`K_{xx}`.
+   See :cite:`titsias2009variational` for a derivation.
+
+   Note that this function can also be applied to
+   our :class:`VariationalGaussianProcess` models by passing in the training
+   data rather than the locations of the inducing points.
+
+   Although query_points_2 must be a rank 2 tensor, query_points_1 can
+   have leading dimensions.
+
+   :inducing points: The input locations chosen for our variational approximation.
+   :q_sqrt: The Cholesky decomposition of the covariance matrix of our
+       variational distribution.
+   :param query_points_1: Set of query points with shape [..., A, D]
+   :param query_points_2: Sets of query points with shape [B, D]
+   :param whiten:  If True then use whitened representations.
+   :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+       (L being the number of latent GPs = number of output dimensions)
+
+
+.. py:function:: _compute_kernel_blocks(kernel: gpflow.kernels.Kernel, inducing_points: trieste.types.TensorType, query_points_1: trieste.types.TensorType, query_points_2: trieste.types.TensorType, num_latent: int) -> tuple[trieste.types.TensorType, trieste.types.TensorType, trieste.types.TensorType, trieste.types.TensorType]
+
+   Return all the prior covariances required to calculate posterior covariances for each latent
+   Gaussian process, as specified by the `num_latent` input.
+
+   This function returns the covariance between: `inducing_points` and `query_points_1`;
+   `inducing_points` and `query_points_2`; `query_points_1` and `query_points_2`;
+   `inducing_points` and `inducing_points`.
+
+   The calculations are performed differently depending on the type of
+   kernel (single output, separate independent multi-output or shared independent
+   multi-output) and inducing variables (simple set, SharedIndependent or SeparateIndependent).
+
+   Note that `num_latents` is only used when we use a single kernel for a multi-output model.
+
+
+.. py:function:: _whiten_points(model: trieste.models.gpflow.interface.GPflowPredictor, inducing_points: trieste.types.TensorType) -> Tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+   GPFlow's VGP and SVGP can use whitened representation, i.e.
+   q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))
+   Hence we need to back-transform from f_mu and f_cov to obtain the updated
+   new_q_mu and new_q_sqrt.
+
+   :param model: The whitened model.
+   :para inducing_points: The new inducing point locations.
+   :return: The updated q_mu and q_sqrt with shapes [N, L] and [L, N, N], respectively.
+
+

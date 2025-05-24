@@ -1,0 +1,428 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflux.builders &#8212; trieste 0.13.3 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../index.html">
+  <img src="../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.13.3  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/models/gpflux/builders and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.13.3'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/models/gpflux/builders.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/models/gpflux/builders.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.13.3") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.models.gpflux.builders</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This file contains builders for GPflux models supported in Trieste. We found the default</span>
+<span class="sd">configurations used here to work well in most situation, but they should not be taken as</span>
+<span class="sd">universally good solutions.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">gpflux.architectures</span> <span class="kn">import</span> <span class="n">Config</span><span class="p">,</span> <span class="n">build_constant_input_dim_deep_gp</span>
+<span class="kn">from</span> <span class="nn">gpflux.models</span> <span class="kn">import</span> <span class="n">DeepGP</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...space</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">SearchSpace</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+
+<div class="viewcode-block" id="NUM_LAYERS"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/builders/index.html#trieste.models.gpflux.builders.NUM_LAYERS">[docs]</a><span class="n">NUM_LAYERS</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span></div>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default number of layers in the deep gaussian process model.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="MAX_NUM_INDUCING_POINTS"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/builders/index.html#trieste.models.gpflux.builders.MAX_NUM_INDUCING_POINTS">[docs]</a><span class="n">MAX_NUM_INDUCING_POINTS</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">500</span></div>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default maximum number of inducing points.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="NUM_INDUCING_POINTS_PER_DIM"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/builders/index.html#trieste.models.gpflux.builders.NUM_INDUCING_POINTS_PER_DIM">[docs]</a><span class="n">NUM_INDUCING_POINTS_PER_DIM</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">50</span></div>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default number of inducing points per dimension of the search space.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="INNER_LAYER_SQRT_FACTOR"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/builders/index.html#trieste.models.gpflux.builders.INNER_LAYER_SQRT_FACTOR">[docs]</a><span class="n">INNER_LAYER_SQRT_FACTOR</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-5</span></div>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default value for a multiplicative factor used to rescale hidden layers.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="LIKELIHOOD_VARIANCE"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/builders/index.html#trieste.models.gpflux.builders.LIKELIHOOD_VARIANCE">[docs]</a><span class="n">LIKELIHOOD_VARIANCE</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-3</span></div>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Default value for an initial noise variance in the likelihood function.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="build_vanilla_deep_gp"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/index.html#trieste.models.gpflux.builders.build_vanilla_deep_gp">[docs]</a><span class="k">def</span> <span class="nf">build_vanilla_deep_gp</span><span class="p">(</span>
+    <span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span>
+    <span class="n">num_layers</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">NUM_LAYERS</span><span class="p">,</span>
+    <span class="n">num_inducing_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">inner_layer_sqrt_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">INNER_LAYER_SQRT_FACTOR</span><span class="p">,</span>
+    <span class="n">likelihood_variance</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">LIKELIHOOD_VARIANCE</span><span class="p">,</span>
+    <span class="n">trainable_likelihood</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DeepGP</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Build a :class:`~gpflux.models.DeepGP` model with sensible initial parameters. We found the</span>
+<span class="sd">    default configuration used here to work well in most situation, but it should not be taken as a</span>
+<span class="sd">    universally good solution.</span>
+
+<span class="sd">    Note that although we set all the relevant parameters to sensible values, we rely on</span>
+<span class="sd">    ``build_constant_input_dim_deep_gp`` from :mod:`~gpflux.architectures` to build the model.</span>
+
+<span class="sd">    :param data: Dataset from the initial design, used to estimate the variance of observations</span>
+<span class="sd">        and to provide query points which are used to determine inducing point locations with</span>
+<span class="sd">        k-means.</span>
+<span class="sd">    :param search_space: Search space for performing Bayesian optimization. Used for initialization</span>
+<span class="sd">        of inducing locations if ``num_inducing_points`` is larger than the amount of data.</span>
+<span class="sd">    :param num_layers: Number of layers in deep GP. By default set to ``NUM_LAYERS``.</span>
+<span class="sd">    :param num_inducing_points: Number of inducing points to use in each layer. If left unspecified</span>
+<span class="sd">        (default), this number is set to either ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of</span>
+<span class="sd">        the search space or value given by ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.</span>
+<span class="sd">    :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers, see</span>
+<span class="sd">        :class:`~gpflux.architectures.Config` for details. By default set to</span>
+<span class="sd">        ``INNER_LAYER_SQRT_FACTOR``.</span>
+<span class="sd">    :param likelihood_variance: Initial noise variance in the likelihood function, see</span>
+<span class="sd">        :class:`~gpflux.architectures.Config` for details. By default set to</span>
+<span class="sd">        ``LIKELIHOOD_VARIANCE``.</span>
+<span class="sd">    :param trainable_likelihood: Trainable likelihood variance.</span>
+<span class="sd">    :return: A :class:`~gpflux.models.DeepGP` model with sensible default settings.</span>
+<span class="sd">    :raise: If non-positive ``num_layers``, ``inner_layer_sqrt_factor``, ``likelihood_variance``</span>
+<span class="sd">        or ``num_inducing_points`` is provided.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_layers</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">inner_layer_sqrt_factor</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">likelihood_variance</span><span class="p">)</span>
+
+    <span class="c1"># Input data to ``build_constant_input_dim_deep_gp`` must be np.ndarray for k-means algorithm</span>
+    <span class="n">query_points</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+    <span class="n">empirical_mean</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">num_data_points</span> <span class="o">=</span> <span class="n">_get_data_stats</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">num_inducing_points</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">num_inducing_points</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span>
+            <span class="n">MAX_NUM_INDUCING_POINTS</span><span class="p">,</span> <span class="n">NUM_INDUCING_POINTS_PER_DIM</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">search_space</span><span class="o">.</span><span class="n">dimension</span><span class="p">)</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">num_inducing_points</span><span class="p">)</span>
+
+    <span class="c1"># Pad query_points with additional random values to provide enough inducing points</span>
+    <span class="k">if</span> <span class="n">num_inducing_points</span> <span class="o">&gt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">query_points</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+            <span class="n">additional_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample_sobol</span><span class="p">(</span>
+                <span class="n">num_inducing_points</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">additional_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_inducing_points</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">query_points</span><span class="p">))</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">query_points</span><span class="p">,</span> <span class="n">additional_points</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>
+
+    <span class="n">config</span> <span class="o">=</span> <span class="n">Config</span><span class="p">(</span>
+        <span class="n">num_inducing_points</span><span class="p">,</span>
+        <span class="n">inner_layer_sqrt_factor</span><span class="p">,</span>
+        <span class="n">likelihood_variance</span><span class="p">,</span>
+        <span class="n">whiten</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>  <span class="c1"># whiten = False not supported yet in GPflux for this model</span>
+    <span class="p">)</span>
+
+    <span class="n">model</span> <span class="o">=</span> <span class="n">build_constant_input_dim_deep_gp</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">num_layers</span><span class="p">,</span> <span class="n">config</span><span class="p">)</span>
+
+    <span class="n">model</span><span class="o">.</span><span class="n">f_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">kernel</span><span class="o">.</span><span class="n">variance</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">empirical_variance</span><span class="p">)</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">f_layers</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">mean_function</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">mean_functions</span><span class="o">.</span><span class="n">Constant</span><span class="p">(</span><span class="n">empirical_mean</span><span class="p">)</span>
+
+    <span class="n">gpflow</span><span class="o">.</span><span class="n">set_trainable</span><span class="p">(</span><span class="n">model</span><span class="o">.</span><span class="n">likelihood_layer</span><span class="o">.</span><span class="n">likelihood</span><span class="o">.</span><span class="n">variance</span><span class="p">,</span> <span class="n">trainable_likelihood</span><span class="p">)</span>
+
+    <span class="c1"># If num_inducing_points is larger than the number of provided query points, the initialization</span>
+    <span class="c1"># for num_data_points will be wrong. We therefore make sure it is set correctly.</span>
+    <span class="n">model</span><span class="o">.</span><span class="n">num_data</span> <span class="o">=</span> <span class="n">num_data_points</span>
+    <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">f_layers</span><span class="p">:</span>
+        <span class="n">layer</span><span class="o">.</span><span class="n">num_data</span> <span class="o">=</span> <span class="n">num_data_points</span>
+
+    <span class="k">return</span> <span class="n">model</span></div>
+
+
+<span class="k">def</span> <span class="nf">_get_data_stats</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+    <span class="n">empirical_variance</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_variance</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">empirical_mean</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">num_data_points</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">empirical_mean</span><span class="p">,</span> <span class="n">empirical_variance</span><span class="p">,</span> <span class="n">num_data_points</span>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

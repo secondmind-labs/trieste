@@ -1,0 +1,812 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>An overview of Trieste types &#8212; trieste 3.3.4 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script src="../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/code_overview';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.3.4';
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Bibliography" href="../bibliography.html" />
+    <link rel="prev" title="Visualizing with Tensorboard" href="visualizing_with_tensorboard.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.3.4  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.3.4  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_ensembles.html">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="feasible_sets.html">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_modelling.html">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="recovering_from_errors.html">Recovering from errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_greedy_multiprocessing.html">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualizing_with_tensorboard.html">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">An overview of Trieste types</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="An-overview-of-Trieste-types">
+<h1>An overview of Trieste types<a class="headerlink" href="#An-overview-of-Trieste-types" title="Permalink to this heading">#</a></h1>
+<p>Trieste is dedicated to Bayesian optimization, the process of finding the <em>optimal values of an expensive, black-box objective function by employing probabilistic models over observations</em>. This notebook explains how the different parts of this process are represented by different types in the code, and how these types can be extended.</p>
+<section id="Key-types">
+<h2>Key types<a class="headerlink" href="#Key-types" title="Permalink to this heading">#</a></h2>
+<p>The following types represent the key concepts in Trieste. For a full listing of all the types in Trieste, see the API reference.</p>
+<section id="Observer">
+<h3><code class="docutils literal notranslate"><span class="pre">Observer</span></code><a class="headerlink" href="#Observer" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">Observer</span></code> type definition represents the black box objective function. Observers are functions that accept query points and return datasets that contain the observations. Observations are either a single objective value that we wish to optimize, or a dictionary of mutiple tagged values that must be combined somehow, for example an objective and an inequality constraint. Objective values can be either single or multi-dimensional (see <a class="reference internal" href="multi_objective_ehvi.html"><span class="doc">multi-objective
+optimization</span></a>).</p>
+</section>
+<section id="Dataset">
+<h3><code class="docutils literal notranslate"><span class="pre">Dataset</span></code><a class="headerlink" href="#Dataset" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">Dataset</span></code> container class represents the query points and observations from a single observer. Observers with multiple observations are represented by a dictionary of multiple tagged <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>s.</p>
+</section>
+<section id="ProbabilisticModel">
+<h3><code class="docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code><a class="headerlink" href="#ProbabilisticModel" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code> protocol represents any probabilistic model used to model observations. Like for <code class="docutils literal notranslate"><span class="pre">Dataset</span></code>, observers with multiple observations are modelled by a dictionary of multiple tagged models.</p>
+<p>At it simplest, a <code class="docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code> is anything that implements a <code class="docutils literal notranslate"><span class="pre">predict</span></code> and <code class="docutils literal notranslate"><span class="pre">sample</span></code> method. However, many algorithms in Trieste depend on models with additional features, which are represented by the various subclasses of <code class="docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code>. The standard Bayesian optimizer uses <code class="docutils literal notranslate"><span class="pre">TrainableProbabilisticModel</span></code> models, which also implement an <code class="docutils literal notranslate"><span class="pre">update</span></code> method (to update the model structure when new data is added to the training set) and an <code class="docutils literal notranslate"><span class="pre">optimize</span></code> method (to optimize the
+model training loss). Specific acuqisition functions may require other features, represented by classes like <code class="docutils literal notranslate"><span class="pre">SupportsPredictJoint</span></code> (ability to predict the joint distribution at several inputs) and <code class="docutils literal notranslate"><span class="pre">SupportsGetObservationNoise</span></code> (ability to predict the observation noise variance). Since these are defined as protocols, it is possible to define and depend on the intersections of different model types (e.g. only support models that are both <code class="docutils literal notranslate"><span class="pre">SupportsPredictJoint</span></code> and
+<code class="docutils literal notranslate"><span class="pre">SupportsGetObservationNoise</span></code>).</p>
+<p>Multiple models can also be combined into a single <code class="docutils literal notranslate"><span class="pre">ModelStack</span></code> model that combines their outputs for prediction and sampling. This can be useful when modelling multi-objective observations with independent single-output models. There are also constructors like <code class="docutils literal notranslate"><span class="pre">TrainableModelStack</span></code> and <code class="docutils literal notranslate"><span class="pre">PredictJointModelStack</span></code> that combine specific types of model for use with code that requires that type, delegating the relevant methods where appropriate.</p>
+</section>
+<section id="SearchSpace">
+<h3><code class="docutils literal notranslate"><span class="pre">SearchSpace</span></code><a class="headerlink" href="#SearchSpace" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">SearchSpace</span></code> base class represents the domain over which the objective function is to be optimized. Spaces can currently be either continuous <code class="docutils literal notranslate"><span class="pre">Box</span></code> spaces, discrete <code class="docutils literal notranslate"><span class="pre">DiscreteSearchSpace</span></code> spaces, or a <code class="docutils literal notranslate"><span class="pre">TaggedProductSearchSpace</span></code> product of multipe spaces. All search spaces expose their dimensions, bounds and a sampler.</p>
+</section>
+<section id="AcquisitionRule">
+<h3><code class="docutils literal notranslate"><span class="pre">AcquisitionRule</span></code><a class="headerlink" href="#AcquisitionRule" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">AcquisitionRule</span></code> base class represents a routine for selecting new query points during a Bayesian optimization loop (via an <code class="docutils literal notranslate"><span class="pre">acquire</span></code> method). It is generic on three types:</p>
+<ul class="simple">
+<li><p><strong>ResultType</strong>: the output of the rule, typically this is just tensors representing the query points. However, it can also be functions that accept some <em>acquisition state</em> and return the query points with a new state.</p></li>
+<li><p><strong>SearchSpaceType</strong>: the type of the search space; any optimizer that the rule uses must support this.</p></li>
+<li><p><strong>ProbabilisticModelType</strong>: the type of the models; any acquisition functions or samplers that the rule uses must support this.</p></li>
+</ul>
+<p>Examples of rules include:</p>
+<ol class="arabic simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code> (EGO) is the most commonly used rule, and uses acquisition functions and optimizers to select new query points.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">AsynchronousOptimization</span></code> is similar to EGO but uses acquisition state to keep track of points whose observations are still pending.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">DiscreteThompsonSampling</span></code> uses Thompson samplers rather than acquisition functions to select new query points.</p></li>
+</ol>
+</section>
+<section id="AcquisitionFunction-and-AcquisitionFunctionBuilder">
+<h3><code class="docutils literal notranslate"><span class="pre">AcquisitionFunction</span></code> and <code class="docutils literal notranslate"><span class="pre">AcquisitionFunctionBuilder</span></code><a class="headerlink" href="#AcquisitionFunction-and-AcquisitionFunctionBuilder" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">AcquisitionFunction</span></code> type definition represents any acquisition function: that is, a function that maps a set of query points to a single value that describes how useful it would be evaluate all these points together.</p>
+<p>The <code class="docutils literal notranslate"><span class="pre">AcquisitionFunctionBuilder</span></code> base class, meanwhile, represents something that builds and updates acquisition functions. At the start of the Bayesian optimization, the builder’s <code class="docutils literal notranslate"><span class="pre">prepare_acquisition_function</span></code> method is called by the acquisition rule to create an acquisition function from the current observations and probabilistic models. To avoid unnecessary tensorflow compilations, most builders also define an <code class="docutils literal notranslate"><span class="pre">update_acquisition_function</span></code> method for updating the function using the
+updated observations and models. (The ones that don’t instead generate a new acquisition function when necessary.)</p>
+<p>Acquisition functions that support only one probabilistic model are more easily defined using the <code class="docutils literal notranslate"><span class="pre">SingleModelAcquisitionBuilder</span></code> convenience class, which avoids having to deal with dictionaries.</p>
+<p>Acquisition functions that are suitable for greedily building batches of points can be defined using <code class="docutils literal notranslate"><span class="pre">GreedyAcquisitionFunctionBuilder</span></code> (or <code class="docutils literal notranslate"><span class="pre">SingleModelGreedyAcquisitionBuilder</span></code>) using a <code class="docutils literal notranslate"><span class="pre">prepare_acquisition_function</span></code> method that also accepts the points already chosen to be in the current batch.</p>
+</section>
+<section id="AcquisitionOptimizer">
+<h3><code class="docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code><a class="headerlink" href="#AcquisitionOptimizer" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code> type definition represents an optimizer function that maximizes an acquisition function over a search space. Trieste provides a <code class="docutils literal notranslate"><span class="pre">generate_continuous_optimizer</span></code> function for generating gradient-based optimizers for continuous (or hybrid) spaces, an <code class="docutils literal notranslate"><span class="pre">optimize_discrete</span></code> function for optimizing discrete spaces, and <code class="docutils literal notranslate"><span class="pre">automatic_optimizer_selector</span></code> for quickly selecting an appropriate optimizer.</p>
+</section>
+<section id="BayesianOptimizer-and-AskTellOptimizer">
+<h3><code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> and <code class="docutils literal notranslate"><span class="pre">AskTellOptimizer</span></code><a class="headerlink" href="#BayesianOptimizer-and-AskTellOptimizer" title="Permalink to this heading">#</a></h3>
+<p>The <code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> and <code class="docutils literal notranslate"><span class="pre">AskTellOptimizer</span></code> classes are the two Bayesian optimization interfaces provided by Trieste. Both classes provide <a class="reference internal" href="visualizing_with_tensorboard.html"><span class="doc">monitoring using TensorBoard</span></a>.</p>
+<p><code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> exposes an <code class="docutils literal notranslate"><span class="pre">optimize</span></code> method for running a Bayesian optimization loop with given initial datasets and models, and a given number of steps (and an optional early stop callback).</p>
+<p><code class="docutils literal notranslate"><span class="pre">AskTellOptimizer</span></code> provides <a class="reference internal" href="ask_tell_optimization.html"><span class="doc">greater control</span></a> over the loop, by providing separate <code class="docutils literal notranslate"><span class="pre">ask</span></code> and <code class="docutils literal notranslate"><span class="pre">tell</span></code> steps for suggesting query points and updating the models with new observations.</p>
+</section>
+</section>
+<section id="Extending-the-key-types">
+<h2>Extending the key types<a class="headerlink" href="#Extending-the-key-types" title="Permalink to this heading">#</a></h2>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">trieste.types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+</pre></div>
+</div>
+</div>
+<p>This section explains how to define new observers, model types and acqusition functions.</p>
+<section id="New-observers">
+<h3>New observers<a class="headerlink" href="#New-observers" title="Permalink to this heading">#</a></h3>
+<p>Defining an observer with a single observation can be as simple as defining a function that returns that observation:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.objectives.utils</span> <span class="kn">import</span> <span class="n">mk_observer</span>
+
+
+<span class="k">def</span> <span class="nf">simple_quadratic</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+    <span class="s2">&quot;A trivial quadratic function over :math:`[0, 1]^2`.&quot;</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+
+
+<span class="n">observer</span> <span class="o">=</span> <span class="n">mk_observer</span><span class="p">(</span><span class="n">simple_quadratic</span><span class="p">)</span>
+<span class="n">observer</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Dataset(query_points=&lt;tf.Tensor: shape=(2, 2), dtype=float64, numpy=
+array([[0., 1.],
+       [1., 1.]])&gt;, observations=&lt;tf.Tensor: shape=(2, 1), dtype=float64, numpy=
+array([[-1.],
+       [-4.]])&gt;)
+</pre></div></div>
+</div>
+<p>A multi-observation observer can similarly be constructed from multiple functions:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.objectives.utils</span> <span class="kn">import</span> <span class="n">mk_multi_observer</span>
+
+
+<span class="k">def</span> <span class="nf">simple_constraint</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+    <span class="s2">&quot;A trivial constraints over :math:`[0, 1]^2`.&quot;</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+
+<span class="n">multiobserver</span> <span class="o">=</span> <span class="n">mk_multi_observer</span><span class="p">(</span>
+    <span class="n">OBJECTIVE</span><span class="o">=</span><span class="n">simple_quadratic</span><span class="p">,</span> <span class="n">CONSTRAINT</span><span class="o">=</span><span class="n">simple_constraint</span>
+<span class="p">)</span>
+<span class="n">multiobserver</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+{&#39;OBJECTIVE&#39;: Dataset(query_points=&lt;tf.Tensor: shape=(2, 2), dtype=float64, numpy=
+ array([[0., 1.],
+        [1., 1.]])&gt;, observations=&lt;tf.Tensor: shape=(2, 1), dtype=float64, numpy=
+ array([[-1.],
+        [-4.]])&gt;),
+ &#39;CONSTRAINT&#39;: Dataset(query_points=&lt;tf.Tensor: shape=(2, 2), dtype=float64, numpy=
+ array([[0., 1.],
+        [1., 1.]])&gt;, observations=&lt;tf.Tensor: shape=(2, 1), dtype=float64, numpy=
+ array([[0.],
+        [1.]])&gt;)}
+</pre></div></div>
+</div>
+<p>Note however that observers are not restricted to returning datasets containing precisely the observed query points: if need be, they can also return arbitrary Datasets with missing or additional points and observations.</p>
+</section>
+<section id="New-probabilistic-model-types">
+<h3>New probabilistic model types<a class="headerlink" href="#New-probabilistic-model-types" title="Permalink to this heading">#</a></h3>
+<p>Defining a new probabilistic model type simply involves writing a class that implements all the relevant methods (at the very least <code class="docutils literal notranslate"><span class="pre">predict</span></code> and <code class="docutils literal notranslate"><span class="pre">sample</span></code>). For clarity, it is best to also explicitly inherit from the supported feature protocols.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.models.interfaces</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">TrainableProbabilisticModel</span><span class="p">,</span>
+    <span class="n">HasReparamSampler</span><span class="p">,</span>
+    <span class="n">ReparametrizationSampler</span><span class="p">,</span>
+    <span class="n">SupportsGetObservationNoise</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<span class="k">class</span> <span class="nc">GizmoModel</span><span class="p">(</span>
+    <span class="n">TrainableProbabilisticModel</span><span class="p">,</span> <span class="n">HasReparamSampler</span><span class="p">,</span> <span class="n">SupportsGetObservationNoise</span>
+<span class="p">):</span>
+    <span class="s2">&quot;Made-up trainable model type that supports both reparam_sampler and get_observation_noise.&quot;</span>
+
+    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="k">def</span> <span class="nf">reparam_sampler</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReparametrizationSampler</span><span class="p">[</span><span class="n">GizmoModel</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+
+    <span class="o">...</span>  <span class="c1"># sample, update, optimize, get_observation_noise</span>
+</pre></div>
+</div>
+</div>
+<p>If the new model type has an additional feature on which you’d like to depend, e.g. in a new acquisition function, then you can define that feature as a protocol. Marking it runtime_checkable will alow you to check for the feature elsewhere in your code too.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.models.interfaces</span> <span class="kn">import</span> <span class="n">ProbabilisticModel</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span><span class="p">,</span> <span class="n">runtime_checkable</span>
+
+
+<span class="nd">@runtime_checkable</span>
+<span class="k">class</span> <span class="nc">HasGizmo</span><span class="p">(</span><span class="n">ProbabilisticModel</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">):</span>
+    <span class="s2">&quot;A probabilistic model that has a &#39;gizmo&#39; method.&quot;</span>
+
+    <span class="k">def</span> <span class="nf">gizmo</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="s2">&quot;A &#39;gizmo&#39; method.&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span>
+</pre></div>
+</div>
+</div>
+<p>If your acquisition function depends on a combination of features, then you can define an intersection protocol and use it when defining the acquisition function:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="nd">@runtime_checkable</span>
+<span class="k">class</span> <span class="nc">HasGizmoReparamSamplerAndObservationNoise</span><span class="p">(</span>
+    <span class="n">HasGizmo</span><span class="p">,</span> <span class="n">HasReparamSampler</span><span class="p">,</span> <span class="n">SupportsGetObservationNoise</span><span class="p">,</span> <span class="n">Protocol</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A model that supports both gizmo, reparam_sampler and get_observation_noise.&quot;&quot;&quot;</span>
+
+    <span class="k">pass</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="New-acquisition-function-builders">
+<h3>New acquisition function builders<a class="headerlink" href="#New-acquisition-function-builders" title="Permalink to this heading">#</a></h3>
+<p>To define a new acquisition function builder, you simply need to define a class with a <code class="docutils literal notranslate"><span class="pre">prepare_acquisition_function</span></code> method that returns an <code class="docutils literal notranslate"><span class="pre">AcquisitionFunction</span></code>. If the acquisition function depends on just one model/dataset (as is often the case) then you can define it as a <code class="docutils literal notranslate"><span class="pre">SingleModelAcquisitionBuilder</span></code>; if it depends on more than one (e.g. both an objective and a constraint) then you must define it as a <code class="docutils literal notranslate"><span class="pre">ModelAcquisitionBuilder</span></code> instead. You can also specify (in brackets) the type
+of probabilistic models that the acquisition function supports: e.g. a <code class="docutils literal notranslate"><span class="pre">SingleModelAcquisitionBuilder[HasReparamSampler]</span></code> only supports models with a reparametrization sampler. This allows the type checker to warn you if you try to use an incompatible model type.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.acquisition</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AcquisitionFunction</span><span class="p">,</span>
+    <span class="n">SingleModelAcquisitionBuilder</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">trieste.models.interfaces</span> <span class="kn">import</span> <span class="n">SupportsPredictY</span>
+<span class="kn">from</span> <span class="nn">trieste.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+
+
+<span class="k">class</span> <span class="nc">ProbabilityOfValidity</span><span class="p">(</span><span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">SupportsPredictY</span><span class="p">]):</span>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">SupportsPredictY</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="k">def</span> <span class="nf">acquisition</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="n">mean</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_y</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">mean</span>
+
+        <span class="k">return</span> <span class="n">acquisition</span>
+</pre></div>
+</div>
+</div>
+<p>For efficiency, it usually makes sense to compile the generated acquisition function into a TensorFlow graph using <code class="docutils literal notranslate"><span class="pre">tf.function</span></code>. Furthermore, to avoid generating (and compiling) a new acquisition function on each Bayesian optimization loop, you can define an <code class="docutils literal notranslate"><span class="pre">update_acquisition_function</span></code> method that can instead update the previously generated acquisition function using the new models and data. This may involve updating the acquisition function’s internal state (which you should store in
+<code class="docutils literal notranslate"><span class="pre">tf.Variable</span></code>s), though if the function has no internal state then it is suficient to simply return the old function unchanged.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">ProbabilityOfValidity2</span><span class="p">(</span><span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">SupportsPredictY</span><span class="p">]):</span>
+    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">SupportsPredictY</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="nd">@tf</span><span class="o">.</span><span class="n">function</span>
+        <span class="k">def</span> <span class="nf">acquisition</span><span class="p">(</span><span class="n">at</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+            <span class="n">mean</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_y</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">at</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">mean</span>
+
+        <span class="k">return</span> <span class="n">acquisition</span>
+
+    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">SupportsPredictY</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">function</span>  <span class="c1"># no need to update anything</span>
+</pre></div>
+</div>
+</div>
+</section>
+</section>
+<section id="LICENSE">
+<h2>LICENSE<a class="headerlink" href="#LICENSE" title="Permalink to this heading">#</a></h2>
+<p><a class="reference external" href="https://github.com/secondmind-labs/trieste/blob/develop/LICENSE">Apache License 2.0</a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Key-types">Key types</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Observer"><code class="docutils literal notranslate"><span class="pre">Observer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#Dataset"><code class="docutils literal notranslate"><span class="pre">Dataset</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#ProbabilisticModel"><code class="docutils literal notranslate"><span class="pre">ProbabilisticModel</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#SearchSpace"><code class="docutils literal notranslate"><span class="pre">SearchSpace</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#AcquisitionRule"><code class="docutils literal notranslate"><span class="pre">AcquisitionRule</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#AcquisitionFunction-and-AcquisitionFunctionBuilder"><code class="docutils literal notranslate"><span class="pre">AcquisitionFunction</span></code> and <code class="docutils literal notranslate"><span class="pre">AcquisitionFunctionBuilder</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#AcquisitionOptimizer"><code class="docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#BayesianOptimizer-and-AskTellOptimizer"><code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> and <code class="docutils literal notranslate"><span class="pre">AskTellOptimizer</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Extending-the-key-types">Extending the key types</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#New-observers">New observers</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#New-probabilistic-model-types">New probabilistic model types</a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#New-acquisition-function-builders">New acquisition function builders</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#LICENSE">LICENSE</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

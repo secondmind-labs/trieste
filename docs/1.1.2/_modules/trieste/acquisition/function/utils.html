@@ -1,0 +1,471 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.utils &#8212; trieste 1.1.2 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../index.html">
+  <img src="../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        1.1.2  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/acquisition/function/utils and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '1.1.2'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/acquisition/function/utils.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/acquisition/function/utils.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "1.1.2") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.acquisition.function.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains utility functions for acquisition functions.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Tuple</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">tensorflow_probability</span> <span class="kn">import</span> <span class="n">distributions</span> <span class="k">as</span> <span class="n">tfd</span>
+
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+
+<span class="c1"># =============================================================================</span>
+<span class="c1"># Multivariate Normal CDF</span>
+<span class="c1"># =============================================================================</span>
+
+
+<div class="viewcode-block" id="MultivariateNormalCDF"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/utils/index.html#trieste.acquisition.function.MultivariateNormalCDF">[docs]</a><span class="k">class</span> <span class="nc">MultivariateNormalCDF</span><span class="p">:</span>
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">DType</span><span class="p">,</span>
+        <span class="n">num_sobol_skip</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Builds the cumulative density function of the multivariate Gaussian</span>
+<span class="sd">        using the Genz approximation detailed in :cite:`genz2016numerical`.</span>
+
+<span class="sd">        This is a Monte Carlo approximation which is more accurate than a naive</span>
+<span class="sd">        Monte Carlo estimate of the expected improvent. In order to use</span>
+<span class="sd">        reparametrised samples, the helper accepts a tensor of samples, and the</span>
+<span class="sd">        callable uses these fixed samples whenever it is called.</span>
+
+<span class="sd">        :param samples_size: int, number of samples to use.</span>
+<span class="sd">        :param dim: int, dimension of the multivariate Gaussian.</span>
+<span class="sd">        :param dtype: tf.DType, data type to use for calculations.</span>
+<span class="sd">        :param num_sobol_skip: int, number of sobol samples to skip.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">sample_size</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">dim</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_S</span> <span class="o">=</span> <span class="n">sample_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span> <span class="o">=</span> <span class="n">dim</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span> <span class="o">=</span> <span class="n">dtype</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_sobol_skip</span> <span class="o">=</span> <span class="n">num_sobol_skip</span>
+
+<div class="viewcode-block" id="MultivariateNormalCDF._standard_normal_cdf_and_inverse_cdf"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/utils/index.html#trieste.acquisition.function.MultivariateNormalCDF._standard_normal_cdf_and_inverse_cdf">[docs]</a>    <span class="k">def</span> <span class="nf">_standard_normal_cdf_and_inverse_cdf</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">dtype</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">DType</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">],</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns two callables *Phi* and *iPhi*, which compute the cumulative</span>
+<span class="sd">        density function and inverse cumulative density function of a standard</span>
+<span class="sd">        univariate Gaussian.</span>
+
+<span class="sd">        :param dtype: The data type to use, either tf.float32 or tf.float64.</span>
+<span class="sd">        :returns Phi, iPhi: Cumulative and inverse cumulative density functions.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfd</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span>
+            <span class="n">loc</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">),</span>
+            <span class="n">scale</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">Phi</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+        <span class="n">iPhi</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">normal</span><span class="o">.</span><span class="n">quantile</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">Phi</span><span class="p">,</span> <span class="n">iPhi</span></div>
+
+<div class="viewcode-block" id="MultivariateNormalCDF._get_update_indices"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/utils/index.html#trieste.acquisition.function.MultivariateNormalCDF._get_update_indices">[docs]</a>    <span class="k">def</span> <span class="nf">_get_update_indices</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">B</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">S</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">Q</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns indices for updating a tensor using tf.tensor_scatter_nd_add,</span>
+<span class="sd">        for use within the _mvn_cdf function, for computing the cumulative density</span>
+<span class="sd">        function of a multivariate Gaussian. The indices *idx* returned are such</span>
+<span class="sd">        that the following operation</span>
+
+<span class="sd">            idx = get_update_indices(B, S, Q, q)</span>
+<span class="sd">            tensor = tf.tensor_scatter_nd_add(tensor, idx, update)</span>
+
+<span class="sd">        is equivalent to the numpy operation</span>
+
+<span class="sd">            tensor = tensor[:, :, q] + update</span>
+
+<span class="sd">        where *tensor* is a tensor of shape (B, S, Q).</span>
+
+<span class="sd">        :param B: First dim. of tensor for which the indices are generated.</span>
+<span class="sd">        :param S: Second dim. of tensor for which the indices are generated.</span>
+<span class="sd">        :param Q: Third dim. of tensor for which the indices are generated.</span>
+<span class="sd">        :param q: Index of tensor along fourth dim. to which the update is applied.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">idxB</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">idxS</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">S</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="kc">None</span><span class="p">],</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">idxQ</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">q</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span><span class="p">],</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="n">S</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+
+        <span class="n">idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">idxB</span><span class="p">,</span> <span class="n">idxS</span><span class="p">,</span> <span class="n">idxQ</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">idx</span></div>
+
+<div class="viewcode-block" id="MultivariateNormalCDF.__call__"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/function/utils/index.html#trieste.acquisition.function.MultivariateNormalCDF.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">mean</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">cov</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">jitter</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-6</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Computes the cumulative density function of the multivariate</span>
+<span class="sd">        Gaussian using the Genz approximation.</span>
+
+<span class="sd">        :param x: Tensor of shape (B, Q), batch of points to evaluate CDF at.</span>
+<span class="sd">        :param mean: Tensor of shape (B, Q), batch of means.</span>
+<span class="sd">        :param covariance: Tensor of shape (B, Q, Q), batch of covariances.</span>
+<span class="sd">        :param jitter: float, jitter to use in the Cholesky factorisation.</span>
+<span class="sd">        :returns mvn_cdf: Tensor of shape (B,), CDF values.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># Unpack batch size</span>
+        <span class="n">B</span> <span class="o">=</span> <span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">B</span><span class="p">)</span>
+
+        <span class="c1"># Check shapes of input tensors</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+            <span class="p">[</span>
+                <span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">)),</span>
+                <span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">)),</span>
+                <span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">)),</span>
+            <span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="c1"># Identify data type to use for all calculations</span>
+        <span class="n">dtype</span> <span class="o">=</span> <span class="n">mean</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="c1"># Compute Cholesky factors</span>
+        <span class="n">jitter</span> <span class="o">=</span> <span class="n">jitter</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="p">:]</span>
+        <span class="n">C</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">cov</span> <span class="o">+</span> <span class="n">jitter</span><span class="p">)</span>  <span class="c1"># (B, Q, Q)</span>
+
+        <span class="c1"># Rename samples and limits for brevity</span>
+        <span class="n">w</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sobol_sample</span><span class="p">(</span>
+            <span class="n">dim</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">,</span>
+            <span class="n">num_results</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_dtype</span><span class="p">,</span>
+            <span class="n">skip</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_num_sobol_skip</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># (S, Q)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">x</span> <span class="o">-</span> <span class="n">mean</span>  <span class="c1"># (B, Q)</span>
+
+        <span class="c1"># Initialise transformation variables</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">shape</span><span class="o">=</span><span class="p">(</span><span class="n">B</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="c1"># Initialise standard normal for computing CDFs</span>
+        <span class="n">Phi</span><span class="p">,</span> <span class="n">iPhi</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_standard_normal_cdf_and_inverse_cdf</span><span class="p">(</span><span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="c1"># Get update indices for convenience later</span>
+        <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_update_indices</span><span class="p">(</span><span class="n">B</span><span class="o">=</span><span class="n">B</span><span class="p">,</span> <span class="n">S</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+        <span class="c1"># Slice out common tensors</span>
+        <span class="n">b0</span> <span class="o">=</span> <span class="n">b</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+        <span class="n">C0</span> <span class="o">=</span> <span class="n">C</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-12</span>
+
+        <span class="c1"># Compute transformation variables at the first step</span>
+        <span class="n">e_update</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">Phi</span><span class="p">(</span><span class="n">b0</span> <span class="o">/</span> <span class="n">C0</span><span class="p">),</span> <span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">))</span>  <span class="c1"># (B, S)</span>
+        <span class="n">e</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tensor_scatter_nd_add</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">e_update</span><span class="p">)</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tensor_scatter_nd_add</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">e_update</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">):</span>
+            <span class="c1"># Update y tensor</span>
+            <span class="n">y_update</span> <span class="o">=</span> <span class="n">iPhi</span><span class="p">(</span><span class="mf">1e-6</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="mf">2e-6</span><span class="p">)</span> <span class="o">*</span> <span class="n">w</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:,</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="n">e</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tensor_scatter_nd_add</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">y_update</span><span class="p">)</span>
+
+            <span class="c1"># Slice out common tensors</span>
+            <span class="n">bi</span> <span class="o">=</span> <span class="n">b</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span>
+            <span class="n">Ci_</span> <span class="o">=</span> <span class="n">C</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="p">:</span><span class="n">i</span><span class="p">]</span>
+            <span class="n">Cii</span> <span class="o">=</span> <span class="n">C</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="n">i</span><span class="p">,</span> <span class="n">i</span><span class="p">]</span> <span class="o">+</span> <span class="mf">1e-12</span>
+            <span class="n">yi</span> <span class="o">=</span> <span class="n">y</span><span class="p">[:,</span> <span class="p">:,</span> <span class="p">:</span><span class="n">i</span><span class="p">]</span>
+
+            <span class="c1"># Compute indices to update d, e and f tensors</span>
+            <span class="n">idx</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_update_indices</span><span class="p">(</span><span class="n">B</span><span class="o">=</span><span class="n">B</span><span class="p">,</span> <span class="n">S</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_S</span><span class="p">,</span> <span class="n">Q</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_Q</span><span class="p">,</span> <span class="n">q</span><span class="o">=</span><span class="n">i</span><span class="p">)</span>
+
+            <span class="c1"># Update e tensor</span>
+            <span class="n">e_update</span> <span class="o">=</span> <span class="n">Phi</span><span class="p">((</span><span class="n">bi</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">Ci_</span> <span class="o">*</span> <span class="n">yi</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span> <span class="o">/</span> <span class="n">Cii</span><span class="p">)</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tensor_scatter_nd_add</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">e_update</span><span class="p">)</span>
+
+            <span class="c1"># Update f tensor</span>
+            <span class="n">f_update</span> <span class="o">=</span> <span class="n">e</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span><span class="p">]</span> <span class="o">*</span> <span class="n">f</span><span class="p">[:,</span> <span class="p">:,</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">]</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tensor_scatter_nd_add</span><span class="p">(</span><span class="n">f</span><span class="p">,</span> <span class="n">idx</span><span class="p">,</span> <span class="n">f_update</span><span class="p">)</span>
+
+        <span class="n">mvn_cdf</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">f</span><span class="p">[:,</span> <span class="p">:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">mvn_cdf</span></div></div>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

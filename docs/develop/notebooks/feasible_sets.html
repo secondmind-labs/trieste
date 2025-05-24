@@ -1,0 +1,991 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Active learning of feasibility regions &#8212; trieste develop documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=ae350598" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=16816911"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/feasible_sets';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'develop';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="OpenAI Gym" href="openai_gym_lunar_lander.html" />
+    <link rel="prev" title="Active learning for binary classification" href="active_learning_for_binary_classification.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="trieste develop documentation - Home"/>
+    <img src="../_static/logo.png" class="logo__image only-dark pst-js-only" alt="trieste develop documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="log_expected_improvement.html">Introduction to LogEI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_ensembles.html">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_modelling.html">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space.html">Hierarchical search spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space_gpflow_kernel.html">A GPflow hierarchical kernel over a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space_constraints.html">Constraints on a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="recovering_from_errors.html">Recovering from errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_greedy_multiprocessing.html">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_nongreedy_batch_ray.html">Asynchronous batch Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualizing_with_tensorboard.html">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_overview.html">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Active learning of feasibility regions</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Active-learning-of-feasibility-regions">
+<h1>Active learning of feasibility regions<a class="headerlink" href="#Active-learning-of-feasibility-regions" title="Link to this heading">#</a></h1>
+<p>When designing a system it is important to identify design parameters that may affect the reliability of the system and cause failures, or lead to unsatisfactory performance. Consider designing a communication network that for some design parameters would lead to too long delays for users. A designer of the system would then decide what is the maximum acceptable delay and want to identify a <em>failure region</em> in the parameter space that would lead to longer delays., or conversely, a <em>feasible
+region</em> with safe performance.</p>
+<p>When evaluating the system is expensive (e.g. lengthy computer simulations), identification of the failure region needs to be performed with a limited number of evaluations. Traditional Monte Carlo based methods are not suitable here as they require too many evaluations. Bayesian active learning methods, however, are well suited for the task. Here we show how Trieste can be used to identify failure or feasible regions with the help of acquisition functions designed with this goal in mind.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="k">matplotlib</span> inline
+
+<span class="c1"># silence TF warnings and info messages, only print errors</span>
+<span class="c1"># https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_CPP_MIN_LOG_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tf</span>
+
+<span class="n">tf</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s2">&quot;ERROR&quot;</span><span class="p">)</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<section id="A-toy-problem">
+<h2>A toy problem<a class="headerlink" href="#A-toy-problem" title="Link to this heading">#</a></h2>
+<p>Throughout the tutorial we will use the standard Branin function as a stand-in for an expensive-to-evaluate system. We create a failure region by thresholding the value at 80, space with value above 80 is considered a failure region. This region needs to be learned as efficiently as possible by the active learning algorithm.</p>
+<p>Note that if we are interested in a feasibility region instead, it is simply a complement of the failure region, space with the value below 80.</p>
+<p>We illustrate the thresholded Branin function below, you can note that above the threshold of 80 there are no more values observed.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.objectives</span><span class="w"> </span><span class="kn">import</span> <span class="n">Branin</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.experimental.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_function_plotly</span>
+
+<span class="n">branin</span> <span class="o">=</span> <span class="n">Branin</span><span class="o">.</span><span class="n">objective</span>
+<span class="n">search_space</span> <span class="o">=</span> <span class="n">Branin</span><span class="o">.</span><span class="n">search_space</span>
+
+<span class="c1"># threshold is arbitrary, but has to be within the range of the function</span>
+<span class="n">threshold</span> <span class="o">=</span> <span class="mf">80.0</span>
+
+
+<span class="c1"># define a modified branin function</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">thresholded_branin</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">branin</span><span class="p">(</span><span class="n">x</span><span class="p">))</span>
+    <span class="n">y</span><span class="p">[</span><span class="n">y</span> <span class="o">&gt;</span> <span class="n">threshold</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">nan</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">y</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">),</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+
+<span class="c1"># illustrate the thresholded branin function</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plot_function_plotly</span><span class="p">(</span>
+    <span class="n">thresholded_branin</span><span class="p">,</span> <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="n">search_space</span><span class="o">.</span><span class="n">upper</span>
+<span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2026-06-17 10:46:09,739 INFO util.py:154 -- Missing packages: [&#39;ipywidgets&#39;]. Run `pip install -U ipywidgets`, then restart the notebook server for rich notebook output.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<p>We start with a small initial dataset where our expensive-to-evaluate function is evaluated on points coming from a space-filling Halton sequence.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">trieste</span>
+
+<span class="n">observer</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">mk_observer</span><span class="p">(</span><span class="n">branin</span><span class="p">)</span>
+
+<span class="n">num_initial_points</span> <span class="o">=</span> <span class="mi">6</span>
+<span class="n">initial_query_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample_halton</span><span class="p">(</span><span class="n">num_initial_points</span><span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">initial_query_points</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Probabilistic-model-of-the-objective-function">
+<h2>Probabilistic model of the objective function<a class="headerlink" href="#Probabilistic-model-of-the-objective-function" title="Link to this heading">#</a></h2>
+<p>Just like in sequential optimization, we use a probabilistic model of the objective function. Acquisition functions will exploit the predictive posterior of the model to identify the failure region. The GPflow models cannot be used directly in our Bayesian optimization routines, so we build a GPflow’s <code class="docutils literal notranslate"><span class="pre">GPR</span></code> model using Trieste’s convenient model build function <code class="docutils literal notranslate"><span class="pre">build_gpr</span></code> and pass it to the <code class="docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code> wrapper. Note that we set the likelihood variance to a small number
+because we are dealing with a noise-free problem.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">gpflow</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.models.gpflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianProcessRegression</span><span class="p">,</span> <span class="n">build_gpr</span>
+
+
+<span class="n">gpflow_model</span> <span class="o">=</span> <span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpflow_model</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Active-learning-with-Expected-feasibility-acquisition-function">
+<h2>Active learning with Expected feasibility acquisition function<a class="headerlink" href="#Active-learning-with-Expected-feasibility-acquisition-function" title="Link to this heading">#</a></h2>
+<p>The problem of identifying a failure or feasibility region of a (expensive-to-evaluate) function <span class="math notranslate nohighlight">\(f\)</span> can be formalized as estimating the excursion set, <span class="math notranslate nohighlight">\(\Gamma^* = \{ x \in X: f(x) \ge T\}\)</span>, or estimating the contour line, <span class="math notranslate nohighlight">\(C^* = \{ x \in X: f(x) = T\}\)</span>, for some threshold <span class="math notranslate nohighlight">\(T\)</span> (see <span id="id1">[<a class="reference internal" href="../bibliography.html#id32" title="Julien Bect, David Ginsbourger, Ling Li, Victor Picheny, and Emmanuel Vazquez. Sequential design of computer experiments for the estimation of a probability of failure. Statistics and Computing, 22(3):773–793, 2012.">BGL+12</a>]</span> for more details).</p>
+<p>It turns out that Gaussian processes can be used as classifiers for identifying where excursion probability is larger than 1/2 and this idea is used to build many sequential sampling strategies. Here we introduce Expected feasibility acquisition function that implements two related sampling strategies called <em>bichon</em> criterion (<span id="id2">[<a class="reference internal" href="../bibliography.html#id31" title="Barron J Bichon, Michael S Eldred, Laura Painton Swiler, Sandaran Mahadevan, and John M McFarland. Efficient global reliability analysis for nonlinear implicit performance functions. AIAA journal, 46(10):2459–2468, 2008.">BES+08</a>]</span>) and <em>ranjan</em> criterion (<span id="id3">[<a class="reference internal" href="../bibliography.html#id30" title="Pritam Ranjan, Derek Bingham, and George Michailidis. Sequential experiment design for contour estimation from complex computer codes. Technometrics, 50(4):527–541, 2008.">RBM08</a>]</span>). <span id="id4">[<a class="reference internal" href="../bibliography.html#id32" title="Julien Bect, David Ginsbourger, Ling Li, Victor Picheny, and Emmanuel Vazquez. Sequential design of computer experiments for the estimation of a probability of failure. Statistics and Computing, 22(3):773–793, 2012.">BGL+12</a>]</span> provides a common expression for these two criteria:</p>
+<div class="math notranslate nohighlight">
+\[\mathbb{E}[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]\]</div>
+<p>Here <span class="math notranslate nohighlight">\(m(x)\)</span> and <span class="math notranslate nohighlight">\(s(x)\)</span> are the mean and standard deviation of the predictive posterior of the Gaussian process model. Bichon criterion is obtained when <span class="math notranslate nohighlight">\(\delta = 1\)</span> while ranjan criterion is obtained when <span class="math notranslate nohighlight">\(\delta = 2\)</span>. <span class="math notranslate nohighlight">\(\alpha&gt;0\)</span> is another parameter that acts as a percentage of standard deviation of the posterior around the current boundary estimate where we want to sample. The goal is to sample a point with a mean close to the threshold <span class="math notranslate nohighlight">\(T\)</span> and a high
+variance, so that the positive difference in the equation above is as large as possible.</p>
+<p>We now illustrate <code class="docutils literal notranslate"><span class="pre">ExpectedFeasibility</span></code> acquisition function using the Bichon criterion. Performance for the Ranjan criterion is typically very similar. <code class="docutils literal notranslate"><span class="pre">ExpectedFeasibility</span></code> takes threshold as an input and has two parameters, <code class="docutils literal notranslate"><span class="pre">alpha</span></code> and <code class="docutils literal notranslate"><span class="pre">delta</span></code> following the description above.</p>
+<p>Note that even though we use below <code class="docutils literal notranslate"><span class="pre">ExpectedFeasibility</span></code> with <code class="docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code> <code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> routine, we are actually performing active learning. The only relevant difference between the two is the nature of the acquisition function - optimization ones are designed with the goal of finding the optimum of a function, while active learning ones are designed to learn the function (or some aspect of it, like here).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.acquisition.rule</span><span class="w"> </span><span class="kn">import</span> <span class="n">EfficientGlobalOptimization</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.acquisition.function</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedFeasibility</span>
+
+<span class="c1"># Bichon criterion</span>
+<span class="n">delta</span> <span class="o">=</span> <span class="mi">1</span>
+
+<span class="c1"># set up the acquisition rule and initialize the Bayesian optimizer</span>
+<span class="n">acq</span> <span class="o">=</span> <span class="n">ExpectedFeasibility</span><span class="p">(</span><span class="n">threshold</span><span class="p">,</span> <span class="n">delta</span><span class="o">=</span><span class="n">delta</span><span class="p">)</span>
+<span class="n">rule</span> <span class="o">=</span> <span class="n">EfficientGlobalOptimization</span><span class="p">(</span><span class="n">builder</span><span class="o">=</span><span class="n">acq</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+<span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+
+<span class="n">num_steps</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">rule</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+<p>Let’s illustrate the results.</p>
+<p>To identify the failure or feasibility region we compute the excursion probability using our Gaussian process model:</p>
+<div class="math notranslate nohighlight">
+\[P\left(\frac{m(x) - T}{s(x)}\right)\]</div>
+<p>where <span class="math notranslate nohighlight">\(m(x)\)</span> and <span class="math notranslate nohighlight">\(s(x)\)</span> are the mean and standard deviation of the predictive posterior of the model given the data.</p>
+<p>We plot a two-dimensional contour map of our thresholded Branin function as a reference, excursion probability map using the model fitted to the initial data alone, and updated excursion probability map after all the active learning steps.</p>
+<p>We first define helper functions for computing excursion probabilities and plotting, and then plot the thresholded Branin function as a reference. White area represents the failure region.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.experimental.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_bo_points</span><span class="p">,</span> <span class="n">plot_function_2d</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow_probability</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tfp</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">excursion_probability</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mi">80</span><span class="p">):</span>
+    <span class="n">mean</span><span class="p">,</span> <span class="n">variance</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+    <span class="n">threshold</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">threshold</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">threshold</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="p">(</span><span class="n">mean</span> <span class="o">-</span> <span class="n">threshold</span><span class="p">)</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">t</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">t0</span> <span class="o">=</span> <span class="p">(</span><span class="n">mean</span> <span class="o">-</span> <span class="n">threshold</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+        <span class="n">t1</span> <span class="o">=</span> <span class="p">(</span><span class="n">mean</span> <span class="o">-</span> <span class="n">threshold</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">t1</span><span class="p">)</span> <span class="o">-</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">t0</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">plot_excursion_probability</span><span class="p">(</span>
+    <span class="n">title</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">query_points</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="mf">80.0</span>
+<span class="p">):</span>
+    <span class="k">if</span> <span class="n">model</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">objective_function</span> <span class="o">=</span> <span class="n">thresholded_branin</span>
+    <span class="k">else</span><span class="p">:</span>
+
+        <span class="k">def</span><span class="w"> </span><span class="nf">objective_function</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">excursion_probability</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">threshold</span><span class="p">)</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_function_2d</span><span class="p">(</span>
+        <span class="n">objective_function</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span> <span class="o">-</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="n">search_space</span><span class="o">.</span><span class="n">upper</span> <span class="o">+</span> <span class="mf">0.01</span><span class="p">,</span>
+        <span class="n">contour</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">colorbar</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+        <span class="n">title</span><span class="o">=</span><span class="p">[</span><span class="n">title</span><span class="p">],</span>
+        <span class="n">xlabel</span><span class="o">=</span><span class="s2">&quot;$X_1$&quot;</span><span class="p">,</span>
+        <span class="n">ylabel</span><span class="o">=</span><span class="s2">&quot;$X_2$&quot;</span><span class="p">,</span>
+        <span class="n">fill</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">query_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">plot_bo_points</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">num_initial_points</span><span class="p">)</span>
+
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span><span class="s2">&quot;Excursion set, Branin function&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_12_0.png" src="../_images/notebooks_feasible_sets_12_0.png" />
+</div>
+</div>
+<p>Next we illustrate the excursion probability map using the model fitted to the initial data alone. On the figure below we can see that the failure region boundary has been identified with some accuracy in the upper right corner, but not in the lower left corner. It is also loosely defined, as indicated by a slow decrease and increase away from the 0.5 excursion probability contour.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># extracting the data to illustrate the points</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+<span class="n">query_points</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">observations</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="c1"># fitting the model only to the initial data</span>
+<span class="n">gpflow_model</span> <span class="o">=</span> <span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)</span>
+<span class="n">initial_model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpflow_model</span><span class="p">)</span>
+<span class="n">initial_model</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span>
+    <span class="s2">&quot;Probability of excursion, initial data&quot;</span><span class="p">,</span>
+    <span class="n">initial_model</span><span class="p">,</span>
+    <span class="n">query_points</span><span class="p">[:</span><span class="n">num_initial_points</span><span class="p">,],</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_14_0.png" src="../_images/notebooks_feasible_sets_14_0.png" />
+</div>
+</div>
+<p>Next we examine an updated excursion probability map after the 10 active learning steps. We can now see that the model is much more accurate and confident, as indicated by a good match with the reference thresholded Branin function and sharp decrease/increase away from the 0.5 excursion probability contour.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">updated_model</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_model</span><span class="p">()</span>
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span>
+    <span class="s2">&quot;Updated probability of excursion&quot;</span><span class="p">,</span> <span class="n">updated_model</span><span class="p">,</span> <span class="n">query_points</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_16_0.png" src="../_images/notebooks_feasible_sets_16_0.png" />
+</div>
+</div>
+<p>We can also examine what would happen if we would continue for many more active learning steps. One would expect that choices would be allocated closer and closer to the boundary, and uncertainty continuing to collapse. Indeed, on the figure below we observe exactly that. With 10 observations more the model is precisely representing the failure region boundary. Most of the additional query points lie close to the threshold line.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">num_steps</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">rule</span><span class="p">)</span>
+
+<span class="n">final_model</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_model</span><span class="p">()</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+<span class="n">query_points</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span>
+    <span class="s2">&quot;Final probability of excursion&quot;</span><span class="p">,</span> <span class="n">final_model</span><span class="p">,</span> <span class="n">query_points</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_18_1.png" src="../_images/notebooks_feasible_sets_18_1.png" />
+</div>
+</div>
+</section>
+<section id="Active-learning-with-Integrated-Variance-Reduction-acquisition-function">
+<h2>Active learning with Integrated Variance Reduction acquisition function<a class="headerlink" href="#Active-learning-with-Integrated-Variance-Reduction-acquisition-function" title="Link to this heading">#</a></h2>
+<p>An alternative to the <code class="docutils literal notranslate"><span class="pre">ExpectedFeasibility</span></code> acquisition function is called <code class="docutils literal notranslate"><span class="pre">IntegratedVarianceReduction</span></code>. This acquisition has the advantage of taking into account reduction of uncertainty in a region of the search space when choosing the next point to sample, instead of considering only the sampling point. This makes it more expensive to compute than <code class="docutils literal notranslate"><span class="pre">ExpectedFeasibility</span></code>, since it involves computing an integral over a set of integration points. This integration region is determined by
+the user, with the <code class="docutils literal notranslate"><span class="pre">integration_points</span></code> parameter. Another advantage is that <code class="docutils literal notranslate"><span class="pre">IntegratedVarianceReduction</span></code> can produce batches of points, which becomes useful when parallel evaluations are possible.</p>
+<p>Below we perform 10 active learning steps of batch size 2, with <code class="docutils literal notranslate"><span class="pre">IntegratedVarianceReduction</span></code> acquisition function and same as above plot excursion probability of the final model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.acquisition.function</span><span class="w"> </span><span class="kn">import</span> <span class="n">IntegratedVarianceReduction</span>
+
+<span class="c1"># Choose integration points uniformly over the design space</span>
+<span class="n">integration_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample_halton</span><span class="p">(</span><span class="mi">1000</span><span class="p">)</span>
+<span class="n">acq_ivr</span> <span class="o">=</span> <span class="n">IntegratedVarianceReduction</span><span class="p">(</span>
+    <span class="n">integration_points</span><span class="o">=</span><span class="n">integration_points</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="n">threshold</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="c1"># Set a batch size greater than 1 with the &#39;num_query_points&#39; parameter</span>
+<span class="n">rule_ivr</span> <span class="o">=</span> <span class="n">EfficientGlobalOptimization</span><span class="p">(</span><span class="n">builder</span><span class="o">=</span><span class="n">acq_ivr</span><span class="p">,</span> <span class="n">num_query_points</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+<span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+
+<span class="n">num_steps</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="n">gpflow_model</span> <span class="o">=</span> <span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpflow_model</span><span class="p">)</span>
+<span class="n">result_ivr</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">rule_ivr</span><span class="p">)</span>
+
+<span class="n">final_model_ivr</span> <span class="o">=</span> <span class="n">result_ivr</span><span class="o">.</span><span class="n">try_get_final_model</span><span class="p">()</span>
+<span class="n">dataset_ivr</span> <span class="o">=</span> <span class="n">result_ivr</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+<span class="n">query_points_ivr</span> <span class="o">=</span> <span class="n">dataset_ivr</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span>
+    <span class="s2">&quot;Final probability of excursion&quot;</span><span class="p">,</span> <span class="n">final_model_ivr</span><span class="p">,</span> <span class="n">query_points_ivr</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_20_1.png" src="../_images/notebooks_feasible_sets_20_1.png" />
+</div>
+</div>
+<p>One can also specify a range of thresholds rather than a single value. We can do this by specifying a range with a minimum and a maximum threshold, rather than a single threshold as the <code class="docutils literal notranslate"><span class="pre">threshold</span></code> parameter. The resulting query points are likely to be more spread out than previously, as now the whole region between the thresholds is aimed to be well estimated, rather than a single line.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">thresholds</span> <span class="o">=</span> <span class="p">[</span><span class="mf">50.0</span><span class="p">,</span> <span class="mf">110.0</span><span class="p">]</span>
+<span class="n">acq_range</span> <span class="o">=</span> <span class="n">IntegratedVarianceReduction</span><span class="p">(</span>
+    <span class="n">integration_points</span><span class="o">=</span><span class="n">integration_points</span><span class="p">,</span> <span class="n">threshold</span><span class="o">=</span><span class="n">thresholds</span>
+<span class="p">)</span>
+<span class="n">rule_range</span> <span class="o">=</span> <span class="n">EfficientGlobalOptimization</span><span class="p">(</span><span class="n">builder</span><span class="o">=</span><span class="n">acq_range</span><span class="p">,</span> <span class="n">num_query_points</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+
+<span class="n">gpflow_model</span> <span class="o">=</span> <span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpflow_model</span><span class="p">)</span>
+<span class="n">result_range</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">rule_range</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+<p>We can now illustrate the probability that a point in the search space belongs to the threshold interval rather than the probability that points exceed a single threshold. We compare probability maps obtained with the <code class="docutils literal notranslate"><span class="pre">IntegratedVarianceReduction</span></code> (IVR) when optimising for the threshold range and for the single threshold at the center of the range, as well as to a probability map for the <code class="docutils literal notranslate"><span class="pre">ExpectedFeasibility</span></code> function obtained with a single threshold. As expected, the
+<code class="docutils literal notranslate"><span class="pre">IntegratedVarianceReduction</span></code> with threshold range spreads query points a bit more, which leads to a sharper probability boundary.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">final_model_range</span> <span class="o">=</span> <span class="n">result_range</span><span class="o">.</span><span class="n">try_get_final_model</span><span class="p">()</span>
+<span class="n">dataset_range</span> <span class="o">=</span> <span class="n">result_range</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+<span class="n">query_points_range</span> <span class="o">=</span> <span class="n">dataset_range</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span>
+    <span class="s2">&quot;Probability of being in the range (IVR range of thresholds)&quot;</span><span class="p">,</span>
+    <span class="n">final_model_range</span><span class="p">,</span>
+    <span class="n">query_points_range</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="n">thresholds</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span>
+    <span class="s2">&quot;Probability of being in the range (IVR single threshold)&quot;</span><span class="p">,</span>
+    <span class="n">final_model_ivr</span><span class="p">,</span>
+    <span class="n">query_points_ivr</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="n">thresholds</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">plot_excursion_probability</span><span class="p">(</span>
+    <span class="s2">&quot;Probability of being in the range (EF)&quot;</span><span class="p">,</span>
+    <span class="n">final_model</span><span class="p">,</span>
+    <span class="n">query_points</span><span class="p">,</span>
+    <span class="n">threshold</span><span class="o">=</span><span class="n">thresholds</span><span class="p">,</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_24_0.png" src="../_images/notebooks_feasible_sets_24_0.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_24_1.png" src="../_images/notebooks_feasible_sets_24_1.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_feasible_sets_24_2.png" src="../_images/notebooks_feasible_sets_24_2.png" />
+</div>
+</div>
+</section>
+<section id="LICENSE">
+<h2>LICENSE<a class="headerlink" href="#LICENSE" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://github.com/secondmind-labs/trieste/blob/develop/LICENSE">Apache License 2.0</a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#A-toy-problem">A toy problem</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Probabilistic-model-of-the-objective-function">Probabilistic model of the objective function</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Active-learning-with-Expected-feasibility-acquisition-function">Active learning with Expected feasibility acquisition function</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Active-learning-with-Integrated-Variance-Reduction-acquisition-function">Active learning with Integrated Variance Reduction acquisition function</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#LICENSE">LICENSE</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

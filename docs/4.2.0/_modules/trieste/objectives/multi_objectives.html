@@ -1,0 +1,765 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.objectives.multi_objectives &#8212; trieste 4.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../_static/documentation_options.js?v=d0ae6d56"></script>
+    <script src="../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/objectives/multi_objectives';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.2.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.png" class="logo__image only-light" alt="trieste 4.2.0 documentation - Home"/>
+    <script>document.write(`<img src="../../../_static/logo.png" class="logo__image only-dark" alt="trieste 4.2.0 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.obje...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for trieste.objectives.multi_objectives</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains synthetic multi-objective functions, useful for experimentation.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">functools</span> <span class="kn">import</span> <span class="n">partial</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">check_shapes</span> <span class="kn">import</span> <span class="n">check_shape</span><span class="p">,</span> <span class="n">check_shapes</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span>
+
+<span class="kn">from</span> <span class="nn">..space</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">SearchSpaceType</span>
+<span class="kn">from</span> <span class="nn">..types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">.single_objectives</span> <span class="kn">import</span> <span class="n">ObjectiveTestProblem</span>
+
+
+<div class="viewcode-block" id="GenParetoOptimalPoints">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.GenParetoOptimalPoints">[docs]</a>
+<span class="k">class</span> <span class="nc">GenParetoOptimalPoints</span><span class="p">(</span><span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A Protocol representing a function that generates Pareto optimal points.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GenParetoOptimalPoints.__call__">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.GenParetoOptimalPoints.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate `n` Pareto optimal points.</span>
+
+<span class="sd">        :param n: The number of pareto optimal points to be generated.</span>
+<span class="sd">        :param seed: An integer used to create a random seed for distributions that</span>
+<span class="sd">         used to generate pareto optimal points.</span>
+<span class="sd">        :return: The Pareto optimal points</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+</div>
+
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="MultiObjectiveTestProblem">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.MultiObjectiveTestProblem">[docs]</a>
+<span class="k">class</span> <span class="nc">MultiObjectiveTestProblem</span><span class="p">(</span><span class="n">ObjectiveTestProblem</span><span class="p">[</span><span class="n">SearchSpaceType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience container class for synthetic multi-objective test functions, containing</span>
+<span class="sd">    a generator for the pareto optimal points, which can be used as a reference of performance</span>
+<span class="sd">    measure of certain multi-objective optimization algorithms.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="MultiObjectiveTestProblem.gen_pareto_optimal_points">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.MultiObjectiveTestProblem.gen_pareto_optimal_points">[docs]</a>
+    <span class="n">gen_pareto_optimal_points</span><span class="p">:</span> <span class="n">GenParetoOptimalPoints</span></div>
+
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Function to generate Pareto optimal points, given the number of points and an optional</span>
+<span class="sd">    random number seed.&quot;&quot;&quot;</span></div>
+
+
+
+<span class="nd">@check_shapes</span><span class="p">(</span><span class="s2">&quot;return: [batch..., 2]&quot;</span><span class="p">)</span>  <span class="c1"># cf https://github.com/GPflow/check_shapes/issues/42</span>
+<div class="viewcode-block" id="vlmop2">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.vlmop2">[docs]</a>
+<span class="k">def</span> <span class="nf">vlmop2</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The VLMOP2 synthetic function.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., d].</span>
+<span class="sd">    :param d: The dimensionality of the synthetic function.</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 2].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">check_shape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;[batch..., </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+    <span class="n">transl</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">))</span>
+    <span class="n">y1</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">((</span><span class="n">x</span> <span class="o">-</span> <span class="n">transl</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">y2</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">((</span><span class="n">x</span> <span class="o">+</span> <span class="n">transl</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">y1</span><span class="p">,</span> <span class="n">y2</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="VLMOP2">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.VLMOP2">[docs]</a>
+<span class="k">def</span> <span class="nf">VLMOP2</span><span class="p">(</span><span class="n">input_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MultiObjectiveTestProblem</span><span class="p">[</span><span class="n">Box</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^d`.</span>
+<span class="sd">    The idea pareto fronts lies on -1/sqrt(d) - 1/sqrt(d) and x1=...=xdim.</span>
+
+<span class="sd">    See :cite:`van1999multiobjective` and :cite:`fonseca1995multiobjective`</span>
+<span class="sd">    (the latter for discussion of pareto front property) for details.</span>
+
+<span class="sd">    :param input_dim: The input dimensionality of the synthetic function.</span>
+<span class="sd">    :return: The problem specification.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">gen_pareto_optimal_points</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">transl</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">))</span>
+        <span class="n">_x</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">linspace</span><span class="p">([</span><span class="o">-</span><span class="n">transl</span><span class="p">],</span> <span class="p">[</span><span class="n">transl</span><span class="p">],</span> <span class="n">n</span><span class="p">),</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">])</span>
+        <span class="k">return</span> <span class="n">vlmop2</span><span class="p">(</span><span class="n">_x</span><span class="p">,</span> <span class="n">input_dim</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">MultiObjectiveTestProblem</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;VLMOP2(</span><span class="si">{</span><span class="n">input_dim</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">vlmop2</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">input_dim</span><span class="p">),</span>
+        <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="o">-</span><span class="mf">2.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.0</span><span class="p">])</span> <span class="o">**</span> <span class="n">input_dim</span><span class="p">,</span>
+        <span class="n">gen_pareto_optimal_points</span><span class="o">=</span><span class="n">gen_pareto_optimal_points</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="dtlz_mkd">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.dtlz_mkd">[docs]</a>
+<span class="k">def</span> <span class="nf">dtlz_mkd</span><span class="p">(</span><span class="n">input_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_objective</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return m/k/d values for dtlz synthetic functions.&quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater</span><span class="p">(</span><span class="n">num_objective</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater</span><span class="p">(</span>
+        <span class="n">input_dim</span><span class="p">,</span>
+        <span class="n">num_objective</span><span class="p">,</span>
+        <span class="sa">f</span><span class="s2">&quot;input dimension </span><span class="si">{</span><span class="n">input_dim</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;  must be greater than function objective numbers </span><span class="si">{</span><span class="n">num_objective</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="n">M</span> <span class="o">=</span> <span class="n">num_objective</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="n">input_dim</span> <span class="o">-</span> <span class="n">M</span> <span class="o">+</span> <span class="mi">1</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">input_dim</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">d</span><span class="p">)</span></div>
+
+
+
+<span class="nd">@check_shapes</span><span class="p">()</span>
+<div class="viewcode-block" id="dtlz1">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.dtlz1">[docs]</a>
+<span class="k">def</span> <span class="nf">dtlz1</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">m</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">k</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The DTLZ1 synthetic function.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., d].</span>
+<span class="sd">    :param m: The objective numbers.</span>
+<span class="sd">    :param k: The input dimensionality for g.</span>
+<span class="sd">    :param d: The dimensionality of the synthetic function.</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., m].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">check_shape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;[batch..., </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;positive objective numbers expected but found </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">g</span><span class="p">(</span><span class="n">xM</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="mi">100</span> <span class="o">*</span> <span class="p">(</span>
+            <span class="n">k</span>
+            <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">xM</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mi">20</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="p">(</span><span class="n">xM</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="n">ta</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorArray</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">m</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+        <span class="n">xM</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:]</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">g</span><span class="p">(</span><span class="n">xM</span><span class="p">)</span>
+        <span class="n">y</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">*=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">m</span> <span class="o">-</span> <span class="n">i</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">]</span>
+        <span class="n">ta</span> <span class="o">=</span> <span class="n">ta</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">check_shape</span><span class="p">(</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">ta</span><span class="o">.</span><span class="n">stack</span><span class="p">(),</span> <span class="n">m</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;[batch..., </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2">]&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DTLZ1">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.DTLZ1">[docs]</a>
+<span class="k">def</span> <span class="nf">DTLZ1</span><span class="p">(</span><span class="n">input_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_objective</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MultiObjectiveTestProblem</span><span class="p">[</span><span class="n">Box</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.</span>
+<span class="sd">    See :cite:`deb2002scalable` for details.</span>
+
+<span class="sd">    :param input_dim: The input dimensionality of the synthetic function.</span>
+<span class="sd">    :param num_objective: The number of objectives.</span>
+<span class="sd">    :return: The problem specification.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">M</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">dtlz_mkd</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">num_objective</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">gen_pareto_optimal_points</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">rnd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">([</span><span class="n">n</span><span class="p">,</span> <span class="n">M</span> <span class="o">-</span> <span class="mi">1</span><span class="p">],</span> <span class="n">minval</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">maxval</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">strnd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span><span class="n">rnd</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">strnd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">n</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span> <span class="n">strnd</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">([</span><span class="n">n</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="p">(</span><span class="n">strnd</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">strnd</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">MultiObjectiveTestProblem</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;DTLZ1(</span><span class="si">{</span><span class="n">input_dim</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">num_objective</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">dtlz1</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">M</span><span class="p">,</span> <span class="n">k</span><span class="o">=</span><span class="n">k</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">d</span><span class="p">),</span>
+        <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="n">d</span><span class="p">,</span>
+        <span class="n">gen_pareto_optimal_points</span><span class="o">=</span><span class="n">gen_pareto_optimal_points</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+
+<span class="nd">@check_shapes</span><span class="p">()</span>
+<div class="viewcode-block" id="dtlz2">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.dtlz2">[docs]</a>
+<span class="k">def</span> <span class="nf">dtlz2</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">m</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The DTLZ2 synthetic function.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., d].</span>
+<span class="sd">    :param m: The objective numbers.</span>
+<span class="sd">    :param d: The dimensionality of the synthetic function.</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., m].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">check_shape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="sa">f</span><span class="s2">&quot;[batch..., </span><span class="si">{</span><span class="n">d</span><span class="si">}</span><span class="s2">]&quot;</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater</span><span class="p">(</span><span class="n">m</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;positive objective numbers expected but found </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">g</span><span class="p">(</span><span class="n">xM</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">z</span> <span class="o">=</span> <span class="p">(</span><span class="n">xM</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">z</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="n">ta</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorArray</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span> <span class="n">size</span><span class="o">=</span><span class="n">m</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">m</span><span class="p">):</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">+</span> <span class="n">g</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span> <span class="p">:])</span>
+        <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="n">m</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">*=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">j</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">i</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">y</span> <span class="o">*=</span> <span class="n">tf</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="n">m</span> <span class="o">-</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">newaxis</span><span class="p">])</span>
+        <span class="n">ta</span> <span class="o">=</span> <span class="n">ta</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">check_shape</span><span class="p">(</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">ta</span><span class="o">.</span><span class="n">stack</span><span class="p">(),</span> <span class="n">m</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;[batch..., </span><span class="si">{</span><span class="n">m</span><span class="si">}</span><span class="s2">]&quot;</span>
+    <span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="DTLZ2">
+<a class="viewcode-back" href="../../../autoapi/trieste/objectives/multi_objectives/index.html#trieste.objectives.DTLZ2">[docs]</a>
+<span class="k">def</span> <span class="nf">DTLZ2</span><span class="p">(</span><span class="n">input_dim</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">num_objective</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">MultiObjectiveTestProblem</span><span class="p">[</span><span class="n">Box</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.</span>
+<span class="sd">    See :cite:`deb2002scalable` for details.</span>
+
+<span class="sd">    :param input_dim: The input dimensionality of the synthetic function.</span>
+<span class="sd">    :param num_objective: The number of objectives.</span>
+<span class="sd">    :return: The problem specification.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">M</span><span class="p">,</span> <span class="n">k</span><span class="p">,</span> <span class="n">d</span> <span class="o">=</span> <span class="n">dtlz_mkd</span><span class="p">(</span><span class="n">input_dim</span><span class="p">,</span> <span class="n">num_objective</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">gen_pareto_optimal_points</span><span class="p">(</span><span class="n">n</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">rnd</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">([</span><span class="n">n</span><span class="p">,</span> <span class="n">M</span><span class="p">],</span> <span class="n">seed</span><span class="o">=</span><span class="n">seed</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">abs</span><span class="p">(</span><span class="n">rnd</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">norm</span><span class="p">(</span><span class="n">rnd</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">samples</span>
+
+    <span class="k">return</span> <span class="n">MultiObjectiveTestProblem</span><span class="p">(</span>
+        <span class="n">name</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;DTLZ2(</span><span class="si">{</span><span class="n">input_dim</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="n">num_objective</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">,</span>
+        <span class="n">objective</span><span class="o">=</span><span class="n">partial</span><span class="p">(</span><span class="n">dtlz2</span><span class="p">,</span> <span class="n">m</span><span class="o">=</span><span class="n">M</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="n">d</span><span class="p">),</span>
+        <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="n">d</span><span class="p">,</span>
+        <span class="n">gen_pareto_optimal_points</span><span class="o">=</span><span class="n">gen_pareto_optimal_points</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

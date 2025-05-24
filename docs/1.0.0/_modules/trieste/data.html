@@ -1,0 +1,470 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.data &#8212; trieste 1.0.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../index.html">
+  <img src="../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        1.0.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/data and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '1.0.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/data.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/data.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "1.0.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.data</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot; This module contains utilities for :class:`~trieste.observer.Observer` data. &quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">trieste.types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="Dataset"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.Dataset">[docs]</a><span class="k">class</span> <span class="nc">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Container for the query points and corresponding observations from an</span>
+<span class="sd">    :class:`~trieste.observer.Observer`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Dataset.query_points"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.Dataset.query_points">[docs]</a>    <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; The points at which the :class:`~trieste.observer.Observer` was queried. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Dataset.observations"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.Dataset.observations">[docs]</a>    <span class="n">observations</span><span class="p">:</span> <span class="n">TensorType</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; The observed output of the :class:`~trieste.observer.Observer` for each query point. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Dataset.__post_init__"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.Dataset.__post_init__">[docs]</a>    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If ``query_points`` or ``observations`` have \</span>
+<span class="sd">            rank less than two, or they have unequal shape in any but their last dimension.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank_at_least</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank_at_least</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="mi">0</span> <span class="ow">in</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;query_points and observations cannot have dimension 0, got shapes&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> and </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="c1"># can&#39;t check dynamic shapes, so trust that they&#39;re ok (if not, they&#39;ll fail later)</span>
+            <span class="ow">and</span> <span class="kc">None</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Leading shapes of query_points and observations must match. Got shapes&quot;</span></div>
+                <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+
+<div class="viewcode-block" id="Dataset.__add__"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.Dataset.__add__">[docs]</a>    <span class="k">def</span> <span class="fm">__add__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">rhs</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the :class:`Dataset` whose query points are the result of concatenating the</span>
+<span class="sd">        `query_points` in each :class:`Dataset` along the zeroth axis, and the same for the</span>
+<span class="sd">        `observations`. For example:</span>
+
+<span class="sd">        &gt;&gt;&gt; d1 = Dataset(</span>
+<span class="sd">        ...     tf.constant([[0.1, 0.2], [0.3, 0.4]]),</span>
+<span class="sd">        ...     tf.constant([[0.5, 0.6], [0.7, 0.8]])</span>
+<span class="sd">        ... )</span>
+<span class="sd">        &gt;&gt;&gt; d2 = Dataset(tf.constant([[0.9, 1.0]]), tf.constant([[1.1, 1.2]]))</span>
+<span class="sd">        &gt;&gt;&gt; (d1 + d2).query_points</span>
+<span class="sd">        &lt;tf.Tensor: shape=(3, 2), dtype=float32, numpy=</span>
+<span class="sd">        array([[0.1, 0.2],</span>
+<span class="sd">               [0.3, 0.4],</span>
+<span class="sd">               [0.9, 1. ]], dtype=float32)&gt;</span>
+<span class="sd">        &gt;&gt;&gt; (d1 + d2).observations</span>
+<span class="sd">        &lt;tf.Tensor: shape=(3, 2), dtype=float32, numpy=</span>
+<span class="sd">        array([[0.5, 0.6],</span>
+<span class="sd">               [0.7, 0.8],</span>
+<span class="sd">               [1.1, 1.2]], dtype=float32)&gt;</span>
+
+<span class="sd">        :param rhs: A :class:`Dataset` with the same shapes as this one, except in the zeroth</span>
+<span class="sd">            dimension, which can have any size.</span>
+<span class="sd">        :return: The result of concatenating the :class:`Dataset`\ s.</span>
+<span class="sd">        :raise InvalidArgumentError: If the shapes of the `query_points` in each :class:`Dataset`</span>
+<span class="sd">            differ in any but the zeroth dimension. The same applies for `observations`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">rhs</span><span class="o">.</span><span class="n">query_points</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">rhs</span><span class="o">.</span><span class="n">observations</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">),</span></div>
+        <span class="p">)</span>
+
+<div class="viewcode-block" id="Dataset.__len__"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.Dataset.__len__">[docs]</a>    <span class="k">def</span> <span class="fm">__len__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: The number of query points, or equivalently the number of observations.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">observations</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span></div>
+
+    <span class="k">def</span> <span class="nf">__deepcopy__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">memo</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+<div class="viewcode-block" id="Dataset.astuple"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.Dataset.astuple">[docs]</a>    <span class="k">def</span> <span class="nf">astuple</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        **Note:** Unlike the standard library function `dataclasses.astuple`, this method does</span>
+<span class="sd">        **not** deepcopy the attributes.</span>
+
+<span class="sd">        :return: A 2-tuple of the :attr:`query_points` and :attr:`observations`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">observations</span></div></div>
+
+
+<div class="viewcode-block" id="check_and_extract_fidelity_query_points"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.check_and_extract_fidelity_query_points">[docs]</a><span class="k">def</span> <span class="nf">check_and_extract_fidelity_query_points</span><span class="p">(</span>
+    <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">max_fidelity</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Check whether the final column of a tensor is close enough to ints</span>
+<span class="sd">    to be reasonably considered to represent fidelities.</span>
+
+<span class="sd">    The final input column of multi-fidelity data should be a reference to</span>
+<span class="sd">    the fidelity of the query point. We cannot have mixed type tensors, but</span>
+<span class="sd">    we can check that thhe final column values are suitably close to integers.</span>
+
+<span class="sd">    :param query_points: Data to check final column of.</span>
+<span class="sd">    :raise: ValueError: If there are not enough columns to be multifidelity data</span>
+<span class="sd">    :raise InvalidArgumentError: If any value in the final column is far from an integer</span>
+<span class="sd">    :return: Query points without fidelity column</span>
+<span class="sd">        and the fidelities of each of the query points</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Check we have sufficient columns</span>
+    <span class="k">if</span> <span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="s2">&quot;Query points do not have enough columns to be multifidelity,&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; need at least 2, got </span><span class="si">{</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+    <span class="n">input_points</span> <span class="o">=</span> <span class="n">query_points</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">fidelity_col</span> <span class="o">=</span> <span class="n">query_points</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">:]</span>
+    <span class="c1"># Check fidelity column values are close to ints</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">fidelity_col</span><span class="p">),</span>
+        <span class="n">fidelity_col</span><span class="p">,</span>
+        <span class="n">message</span><span class="o">=</span><span class="s2">&quot;Fidelity column should be float(int), but got a float that&quot;</span>
+        <span class="s2">&quot; was not close to an int&quot;</span><span class="p">,</span>
+    <span class="p">)</span>
+    <span class="c1"># Check fidelity column values are non-negative</span>
+    <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="n">fidelity_col</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;Fidelity must be non-negative&quot;</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">max_fidelity</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">max_input_fid</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">fidelity_col</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">max_input_fid</span> <span class="o">&gt;</span> <span class="n">max_fidelity</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Model only supports fidelities up to </span><span class="si">{</span><span class="n">max_fidelity</span><span class="si">}</span><span class="s2">,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; but </span><span class="si">{</span><span class="n">max_input_fid</span><span class="si">}</span><span class="s2"> was passed&quot;</span>
+            <span class="p">)</span>
+    <span class="k">return</span> <span class="n">input_points</span><span class="p">,</span> <span class="n">fidelity_col</span></div>
+
+
+<div class="viewcode-block" id="split_dataset_by_fidelity"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.split_dataset_by_fidelity">[docs]</a><span class="k">def</span> <span class="nf">split_dataset_by_fidelity</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">num_fidelities</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Split dataset into individual datasets without fidelity information</span>
+
+<span class="sd">    :param dataset: Dataset for which to split fidelities</span>
+<span class="sd">    :param num_fidlities: Number of fidelities in the problem (not just dataset)</span>
+<span class="sd">    :return: Ordered list of datasets with lowest fidelity at index 0 and highest at -1</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">num_fidelities</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Data must have 1 or more fidelities, got </span><span class="si">{</span><span class="n">num_fidelities</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+    <span class="n">datasets</span> <span class="o">=</span> <span class="p">[</span><span class="n">get_dataset_for_fidelity</span><span class="p">(</span><span class="n">dataset</span><span class="p">,</span> <span class="n">fidelity</span><span class="p">)</span> <span class="k">for</span> <span class="n">fidelity</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_fidelities</span><span class="p">)]</span>
+    <span class="k">return</span> <span class="n">datasets</span></div>
+
+
+<div class="viewcode-block" id="get_dataset_for_fidelity"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.get_dataset_for_fidelity">[docs]</a><span class="k">def</span> <span class="nf">get_dataset_for_fidelity</span><span class="p">(</span><span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">fidelity</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dataset</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Get a dataset with only the specified fidelity of data in</span>
+
+<span class="sd">    :param dataset: The dataset from which to extract the single fidelity data</span>
+<span class="sd">    :param fidelity: The fidelity to extract the data for</span>
+<span class="sd">    :return: Dataset with a single fidelity and no fidelity column</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">input_points</span><span class="p">,</span> <span class="n">fidelity_col</span> <span class="o">=</span> <span class="n">check_and_extract_fidelity_query_points</span><span class="p">(</span>
+        <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span>
+    <span class="p">)</span>  <span class="c1"># [..., D], [..., 1]</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">fidelity_col</span> <span class="o">==</span> <span class="n">fidelity</span>  <span class="c1"># [..., ]</span>
+    <span class="n">inds</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask</span><span class="p">)[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># [..., ]</span>
+    <span class="n">inputs_for_fidelity</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">input_points</span><span class="p">,</span> <span class="n">inds</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># [..., D]</span>
+    <span class="n">observations_for_fidelity</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="p">,</span> <span class="n">inds</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># [..., 1]</span>
+    <span class="k">return</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">query_points</span><span class="o">=</span><span class="n">inputs_for_fidelity</span><span class="p">,</span> <span class="n">observations</span><span class="o">=</span><span class="n">observations_for_fidelity</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="add_fidelity_column"><a class="viewcode-back" href="../../autoapi/trieste/data/index.html#trieste.data.add_fidelity_column">[docs]</a><span class="k">def</span> <span class="nf">add_fidelity_column</span><span class="p">(</span><span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">fidelity</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Add fidelity column to query_points without fidelity data</span>
+
+<span class="sd">    :param query_points: query points without fidelity to add fidelity column to</span>
+<span class="sd">    :param fidelity: fidelity to populate fidelity column with</span>
+<span class="sd">    :return: TensorType of query points with fidelity column added</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fidelity_col</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">((</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">query_points</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="mi">1</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">query_points</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="n">fidelity</span>
+    <span class="n">query_points_for_fidelity</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">query_points</span><span class="p">,</span> <span class="n">fidelity_col</span><span class="p">],</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">query_points_for_fidelity</span></div>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

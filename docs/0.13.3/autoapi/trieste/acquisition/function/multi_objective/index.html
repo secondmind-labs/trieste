@@ -1,0 +1,1171 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.multi_objective &#8212; trieste 0.13.3 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../../" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/jquery.js"></script>
+    <script src="../../../../../_static/underscore.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="trieste.acquisition.function.utils" href="../utils/index.html" />
+    <link rel="prev" title="trieste.acquisition.function.greedy_batch" href="../greedy_batch/index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../../index.html">
+  <img src="../../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.13.3  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables autoapi/trieste/acquisition/function/multi_objective/index and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.13.3'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "autoapi/trieste/acquisition/function/multi_objective/index.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "autoapi/trieste/acquisition/function/multi_objective/index.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.13.3") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="current nav bd-sidenav">
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../../index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="../index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3">
+      <a class="reference internal" href="../active_learning/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.active_learning
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../continuous_thompson_sampling/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.continuous_thompson_sampling
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../entropy/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.entropy
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.function
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../greedy_batch/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.greedy_batch
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3 current active">
+      <a class="current reference internal" href="#">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.multi_objective
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../utils/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.utils
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../multi_objective/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.multi_objective
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/dominance/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.dominance
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/pareto/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.pareto
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/partition/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.partition
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../interface/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.interface
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../models/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflow/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflow
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/inducing_point_selectors/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.inducing_point_selectors
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/optimizer/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.optimizer
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflux/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflux
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflux/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflux.builders
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/keras/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.keras
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/architectures/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.architectures
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../models/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../objectives/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.objectives
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+  <label for="toctree-checkbox-8">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/single_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.single_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../utils/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../ask_tell_optimization/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.ask_tell_optimization
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../logging/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.logging
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../space/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../types/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.types
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../version/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.version
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement">
+     ExpectedHypervolumeImprovement
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.expected_hv_improvement">
+     expected_hv_improvement
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.expected_hv_improvement.update">
+       update
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.expected_hv_improvement.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.BatchMonteCarloExpectedHypervolumeImprovement">
+     BatchMonteCarloExpectedHypervolumeImprovement
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.BatchMonteCarloExpectedHypervolumeImprovement.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.batch_ehvi">
+     batch_ehvi
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.ExpectedConstrainedHypervolumeImprovement">
+     ExpectedConstrainedHypervolumeImprovement
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.ExpectedConstrainedHypervolumeImprovement._update_expected_improvement_fn">
+       _update_expected_improvement_fn
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.HIPPO">
+     HIPPO
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.HIPPO.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.HIPPO.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.hippo_penalizer">
+     hippo_penalizer
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.multi_objective.hippo_penalizer.update">
+       update
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.acquisition.function.multi_objective">
+<span id="trieste-acquisition-function-multi-objective"></span><h1><a class="reference internal" href="#module-trieste.acquisition.function.multi_objective" title="trieste.acquisition.function.multi_objective"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.multi_objective</span></code></a><a class="headerlink" href="#module-trieste.acquisition.function.multi_objective" title="Permalink to this headline">#</a></h1>
+<p>This module contains multi-objective acquisition function builders.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt id="trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ExpectedHypervolumeImprovement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">reference_point_spec</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span> <span class="p"><span class="pre">|</span></span> <span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">…</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">TensorType</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">get_reference_point</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#ExpectedHypervolumeImprovement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></code></a>[<a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>Builder for the expected hypervolume improvement acquisition function.
+The implementation of the acquisition function largely
+follows <span id="id1">[<a class="reference internal" href="../../../index.html#id17" title="Kaifeng Yang, Michael Emmerich, André Deutz, and Thomas Bäck. Efficient computation of expected hypervolume improvement using box decomposition algorithms. Journal of Global Optimization, 75(1):3–34, 2019.">YEDBack19</a>]</span></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>reference_point_spec</strong> – this method is used to determine how the reference point is
+calculated. If a Callable function specified, it is expected to take existing
+posterior mean-based observations (to screen out the observation noise) and return
+a reference point with shape [D] (D represents number of objectives). If the Pareto
+front location is known, this arg can be used to specify a fixed reference point
+in each bo iteration. A dynamic reference point updating strategy is used by
+default to set a reference point according to the datasets.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#ExpectedHypervolumeImprovement.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer. Must be populated.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The expected hypervolume improvement acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#ExpectedHypervolumeImprovement.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.ExpectedHypervolumeImprovement.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer. Must be populated.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.multi_objective.expected_hv_improvement">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">expected_hv_improvement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">partition_bounds</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#expected_hv_improvement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.expected_hv_improvement" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionClass" title="trieste.acquisition.interface.AcquisitionFunctionClass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionClass</span></code></a></p>
+<p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionFunctionClass</span></code> is an acquisition function represented using a class
+rather than as a standalone function. Using a class to represent an acquisition function
+makes it easier to update it, to avoid having to retrace the function on every call.</p>
+<p>expected Hyper-volume (HV) calculating using Eq. 44 of <span id="id2">[<a class="reference internal" href="../../../index.html#id17" title="Kaifeng Yang, Michael Emmerich, André Deutz, and Thomas Bäck. Efficient computation of expected hypervolume improvement using box decomposition algorithms. Journal of Global Optimization, 75(1):3–34, 2019.">YEDBack19</a>]</span> paper.
+The expected hypervolume improvement calculation in the non-dominated region
+can be decomposed into sub-calculations based on each partitioned cell.
+For easier calculation, this sub-calculation can be reformulated as a combination
+of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+function calculations, respectively.</p>
+<p>Note:
+1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+algorithm, we do not assume the last dimension of the partitioned cell has only one
+(lower) bound (i.e., minus infinity, which is used in the <span id="id3">[<a class="reference internal" href="../../../index.html#id17" title="Kaifeng Yang, Michael Emmerich, André Deutz, and Thomas Bäck. Efficient computation of expected hypervolume improvement using box decomposition algorithms. Journal of Global Optimization, 75(1):3–34, 2019.">YEDBack19</a>]</span> paper).
+This is not as efficient as the original paper, but is applicable to different non-dominated
+partition algorithm.
+2. As the Psi and nu function in the original paper are defined for maximization problems,
+we inverse our minimisation problem (to also be a maximisation), allowing use of the
+original notation and equations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function.</p></li>
+<li><p><strong>partition_bounds</strong> – with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+bounds for hypervolume improvement calculation</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The expected_hv_improvement acquisition function modified for objective
+minimisation. This function will raise <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or
+<code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size greater than one.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.expected_hv_improvement.update">
+<code class="sig-name descname"><span class="pre">update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">partition_bounds</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#expected_hv_improvement.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.expected_hv_improvement.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Update the acquisition function with new partition bounds.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.expected_hv_improvement.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#expected_hv_improvement.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.expected_hv_improvement.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call acquisition function.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.multi_objective.BatchMonteCarloExpectedHypervolumeImprovement">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">BatchMonteCarloExpectedHypervolumeImprovement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sample_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_point_spec</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span> <span class="p"><span class="pre">|</span></span> <span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">…</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">TensorType</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">get_reference_point</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">DEFAULTS.JITTER</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#BatchMonteCarloExpectedHypervolumeImprovement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.BatchMonteCarloExpectedHypervolumeImprovement" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></code></a>[<a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.HasReparamSampler" title="trieste.models.interfaces.HasReparamSampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.HasReparamSampler</span></code></a>]</p>
+<p>Builder for the batch expected hypervolume improvement acquisition function.
+The implementation of the acquisition function largely
+follows <span id="id4">[<a class="reference internal" href="../../../index.html#id12" title="Samuel Daulton, Maximilian Balandat, and Eytan Bakshy. Differentiable expected hypervolume improvement for parallel multi-objective bayesian optimization. arXiv preprint arXiv:2006.05078, 2020.">DBB20</a>]</span></p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sample_size</strong> – The number of samples from model predicted distribution for
+each batch of points.</p></li>
+<li><p><strong>reference_point_spec</strong> – this method is used to determine how the reference point is
+calculated. If a Callable function specified, it is expected to take existing
+posterior mean-based observations (to screen out the observation noise) and return
+a reference point with shape [D] (D represents number of objectives). If the Pareto
+front location is known, this arg can be used to specify a fixed reference point
+in each bo iteration. A dynamic reference point updating strategy is used by
+default to set a reference point according to the datasets.</p></li>
+<li><p><strong>jitter</strong> – The size of the jitter to use when stabilising the Cholesky decomposition of
+the covariance matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">sample_size</span></code> is not positive, or
+<code class="docutils literal notranslate"><span class="pre">jitter</span></code> is negative.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.BatchMonteCarloExpectedHypervolumeImprovement.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.HasReparamSampler" title="trieste.models.interfaces.HasReparamSampler"><span class="pre">trieste.models.interfaces.HasReparamSampler</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#BatchMonteCarloExpectedHypervolumeImprovement.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.BatchMonteCarloExpectedHypervolumeImprovement.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model. Must have event shape [1].</p></li>
+<li><p><strong>dataset</strong> – The data from the observer. Must be populated.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The batch expected hypervolume improvement acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.function.multi_objective.batch_ehvi">
+<code class="sig-name descname"><span class="pre">batch_ehvi</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sampler</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ReparametrizationSampler" title="trieste.models.ReparametrizationSampler"><span class="pre">trieste.models.ReparametrizationSampler</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.HasReparamSampler" title="trieste.models.interfaces.HasReparamSampler"><span class="pre">trieste.models.interfaces.HasReparamSampler</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sampler_jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">partition_bounds</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.11)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#batch_ehvi"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.batch_ehvi" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>sampler</strong> – The posterior sampler, which given query points <cite>at</cite>, is able to sample
+the possible observations at ‘at’.</p></li>
+<li><p><strong>sampler_jitter</strong> – The size of the jitter to use in sampler when stabilising the Cholesky
+decomposition of the covariance matrix.</p></li>
+<li><p><strong>partition_bounds</strong> – with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+bounds for hypervolume improvement calculation</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The batch expected hypervolume improvement acquisition
+function for objective minimisation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.multi_objective.ExpectedConstrainedHypervolumeImprovement">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ExpectedConstrainedHypervolumeImprovement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objective_tag</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">constraint_builder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionBuilder" title="trieste.acquisition.interface.AcquisitionFunctionBuilder"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionBuilder</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_feasibility_probability</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">0.5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">reference_point_spec</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.11)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">TensorType</span> <span class="p"><span class="pre">|</span></span> <span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">…</span></span><span class="p"><span class="pre">,</span> </span><span class="pre">TensorType</span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">get_reference_point</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#ExpectedConstrainedHypervolumeImprovement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.ExpectedConstrainedHypervolumeImprovement" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../function/index.html#trieste.acquisition.function.function.ExpectedConstrainedImprovement" title="trieste.acquisition.function.function.ExpectedConstrainedImprovement"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.function.function.ExpectedConstrainedImprovement</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span></code>]</p>
+<p>Builder for the constrained expected hypervolume improvement acquisition function.
+This function essentially combines ExpectedConstrainedImprovement and
+ExpectedHypervolumeImprovement.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>objective_tag</strong> – The tag for the objective data and model.</p></li>
+<li><p><strong>constraint_builder</strong> – The builder for the constraint function.</p></li>
+<li><p><strong>min_feasibility_probability</strong> – The minimum probability of feasibility for a
+“best point” to be considered feasible.</p></li>
+<li><p><strong>reference_point_spec</strong> – this method is used to determine how the reference point is
+calculated. If a Callable function specified, it is expected to take existing posterior
+mean-based feasible observations (to screen out the observation noise) and return a
+reference point with shape [D] (D represents number of objectives). If the feasible
+Pareto front location is known, this arg can be used to specify a fixed reference
+point in each bo iteration. A dynamic reference point updating strategy is used by
+default to set a reference point according to the datasets.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.ExpectedConstrainedHypervolumeImprovement._update_expected_improvement_fn">
+<code class="sig-name descname"><span class="pre">_update_expected_improvement_fn</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objective_model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feasible_mean</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#ExpectedConstrainedHypervolumeImprovement._update_expected_improvement_fn"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.ExpectedConstrainedHypervolumeImprovement._update_expected_improvement_fn" title="Permalink to this definition">#</a></dt>
+<dd><p>Set or update the unconstrained expected improvement function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>objective_model</strong> – The objective model.</p></li>
+<li><p><strong>feasible_mean</strong> – The mean of the feasible query points.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.multi_objective.HIPPO">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">HIPPO</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">objective_tag</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">OBJECTIVE</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">base_acquisition_function_builder</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">AcquisitionFunctionBuilder</span><span class="p"><span class="pre">[</span></span><span class="pre">ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <span class="pre">SingleModelAcquisitionBuilder</span><span class="p"><span class="pre">[</span></span><span class="pre">ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span> <span class="p"><span class="pre">|</span></span> <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#HIPPO"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.HIPPO" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder" title="trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span></code>]</p>
+<p>HIPPO: HIghly Parallelizable Pareto Optimization</p>
+<p>Builder of the acquisition function for greedily collecting batches by HIPPO
+penalization in multi-objective optimization by penalizing batch points
+by their distance in the objective space. The resulting acquistion function
+takes in a set of pending points and returns a base multi-objective acquisition function
+penalized around those points.</p>
+<p>Penalization is applied to the acquisition function multiplicatively. However, to
+improve numerical stability, we perform additive penalization in a log space.</p>
+<p>Initializes the HIPPO acquisition function builder.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>objective_tag</strong> – The tag for the objective data and model.</p></li>
+<li><p><strong>base_acquisition_function_builder</strong> – Base acquisition function to be
+penalized. Defaults to Expected Hypervolume Improvement, also supports
+its constrained version.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.HIPPO.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#HIPPO.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.HIPPO.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><p>Creates a new instance of the acquisition function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>models</strong> – The models.</p></li>
+<li><p><strong>datasets</strong> – The data from the observer. Must be populated.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The HIPPO acquisition function.</p>
+</dd>
+<dt class="field-odd">Raises</dt>
+<dd class="field-odd"><p><strong>tf.errors.InvalidArgumentError</strong> – If the <code class="docutils literal notranslate"><span class="pre">dataset</span></code> is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.HIPPO.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">models</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">trieste.acquisition.interface.ProbabilisticModelType</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">datasets</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.Tag" title="trieste.types.Tag"><span class="pre">trieste.types.Tag</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">new_optimization_step</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.11)"><span class="pre">bool</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#HIPPO.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.HIPPO.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><p>Updates the acquisition function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>models</strong> – The models.</p></li>
+<li><p><strong>datasets</strong> – The data from the observer. Must be populated.</p></li>
+<li><p><strong>pending_points</strong> – Points already chosen to be in the current batch (of shape [M,D]),
+where M is the number of pending points and D is the search space dimension.</p></li>
+<li><p><strong>new_optimization_step</strong> – Indicates whether this call to update_acquisition_function
+is to start of a new optimization step, of to continue collecting batch of points
+for the current step. Defaults to <code class="docutils literal notranslate"><span class="pre">True</span></code>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The updated acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.multi_objective.hippo_penalizer">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">hippo_penalizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#hippo_penalizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.hippo_penalizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the penalization function used for multi-objective greedy batch Bayesian
+optimization.</p>
+<p>A candidate point <span class="math notranslate nohighlight">\(x\)</span> is penalized based on the Mahalanobis distance to a
+given pending point <span class="math notranslate nohighlight">\(p_i\)</span>. Since we assume objectives to be independent,
+the Mahalanobis distance between these points becomes a Eucledian distance
+normalized by standard deviation. Penalties for multiple pending points are multiplied,
+and the resulting quantity is warped with the arctan function to <span class="math notranslate nohighlight">\([0, 1]\)</span> interval.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model over the specified <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The penalization function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+<p>Initialize the MO penalizer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>pending_points</strong> – The points we penalize with respect to.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><strong>ValueError</strong></a> – If pending points are empty or None.</p>
+</dd>
+<dt class="field-odd">Returns</dt>
+<dd class="field-odd"><p>The penalization function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.11)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.multi_objective.hippo_penalizer.update">
+<code class="sig-name descname"><span class="pre">update</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">pending_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.11)"><span class="pre">None</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/multi_objective.html#hippo_penalizer.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.multi_objective.hippo_penalizer.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Update the penalizer with new pending points.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

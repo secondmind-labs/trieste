@@ -1,0 +1,96 @@
+:orphan:
+
+:py:mod:`trieste.acquisition.utils`
+===================================
+
+.. py:module:: trieste.acquisition.utils
+
+
+Module Contents
+---------------
+
+.. py:function:: split_acquisition_function(fn: trieste.acquisition.interface.AcquisitionFunction, split_size: int) -> trieste.acquisition.interface.AcquisitionFunction
+
+   A wrapper around an :const:`AcquisitionFunction` to split its input into batches.
+   Splits `x` into batches along the first dimension, calls `fn` on each batch, and then stitches
+   the results back together, so that it looks like `fn` was called with all of `x` in one batch.
+   :param fn: Acquisition function to split.
+   :param split_size: Call fn with tensors of at most this size.
+   :return: Split acquisition function.
+
+
+.. py:function:: split_acquisition_function_calls(optimizer: trieste.acquisition.optimizer.AcquisitionOptimizer[trieste.space.SearchSpaceType], split_size: int) -> trieste.acquisition.optimizer.AcquisitionOptimizer[trieste.space.SearchSpaceType]
+
+   A wrapper around our :const:`AcquisitionOptimizer`s. This class wraps a
+   :const:`AcquisitionOptimizer` so that evaluations of the acquisition functions
+   are split into batches on the first dimension and then stitched back together.
+   This can be useful to reduce memory usage when evaluating functions over large spaces.
+
+   :param optimizer: An optimizer that returns batches of points with shape [V, ...].
+   :param split_size: The desired maximum number of points in acquisition function evaluations.
+   :return: An :const:`AcquisitionOptimizer` that still returns points with the shape [V, ...]
+       but evaluates at most split_size points at a time.
+
+
+.. py:function:: select_nth_output(x: trieste.types.TensorType, output_dim: int = 0) -> trieste.types.TensorType
+
+   A utility function for trajectory sampler-related acquisition functions which selects the `n`th
+   output as the trajectory to be used, with `n` specified by ``output_dim``. Defaults to the first
+   output.
+
+   :param x: Input with shape [..., B, L], where L is the number of outputs of the model.
+   :param output_dim: Dimension of the output to be selected. Defaults to the first output.
+   :return: TensorType with shape [..., B], where the output_dim dimension has been selected to
+       reduce the input.
+
+
+.. py:function:: get_local_dataset(local_space: trieste.space.SearchSpaceType, dataset: trieste.data.Dataset) -> trieste.data.Dataset
+
+   A utility function that takes in a dataset and returns the entries lying
+   within a given search space.
+
+   :param local_space: A search space.
+   :param dataset: A Dataset.
+   :return: A Dataset containing entries only in the local_space.
+
+
+.. py:function:: copy_to_local_models(global_model: trieste.models.ProbabilisticModelType, num_local_models: int, key: trieste.types.Tag = OBJECTIVE) -> Mapping[trieste.types.Tag, trieste.models.ProbabilisticModelType]
+
+   Helper method to copy a global model to local models.
+
+   :param global_model: The global model.
+   :param num_local_models: The number of local models to create.
+   :param key: The tag prefix for the local models.
+   :return: A mapping of the local models.
+
+
+.. py:function:: with_local_datasets(datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], num_local_datasets: int, local_dataset_indices: Optional[Sequence[trieste.types.TensorType]] = None) -> Dict[trieste.types.Tag, trieste.data.Dataset]
+
+   Helper method to add local datasets if they do not already exist, by copying global datasets
+   or a subset thereof.
+
+   :param datasets: The original datasets.
+   :param num_local_datasets: The number of local datasets to add per global tag.
+   :param local_dataset_indices: Optional sequence of indices, indicating which parts of
+       the global datasets should be copied. If None then the entire datasets are copied.
+   :return: The updated mapping of datasets.
+
+
+.. py:function:: get_unique_points_mask(points: trieste.types.TensorType, tolerance: float = 1e-06) -> trieste.types.TensorType
+
+   Find the boolean mask of unique points in a tensor, within a given tolerance.
+
+   Users can get the actual points with:
+
+       mask = get_unique_points_mask(points, tolerance)
+       unique_points = tf.boolean_mask(points, mask)
+
+   Note: this uses a greedy parallel set covering algorithm, so isn't guaranteed to find the
+   smallest possible set of unique points: e.g. for the points [[1],[2],[3]] with tolerance 1,
+   it returns [True, False True] rather than [False, True, False].
+
+   :param points: A tensor of points, with the first dimension being the number of points.
+   :param tolerance: The tolerance up to which points are considered equal.
+   :return: A boolean mask for the unique points.
+
+

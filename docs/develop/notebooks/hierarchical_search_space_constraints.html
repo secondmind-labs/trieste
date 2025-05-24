@@ -1,0 +1,884 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Constraints on a HierarchicalSearchSpace &#8212; trieste develop documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=ae350598" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=16816911"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/hierarchical_search_space_constraints';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'develop';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Ask-Tell optimization interface" href="ask_tell_optimization.html" />
+    <link rel="prev" title="A GPflow hierarchical kernel over a HierarchicalSearchSpace" href="hierarchical_search_space_gpflow_kernel.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="trieste develop documentation - Home"/>
+    <img src="../_static/logo.png" class="logo__image only-dark pst-js-only" alt="trieste develop documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="log_expected_improvement.html">Introduction to LogEI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_ensembles.html">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="feasible_sets.html">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_modelling.html">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space.html">Hierarchical search spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space_gpflow_kernel.html">A GPflow hierarchical kernel over a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code></a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Constraints on a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="recovering_from_errors.html">Recovering from errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_greedy_multiprocessing.html">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_nongreedy_batch_ray.html">Asynchronous batch Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualizing_with_tensorboard.html">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_overview.html">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Constraints on a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code></span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Constraints-on-a-HierarchicalSearchSpace">
+<h1>Constraints on a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code><a class="headerlink" href="#Constraints-on-a-HierarchicalSearchSpace" title="Link to this heading">#</a></h1>
+<p>The previous notebooks built a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code> and a GPflow <code class="docutils literal notranslate"><span class="pre">ArcHierarchical</span></code> kernel over it. Real disjunctive-design problems usually also carry <strong>constraints</strong>. Trieste’s <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code> supports three kinds, all reusing the standard search-space contract (<code class="docutils literal notranslate"><span class="pre">constraints_residuals</span></code> / <code class="docutils literal notranslate"><span class="pre">is_feasible</span></code>), so a constrained space drops straight into the usual Bayesian optimization machinery:</p>
+<ul class="simple">
+<li><p><strong>Global constraints</strong> — ordinary <code class="docutils literal notranslate"><span class="pre">LinearConstraint</span></code> / <code class="docutils literal notranslate"><span class="pre">NonlinearConstraint</span></code> objects enforced on the full flat vector (the same <code class="docutils literal notranslate"><span class="pre">constraints=</span></code> argument as <code class="docutils literal notranslate"><span class="pre">Box</span></code>).</p></li>
+<li><p><strong>Conditional (disjunctive) constraints</strong> — <code class="docutils literal notranslate"><span class="pre">ConditionalConstraint</span></code>, enforced only when a set of indicators take specified values. On inactive rows the residual is the big-M sentinel <code class="docutils literal notranslate"><span class="pre">INACTIVE_CONSTRAINT_RESIDUAL</span></code>, so the point is trivially feasible there and gradient-based polish never crosses the indicator discontinuity.</p></li>
+<li><p><strong>Logical propositions</strong> — <code class="docutils literal notranslate"><span class="pre">LogicalProposition</span></code>, a boolean condition on the indicators alone (no gradient); checked in <code class="docutils literal notranslate"><span class="pre">is_feasible</span></code> only.</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">gpflow</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tf</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">gpflow.kernels</span><span class="w"> </span><span class="kn">import</span> <span class="n">ArcHierarchical</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.acquisition.function</span><span class="w"> </span><span class="kn">import</span> <span class="n">ExpectedImprovement</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.acquisition.rule</span><span class="w"> </span><span class="kn">import</span> <span class="n">EfficientGlobalOptimization</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.bayesian_optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">BayesianOptimizer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.models.gpflow</span><span class="w"> </span><span class="kn">import</span> <span class="n">GaussianProcessRegression</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.objectives</span><span class="w"> </span><span class="kn">import</span> <span class="n">mk_observer</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.space</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">INACTIVE_CONSTRAINT_RESIDUAL</span><span class="p">,</span>
+    <span class="n">BooleanSearchSpace</span><span class="p">,</span>
+    <span class="n">Box</span><span class="p">,</span>
+    <span class="n">ConditionalConstraint</span><span class="p">,</span>
+    <span class="n">HierarchicalSearchSpace</span><span class="p">,</span>
+    <span class="n">LinearConstraint</span><span class="p">,</span>
+    <span class="n">LogicalProposition</span><span class="p">,</span>
+    <span class="n">HierarchyNode</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2026-06-17 10:47:39,438 INFO util.py:154 -- Missing packages: [&#39;ipywidgets&#39;]. Run `pip install -U ipywidgets`, then restart the notebook server for rich notebook output.
+</pre></div></div>
+</div>
+<section id="A-constrained-disjunctive-space">
+<h2>A constrained disjunctive space<a class="headerlink" href="#A-constrained-disjunctive-space" title="Link to this heading">#</a></h2>
+<p>Canonical four-variable disjunction: <span class="math notranslate nohighlight">\(x_1\)</span> unconditional, <span class="math notranslate nohighlight">\(y_1\)</span> a Boolean indicator, <span class="math notranslate nohighlight">\(x_2\)</span> active when <span class="math notranslate nohighlight">\(y_1 = 1\)</span>, <span class="math notranslate nohighlight">\(x_3\)</span> active when <span class="math notranslate nohighlight">\(y_1 = 0\)</span>. We attach:</p>
+<ul class="simple">
+<li><p>a <strong>global</strong> constraint <span class="math notranslate nohighlight">\(x_1 + 0.5\,x_2 \leq 0.9\)</span>;</p></li>
+<li><p>a <strong>conditional</strong> constraint <span class="math notranslate nohighlight">\(x_3 \geq -0.5\)</span>, enforced only on the <span class="math notranslate nohighlight">\(y_1 = 0\)</span> branch.</p></li>
+</ul>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">subspaces</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]),</span>
+    <span class="s2">&quot;y1&quot;</span><span class="p">:</span> <span class="n">BooleanSearchSpace</span><span class="p">(),</span>
+    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">5.0</span><span class="p">]),</span>
+    <span class="s2">&quot;x3&quot;</span><span class="p">:</span> <span class="n">Box</span><span class="p">([</span><span class="o">-</span><span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]),</span>
+<span class="p">}</span>
+<span class="n">hierarchy</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">HierarchyNode</span><span class="p">(</span><span class="s2">&quot;shared&quot;</span><span class="p">,</span> <span class="n">subspace_tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x1&quot;</span><span class="p">]),</span>
+    <span class="n">HierarchyNode</span><span class="p">(</span>
+        <span class="s2">&quot;branch_A&quot;</span><span class="p">,</span>
+        <span class="n">subspace_tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x2&quot;</span><span class="p">],</span>
+        <span class="n">activity_condition_tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;y1&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+    <span class="p">),</span>
+    <span class="n">HierarchyNode</span><span class="p">(</span>
+        <span class="s2">&quot;branch_B&quot;</span><span class="p">,</span>
+        <span class="n">subspace_tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x3&quot;</span><span class="p">],</span>
+        <span class="n">activity_condition_tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;y1&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
+    <span class="p">),</span>
+<span class="p">]</span>
+
+<span class="c1"># Global: x1 + 0.5 x2 &lt;= 0.9  (flat columns [x1, y1, x2, x3] -&gt; A picks x1 and x2).</span>
+<span class="n">global_constraint</span> <span class="o">=</span> <span class="n">LinearConstraint</span><span class="p">(</span>
+    <span class="n">A</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">lb</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="n">INACTIVE_CONSTRAINT_RESIDUAL</span><span class="p">],</span>
+    <span class="n">ub</span><span class="o">=</span><span class="p">[</span><span class="mf">0.9</span><span class="p">],</span>
+<span class="p">)</span>
+<span class="c1"># Conditional: x3 &gt;= -0.5 only when y1 == 0.</span>
+<span class="n">conditional_constraint</span> <span class="o">=</span> <span class="n">ConditionalConstraint</span><span class="p">(</span>
+    <span class="n">constraint</span><span class="o">=</span><span class="n">LinearConstraint</span><span class="p">(</span>
+        <span class="n">A</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">]],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+        <span class="n">lb</span><span class="o">=</span><span class="p">[</span><span class="o">-</span><span class="mf">0.5</span><span class="p">],</span>
+        <span class="n">ub</span><span class="o">=</span><span class="p">[</span><span class="n">INACTIVE_CONSTRAINT_RESIDUAL</span><span class="p">],</span>
+    <span class="p">),</span>
+    <span class="n">indicator_conditions</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;y1&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">},</span>
+    <span class="n">active_subspace_tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x3&quot;</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="n">space</span> <span class="o">=</span> <span class="n">HierarchicalSearchSpace</span><span class="p">(</span>
+    <span class="n">subspaces</span><span class="p">,</span>
+    <span class="n">hierarchy</span><span class="p">,</span>
+    <span class="n">constraints</span><span class="o">=</span><span class="p">[</span><span class="n">global_constraint</span><span class="p">],</span>
+    <span class="n">conditional_constraints</span><span class="o">=</span><span class="p">[</span><span class="n">conditional_constraint</span><span class="p">],</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;has_constraints:&quot;</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">has_constraints</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+has_constraints: True
+</pre></div></div>
+</div>
+</section>
+<section id="Residuals-and-the-big-M-sentinel">
+<h2>Residuals and the big-M sentinel<a class="headerlink" href="#Residuals-and-the-big-M-sentinel" title="Link to this heading">#</a></h2>
+<p><code class="docutils literal notranslate"><span class="pre">constraints_residuals</span></code> stacks the global and conditional residual columns. On a row where the conditional constraint is <em>inactive</em> (<span class="math notranslate nohighlight">\(y_1 = 1\)</span>) its columns are the big-M sentinel — that point is feasible with respect to the conditional constraint regardless of <span class="math notranslate nohighlight">\(x_3\)</span>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># x2 = 0.4 keeps the global constraint x1 + 0.5 x2 = 0.5 &lt;= 0.9 satisfied, so the rows</span>
+<span class="c1"># differ only in the conditional constraint.</span>
+<span class="n">demo</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span>
+            <span class="mf">0.3</span><span class="p">,</span>
+            <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">0.4</span><span class="p">,</span>
+            <span class="mf">0.2</span><span class="p">,</span>
+        <span class="p">],</span>  <span class="c1"># y1=0: conditional active (x3=0.2 &gt;= -0.5 ok) -&gt; feasible</span>
+        <span class="p">[</span>
+            <span class="mf">0.3</span><span class="p">,</span>
+            <span class="mf">0.0</span><span class="p">,</span>
+            <span class="mf">0.4</span><span class="p">,</span>
+            <span class="o">-</span><span class="mf">0.8</span><span class="p">,</span>
+        <span class="p">],</span>  <span class="c1"># y1=0: conditional active (x3=-0.8 violates) -&gt; infeasible</span>
+        <span class="p">[</span>
+            <span class="mf">0.3</span><span class="p">,</span>
+            <span class="mf">1.0</span><span class="p">,</span>
+            <span class="mf">0.4</span><span class="p">,</span>
+            <span class="o">-</span><span class="mf">0.8</span><span class="p">,</span>
+        <span class="p">],</span>  <span class="c1"># y1=1: conditional inactive -&gt; big-M -&gt; feasible</span>
+    <span class="p">],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;residuals (cols: global[lo,hi], conditional[lo,hi]):&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  (inactive sentinel = </span><span class="si">{</span><span class="n">INACTIVE_CONSTRAINT_RESIDUAL</span><span class="si">}</span><span class="s2">)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">constraints_residuals</span><span class="p">(</span><span class="n">demo</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;is_feasible:&quot;</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">is_feasible</span><span class="p">(</span><span class="n">demo</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+residuals (cols: global[lo,hi], conditional[lo,hi]):
+  (inactive sentinel = 10000000000.0)
+[[ 1.e+10  4.e-01  7.e-01  1.e+10]
+ [ 1.e+10  4.e-01 -3.e-01  1.e+10]
+ [ 1.e+10  4.e-01  1.e+10  1.e+10]]
+is_feasible: [ True False  True]
+</pre></div></div>
+</div>
+</section>
+<section id="Logical-propositions-(indicator-only)">
+<h2>Logical propositions (indicator-only)<a class="headerlink" href="#Logical-propositions-(indicator-only)" title="Link to this heading">#</a></h2>
+<p>A <code class="docutils literal notranslate"><span class="pre">LogicalProposition</span></code> constrains the indicators alone. With two indicators we can express “if <span class="math notranslate nohighlight">\(y_2 = 1\)</span> then <span class="math notranslate nohighlight">\(y_1 = 1\)</span>”. It is checked by <code class="docutils literal notranslate"><span class="pre">is_feasible</span></code> but, having no continuous gradient, is excluded from <code class="docutils literal notranslate"><span class="pre">constraints_residuals</span></code>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">subspaces_2</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;x1&quot;</span><span class="p">:</span> <span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]),</span>
+    <span class="s2">&quot;y1&quot;</span><span class="p">:</span> <span class="n">BooleanSearchSpace</span><span class="p">(),</span>
+    <span class="s2">&quot;y2&quot;</span><span class="p">:</span> <span class="n">BooleanSearchSpace</span><span class="p">(),</span>
+    <span class="s2">&quot;x2&quot;</span><span class="p">:</span> <span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">]),</span>
+<span class="p">}</span>
+<span class="n">hierarchy_2</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="n">HierarchyNode</span><span class="p">(</span><span class="s2">&quot;shared&quot;</span><span class="p">,</span> <span class="n">subspace_tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x1&quot;</span><span class="p">]),</span>
+    <span class="n">HierarchyNode</span><span class="p">(</span>
+        <span class="s2">&quot;branch&quot;</span><span class="p">,</span>
+        <span class="n">subspace_tags</span><span class="o">=</span><span class="p">[</span><span class="s2">&quot;x2&quot;</span><span class="p">],</span>
+        <span class="n">activity_condition_tags</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;y1&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s2">&quot;y2&quot;</span><span class="p">:</span> <span class="mi">1</span><span class="p">},</span>
+    <span class="p">),</span>
+<span class="p">]</span>
+<span class="n">space_2</span> <span class="o">=</span> <span class="n">HierarchicalSearchSpace</span><span class="p">(</span>
+    <span class="n">subspaces_2</span><span class="p">,</span>
+    <span class="n">hierarchy_2</span><span class="p">,</span>
+    <span class="n">logical_propositions</span><span class="o">=</span><span class="p">[</span>
+        <span class="n">LogicalProposition</span><span class="p">(</span>
+            <span class="n">fun</span><span class="o">=</span><span class="k">lambda</span> <span class="n">ind</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">logical_or</span><span class="p">(</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">not_equal</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="s2">&quot;y2&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="mf">1.0</span><span class="p">),</span>
+                <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">ind</span><span class="p">[</span><span class="s2">&quot;y1&quot;</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="mf">1.0</span><span class="p">),</span>
+            <span class="p">),</span>
+            <span class="n">name</span><span class="o">=</span><span class="s2">&quot;y2_implies_y1&quot;</span><span class="p">,</span>
+        <span class="p">)</span>
+    <span class="p">],</span>
+<span class="p">)</span>
+<span class="n">pts_2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span>
+    <span class="p">[</span>
+        <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>  <span class="c1"># y2=1, y1=1 -&gt; ok</span>
+        <span class="p">[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">],</span>  <span class="c1"># y2=1, y1=0 -&gt; violates implication</span>
+    <span class="p">],</span>
+    <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;logical is_feasible:&quot;</span><span class="p">,</span> <span class="n">space_2</span><span class="o">.</span><span class="n">is_feasible</span><span class="p">(</span><span class="n">pts_2</span><span class="p">)</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+logical is_feasible: [ True False]
+</pre></div></div>
+</div>
+</section>
+<section id="Constrained-Bayesian-optimization">
+<h2>Constrained Bayesian optimization<a class="headerlink" href="#Constrained-Bayesian-optimization" title="Link to this heading">#</a></h2>
+<p>We minimise a synthetic disjunctive objective over the constrained <code class="docutils literal notranslate"><span class="pre">space</span></code> with trieste’s standard <code class="docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code> rule and <code class="docutils literal notranslate"><span class="pre">ExpectedImprovement</span></code> acquisition, wrapping a GPflow <code class="docutils literal notranslate"><span class="pre">ArcHierarchical</span></code> GPR in a trieste <code class="docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code>.</p>
+<p>Feasibility needs a little care. The generic continuous acquisition optimizer would <em>relax</em> the Boolean indicators to <span class="math notranslate nohighlight">\([0, 1]\)</span> and only pass the <strong>global</strong> constraints to the solver — it does not see the conditional/logical constraints, nor the discreteness of the indicators. Since this space’s feasibility is a known boolean function (<code class="docutils literal notranslate"><span class="pre">space.is_feasible</span></code>), the idiomatic approach is a small custom acquisition optimizer that rejection-samples <strong>feasible</strong> candidates (which are valid by
+construction) and returns the one maximising the acquisition.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">objective</span><span class="p">(</span><span class="n">X</span><span class="p">):</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+    <span class="n">x1</span><span class="p">,</span> <span class="n">y1</span><span class="p">,</span> <span class="n">x2</span><span class="p">,</span> <span class="n">x3</span> <span class="o">=</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">2</span><span class="p">],</span> <span class="n">X</span><span class="p">[:,</span> <span class="mi">3</span><span class="p">]</span>
+    <span class="n">branch_a</span> <span class="o">=</span> <span class="n">y1</span><span class="o">.</span><span class="n">round</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span>
+        <span class="nb">bool</span>
+    <span class="p">)</span>  <span class="c1"># y1 == 1 branch (x2 active) vs y1 == 0 branch (x3 active)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">x1</span><span class="p">)</span>
+        <span class="o">+</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">branch_a</span><span class="p">,</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">x2</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">),</span> <span class="mf">0.5</span> <span class="o">*</span> <span class="n">x3</span><span class="p">)</span>
+    <span class="p">)</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">feasible_sample</span><span class="p">(</span><span class="n">n</span><span class="p">,</span> <span class="n">max_tries</span><span class="o">=</span><span class="mi">100</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Rejection-sample ``n`` feasible points from the constrained space.&quot;&quot;&quot;</span>
+    <span class="n">kept</span><span class="p">,</span> <span class="n">tries</span> <span class="o">=</span> <span class="p">[],</span> <span class="mi">0</span>
+    <span class="k">while</span> <span class="nb">sum</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">k</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">kept</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">n</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">tries</span> <span class="o">&gt;=</span> <span class="n">max_tries</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">RuntimeError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Could not draw </span><span class="si">{</span><span class="n">n</span><span class="si">}</span><span class="s2"> feasible points in </span><span class="si">{</span><span class="n">max_tries</span><span class="si">}</span><span class="s2"> tries.&quot;</span>
+            <span class="p">)</span>
+        <span class="n">pool</span> <span class="o">=</span> <span class="n">space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">n</span><span class="p">)</span>
+        <span class="n">kept</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">boolean_mask</span><span class="p">(</span><span class="n">pool</span><span class="p">,</span> <span class="n">space</span><span class="o">.</span><span class="n">is_feasible</span><span class="p">(</span><span class="n">pool</span><span class="p">))</span><span class="o">.</span><span class="n">numpy</span><span class="p">())</span>
+        <span class="n">tries</span> <span class="o">+=</span> <span class="mi">1</span>
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">kept</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)[:</span><span class="n">n</span><span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">feasible_acquisition_optimizer</span><span class="p">(</span><span class="n">space</span><span class="p">,</span> <span class="n">target_func</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Maximise the acquisition over a pool of rejection-sampled feasible candidates.&quot;&quot;&quot;</span>
+    <span class="c1"># ``EfficientGlobalOptimization`` may pass ``(function, vectorization)``; we use one point.</span>
+    <span class="n">target_func</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">target_func</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">target_func</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">)</span> <span class="k">else</span> <span class="n">target_func</span>
+    <span class="p">)</span>
+    <span class="n">num_candidates</span> <span class="o">=</span> <span class="mi">200</span>
+    <span class="n">candidates</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span>
+        <span class="n">feasible_sample</span><span class="p">(</span><span class="n">num_candidates</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span>
+    <span class="p">)</span>  <span class="c1"># [N, D]</span>
+    <span class="n">acquisition</span> <span class="o">=</span> <span class="n">target_func</span><span class="p">(</span><span class="n">candidates</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:])</span>  <span class="c1"># [N, 1]</span>
+    <span class="k">return</span> <span class="n">candidates</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">acquisition</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]))][</span><span class="kc">None</span><span class="p">]</span>  <span class="c1"># [1, D]</span>
+
+
+<span class="n">observer</span> <span class="o">=</span> <span class="n">mk_observer</span><span class="p">(</span><span class="n">objective</span><span class="p">)</span>
+<span class="n">active_dims</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">space</span><span class="o">.</span><span class="n">dimension</span><span class="p">)))</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">convert_to_tensor</span><span class="p">(</span><span class="n">feasible_sample</span><span class="p">(</span><span class="mi">15</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Wrap a GPflow ArcHierarchical GPR as a trieste model.</span>
+<span class="n">kernel</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Constant</span><span class="p">()</span> <span class="o">*</span> <span class="n">ArcHierarchical</span><span class="p">(</span>
+    <span class="n">space</span><span class="o">.</span><span class="n">to_gpflow_hierarchy</span><span class="p">(),</span> <span class="n">active_dims</span><span class="o">=</span><span class="n">active_dims</span>
+<span class="p">)</span>
+<span class="n">gpr</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">GPR</span><span class="p">(</span>
+    <span class="p">(</span><span class="n">initial_data</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">initial_data</span><span class="o">.</span><span class="n">observations</span><span class="p">),</span>
+    <span class="n">kernel</span><span class="o">=</span><span class="n">kernel</span><span class="p">,</span>
+    <span class="n">noise_variance</span><span class="o">=</span><span class="mf">0.01</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="c1"># NOTE num_kernel_samples=2: perform random-restart hyperparameter sampling, this is supported</span>
+<span class="c1"># from GPflow 2.11.1 onwards.</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpr</span><span class="p">,</span> <span class="n">num_kernel_samples</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+
+<span class="n">rule</span> <span class="o">=</span> <span class="n">EfficientGlobalOptimization</span><span class="p">(</span>
+    <span class="n">builder</span><span class="o">=</span><span class="n">ExpectedImprovement</span><span class="p">(),</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">feasible_acquisition_optimizer</span>
+<span class="p">)</span>
+<span class="n">n_bo_steps</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">space</span><span class="p">)</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span>
+    <span class="n">n_bo_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">rule</span>
+<span class="p">)</span>
+
+<span class="n">final_data</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+<span class="nb">print</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;best feasible objective = </span><span class="si">{</span><span class="nb">float</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="n">final_data</span><span class="o">.</span><span class="n">observations</span><span class="p">))</span><span class="si">:</span><span class="s2">+.3f</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/opt/hostedtoolcache/Python/3.10.20/x64/lib/python3.10/site-packages/gpflow/experimental/utils.py:42: UserWarning: You&#39;re calling gpflow.kernels.hierarchical.HierarchicalEmbeddingKernel.__init__ which is considered *experimental*. Expect: breaking changes, poor documentation, and bugs.
+  warn(
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+best feasible objective = -1.177
+</pre></div></div>
+</div>
+</section>
+<section id="What-this-shows">
+<h2>What this shows<a class="headerlink" href="#What-this-shows" title="Link to this heading">#</a></h2>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code> carries global, conditional, and logical constraints behind the standard <code class="docutils literal notranslate"><span class="pre">is_feasible</span></code> / <code class="docutils literal notranslate"><span class="pre">constraints_residuals</span></code> interface.</p></li>
+<li><p>A constrained disjunctive space drops into trieste’s usual machinery — an <code class="docutils literal notranslate"><span class="pre">ArcHierarchical</span></code> GPR wrapped in <code class="docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code>, optimised by <code class="docutils literal notranslate"><span class="pre">EfficientGlobalOptimization</span></code> with <code class="docutils literal notranslate"><span class="pre">ExpectedImprovement</span></code>.</p></li>
+<li><p>Feasibility (including the discrete indicators and the conditional/logical constraints) enters through a one-line custom acquisition optimizer that maximises the acquisition over <code class="docutils literal notranslate"><span class="pre">space.is_feasible</span></code> candidates; the big-M residual keeps inactive disjunctive branches feasible without special-casing.</p></li>
+</ul>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#A-constrained-disjunctive-space">A constrained disjunctive space</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Residuals-and-the-big-M-sentinel">Residuals and the big-M sentinel</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Logical-propositions-(indicator-only)">Logical propositions (indicator-only)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Constrained-Bayesian-optimization">Constrained Bayesian optimization</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#What-this-shows">What this shows</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

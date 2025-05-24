@@ -1,0 +1,256 @@
+:py:mod:`trieste.models.gpflow.builders`
+========================================
+
+.. py:module:: trieste.models.gpflow.builders
+
+.. autoapi-nested-parse::
+
+   This module contains builders for GPflow models supported in Trieste. We found the default
+   configurations used here to work well in most situation, but they should not be taken as
+   universally good solutions.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: KERNEL_LENGTHSCALE
+   
+
+   Default value of the kernel lengthscale parameter.
+
+
+.. py:data:: KERNEL_PRIOR_SCALE
+   
+
+   Default value of the scaling factor for the kernel lengthscale and variance parameters.
+
+
+.. py:data:: CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE
+   
+
+   Default value of the kernel variance parameter for classification models in the noise free case.
+
+
+.. py:data:: CLASSIFICATION_KERNEL_VARIANCE
+   
+
+   Default value of the kernel variance parameter for classification models.
+
+
+.. py:data:: MAX_NUM_INDUCING_POINTS
+   
+
+   Default maximum number of inducing points.
+
+
+.. py:data:: NUM_INDUCING_POINTS_PER_DIM
+   
+
+   Default number of inducing points per dimension of the search space.
+
+
+.. py:data:: SIGNAL_NOISE_RATIO_LIKELIHOOD
+   
+
+   Default value used for initializing (noise) variance parameter of the likelihood function.
+   If user does not specify it, the noise variance is set to maintain the signal to noise ratio
+   determined by this default value. Signal variance in the kernel is set to the empirical variance.
+
+
+.. py:function:: build_gpr(data: trieste.data.Dataset, search_space: Optional[trieste.space.SearchSpace] = None, kernel_priors: bool = True, likelihood_variance: Optional[float] = None, trainable_likelihood: bool = False, kernel: Optional[gpflow.kernels.Kernel] = None) -> gpflow.models.GPR
+
+   Build a :class:`~gpflow.models.GPR` model with sensible initial parameters and
+   priors. By default, we use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situations, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters. Required unless a kernel is passed.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the noise variance is set to maintain the
+       signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+       variance in the kernel is set to the empirical variance.
+   :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
+       non-trainable. By default set to `False`.
+   :param kernel: The kernel to use in the model, defaults to letting the function set up a
+       :class:`~gpflow.kernels.Matern52` kernel.
+   :return: A :class:`~gpflow.models.GPR` model.
+
+
+.. py:function:: build_sgpr(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, kernel_priors: bool = True, likelihood_variance: Optional[float] = None, trainable_likelihood: bool = False, num_inducing_points: Optional[int] = None, trainable_inducing_points: bool = False) -> gpflow.models.SGPR
+
+   Build a :class:`~gpflow.models.SGPR` model with sensible initial parameters and
+   priors. We use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting.
+
+   For performance reasons number of inducing points should not be changed during Bayesian
+   optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
+   number. By default inducing points are set to Sobol samples for the continuous search space,
+   and simple random samples for discrete or mixed search spaces. This carries
+   the risk that optimization gets stuck if they are not trainable, which calls for adaptive
+   inducing point selection during the optimization. This functionality will be added to Trieste
+   in future.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the noise variance is set to maintain the
+       signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+       variance in the kernel is set to the empirical variance.
+   :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
+       be trainable. By default set to `False`.
+   :param num_inducing_points: The number of inducing points can be optionally set to a
+       certain value. If left unspecified (default), this number is set to either
+       ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by
+       ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+   :param trainable_inducing_points: If set to `True` inducing points will be set to
+       be trainable. This option should be used with caution. By default set to `False`.
+   :return: An :class:`~gpflow.models.SGPR` model.
+
+
+.. py:function:: build_vgp_classifier(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, kernel_priors: bool = True, noise_free: bool = False, kernel_variance: Optional[float] = None) -> gpflow.models.VGP
+
+   Build a :class:`~gpflow.models.VGP` binary classification model with sensible initial
+   parameters and priors. We use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting. In the ``noise_free`` case we do not use prior
+   for the kernel variance parameters.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale). In the ``noise_free`` case kernel variance prior is not set.
+   :param noise_free: If  there is a prior information that the classification problem is a
+       deterministic one, this should be set to `True` and kernel variance will be fixed to a
+       higher default value ``CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE`` leading to sharper
+       classification boundary. In this case prior for the kernel variance parameter is also not
+       set. By default set to `False`.
+   :param kernel_variance: Kernel variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the kernel variance is set to
+       ``CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE`` in the ``noise_free`` case and to
+       ``CLASSIFICATION_KERNEL_VARIANCE`` otherwise.
+   :return: A :class:`~gpflow.models.VGP` model.
+
+
+.. py:function:: build_svgp(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, classification: bool = False, kernel_priors: bool = True, likelihood_variance: Optional[float] = None, trainable_likelihood: bool = False, num_inducing_points: Optional[int] = None, trainable_inducing_points: bool = False) -> gpflow.models.SVGP
+
+   Build a :class:`~gpflow.models.SVGP` model with sensible initial parameters and
+   priors. Both regression and binary classification models are
+   available. We use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting.
+
+   For performance reasons number of inducing points should not be changed during Bayesian
+   optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
+   number. By default inducing points are set to Sobol samples for the continuous search space,
+   and simple random samples for discrete or mixed search spaces. This carries
+   the risk that optimization gets stuck if they are not trainable, which calls for adaptive
+   inducing point selection during the optimization. This functionality will be added to Trieste
+   in future.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters.
+   :param classification: If a classification model is needed, this should be set to `True`, in
+       which case a Bernoulli likelihood will be used. If a regression model is required, this
+       should be set to `False` (default), in which case a Gaussian likelihood is used.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the noise variance is set to maintain the
+       signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+       variance in the kernel is set to the empirical variance. This argument is ignored in the
+       classification case.
+   :param trainable_likelihood: If set to `True` likelihood parameter is set to
+       be trainable. By default set to `False`. This argument is ignored in the classification
+       case.
+   :param num_inducing_points: The number of inducing points can be optionally set to a
+       certain value. If left unspecified (default), this number is set to either
+       ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by
+       ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+   :param trainable_inducing_points: If set to `True` inducing points will be set to
+       be trainable. This option should be used with caution. By default set to `False`.
+   :return: An :class:`~gpflow.models.SVGP` model.
+
+
+.. py:function:: build_multifidelity_autoregressive_models(dataset: trieste.data.Dataset, num_fidelities: int, input_search_space: trieste.space.SearchSpace, likelihood_variance: float = 1e-06, kernel_priors: bool = False, trainable_likelihood: bool = False) -> Sequence[trieste.models.gpflow.models.GaussianProcessRegression]
+
+   Build the individual GPR models required for constructing an MultifidelityAutoregressive model
+   with `num_fidelities` fidelities.
+
+   :param dataset: Dataset of points with which to initialise the individual models,
+       where the final column of the final dimension of the query points contains the fidelity
+   :param num_fidelities: Number of fidelities desired for the MultifidelityAutoregressive model
+   :param input_search_space: The input search space of the models
+   :return: List of initialised GPR models
+
+
+.. py:function:: build_multifidelity_nonlinear_autoregressive_models(dataset: trieste.data.Dataset, num_fidelities: int, input_search_space: trieste.space.SearchSpace, kernel_base_class: Type[gpflow.kernels.Stationary] = gpflow.kernels.Matern32, kernel_priors: bool = True, trainable_likelihood: bool = False) -> Sequence[trieste.models.gpflow.models.GaussianProcessRegression]
+
+   Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model
+
+   Builds a basic Matern32 kernel for the lowest fidelity, and the custom kernel described in
+   :cite:`perdikaris2017nonlinear` for the higher fidelities, which also have an extra input
+   dimension. Note that the initial data that the models with fidelity greater than 0 are
+   initialised with contain dummy data in this extra dimension, and so an `update` of the
+   `MultifidelityNonlinearAutoregressive` is required to propagate real data through to these
+   models.
+
+   :param dataset: The dataset to use to initialise the models
+   :param num_fidelities: The number of fidelities to model
+   :param input_search_space: the search space, used to initialise the kernel parameters
+   :param kernel_base_class: a stationary kernel type
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :return: gprs: A list containing gprs that can be used for the multifidelity model
+
+

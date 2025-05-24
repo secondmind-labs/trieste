@@ -1,0 +1,1003 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Building models with configuration dictionaries &#8212; trieste 0.12.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script src="../_static/jquery.js"></script>
+    <script src="../_static/underscore.js"></script>
+    <script src="../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Recovering from errors during optimization" href="recovering_from_errors.html" />
+    <link rel="prev" title="Data transformation with the help of Ask-Tell interface." href="data_transformation.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../index.html">
+  <img src="../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.12.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables notebooks/model_config and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.12.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "notebooks/model_config.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "notebooks/model_config.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.12.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="expected_improvement.html">
+   Noise-free optimization with Expected Improvement
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="batch_optimization.html">
+   Batch Bayesian Optimization with Batch Expected Improvement, Local Penalization, Kriging Believer and GIBBON
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="thompson_sampling.html">
+   Batch-sequential optimization with Thompson sampling
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="inequality_constraints.html">
+   Inequality constraints
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="failure_ego.html">
+   EGO with a failure region
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="multi_objective_ehvi.html">
+   Multi-objective optimization with Expected HyperVolume Improvement
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="deep_gaussian_processes.html">
+   Using deep Gaussian processes with GPflux for Bayesian optimization.
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="deep_ensembles.html">
+   Bayesian optimization with deep ensembles
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="active_learning.html">
+   Active Learning
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="active_learning_for_binary_classification.html">
+   Active Learning for Gaussian Process Classification Model
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="feasible_sets.html">
+   Bayesian active learning of failure or feasibility regions
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="openai_gym_lunar_lander.html">
+   Trieste meets OpenAI Gym
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">
+   Scalable Thompson Sampling using Sparse Gaussian Process Models
+  </a>
+ </li>
+</ul>
+<ul class="current nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="ask_tell_optimization.html">
+   Ask-Tell Optimization Interface
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="data_transformation.html">
+   Data transformation with the help of Ask-Tell interface.
+  </a>
+ </li>
+ <li class="toctree-l1 current active">
+  <a class="current reference internal" href="#">
+   Building models with configuration dictionaries
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="recovering_from_errors.html">
+   Recovering from errors during optimization
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="asynchronous_greedy_multiprocessing.html">
+   Asynchronous Bayesian optimization with Trieste
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="asynchronous_nongreedy_batch_ray.html">
+   Asynchronous batch Bayesian optimization
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="visualizing_with_tensorboard.html">
+   Tracking and visualizing optimizations using Tensorboard
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#Finding-a-minimum-of-the-Branin-function">
+   Finding a minimum of the Branin function
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#Standard-way-of-setting-up-a-model-of-the-objective-function">
+   Standard way of setting up a model of the objective function
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#Using-configuration-dictionaries">
+   Using configuration dictionaries
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#Using-configuration-dictionaries-for-setting-up-experiments">
+   Using configuration dictionaries for setting up experiments
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#Registry-of-supported-models">
+   Registry of supported models
+  </a>
+ </li>
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#LICENSE">
+   LICENSE
+  </a>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt *,
+div.nbinput.container div.input_area pre,
+div.nboutput.container div.output_area pre,
+div.nbinput.container div.input_area .highlight,
+div.nboutput.container div.output_area .highlight {
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+div.nbinput.container > div[class*=highlight],
+div.nboutput.container > div[class*=highlight] {
+    margin: 0;
+}
+
+div.nbinput.container div.prompt *,
+div.nboutput.container div.prompt * {
+    background: none;
+}
+
+div.nboutput.container div.output_area .highlight,
+div.nboutput.container div.output_area pre {
+    background: unset;
+}
+
+div.nboutput.container div.output_area div.highlight {
+    color: unset;  /* override Pygments text color */
+}
+
+/* avoid gaps between output lines */
+div.nboutput.container div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput.container,
+div.nboutput.container {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput.container,
+    div.nboutput.container {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput.container {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast.container {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput.container div.prompt pre {
+    color: #307FC1;
+}
+
+/* output prompt */
+div.nboutput.container div.prompt pre {
+    color: #BF5B3D;
+}
+
+/* all prompts */
+div.nbinput.container div.prompt,
+div.nboutput.container div.prompt {
+    width: 4.5ex;
+    padding-top: 5px;
+    position: relative;
+    user-select: none;
+}
+
+div.nbinput.container div.prompt > div,
+div.nboutput.container div.prompt > div {
+    position: absolute;
+    right: 0;
+    margin-right: 0.3ex;
+}
+
+@media (max-width: 540px) {
+    div.nbinput.container div.prompt,
+    div.nboutput.container div.prompt {
+        width: unset;
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput.container div.prompt.empty {
+        padding: 0;
+    }
+
+    div.nbinput.container div.prompt > div,
+    div.nboutput.container div.prompt > div {
+        position: unset;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput.container div.prompt pre,
+div.nboutput.container div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput.container div.input_area,
+div.nboutput.container div.output_area {
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput.container div.input_area,
+    div.nboutput.container div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput.container div.input_area {
+    border: 1px solid #e0e0e0;
+    border-radius: 2px;
+    /*background: #f5f5f5;*/
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput.container div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.imgmath center alignment in output cells */
+div.nboutput.container div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput.container div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+
+
+div.nbinput.container div.input_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight] > pre,
+div.nboutput.container div.output_area div[class*=highlight].math,
+div.nboutput.container div.output_area.rendered_html,
+div.nboutput.container div.output_area > div.output_javascript,
+div.nboutput.container div.output_area:not(.rendered_html) > img{
+    padding: 5px;
+    margin: 0;
+}
+
+/* fix copybtn overflow problem in chromium (needed for 'sphinx_copybutton') */
+div.nbinput.container div.input_area > div[class^='highlight'],
+div.nboutput.container div.output_area > div[class^='highlight']{
+    overflow-y: hidden;
+}
+
+/* hide copybtn icon on prompts (needed for 'sphinx_copybutton') */
+.prompt .copybtn {
+    display: none;
+}
+
+/* Some additional styling taken form the Jupyter notebook CSS */
+div.rendered_html table {
+  border: none;
+  border-collapse: collapse;
+  border-spacing: 0;
+  color: black;
+  font-size: 12px;
+  table-layout: fixed;
+}
+div.rendered_html thead {
+  border-bottom: 1px solid black;
+  vertical-align: bottom;
+}
+div.rendered_html tr,
+div.rendered_html th,
+div.rendered_html td {
+  text-align: right;
+  vertical-align: middle;
+  padding: 0.5em 0.5em;
+  line-height: normal;
+  white-space: normal;
+  max-width: none;
+  border: none;
+}
+div.rendered_html th {
+  font-weight: bold;
+}
+div.rendered_html tbody tr:nth-child(odd) {
+  background: #f5f5f5;
+}
+div.rendered_html tbody tr:hover {
+  background: rgba(66, 165, 245, 0.2);
+}
+</style>
+<div class="section" id="Building-models-with-configuration-dictionaries">
+<h1>Building models with configuration dictionaries<a class="headerlink" href="#Building-models-with-configuration-dictionaries" title="Permalink to this headline">#</a></h1>
+<p>If you are an expert user of Trieste and some modelling library, GPflow for example, then building models via a configuration dictionary might be a useful alternative to working with model and optimizer wrappers. Here we provide an overview of how to use configuration dictionaries.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_CPP_MIN_LOG_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3&quot;</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+
+<span class="n">tf</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s2">&quot;ERROR&quot;</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">trieste</span>
+<span class="kn">from</span> <span class="nn">trieste.objectives</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">BRANIN_SEARCH_SPACE</span><span class="p">,</span>
+    <span class="n">SCALED_BRANIN_MINIMUM</span><span class="p">,</span>
+    <span class="n">scaled_branin</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">trieste.objectives.utils</span> <span class="kn">import</span> <span class="n">mk_observer</span>
+<span class="kn">from</span> <span class="nn">trieste.space</span> <span class="kn">import</span> <span class="n">Box</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="Finding-a-minimum-of-the-Branin-function">
+<h2>Finding a minimum of the Branin function<a class="headerlink" href="#Finding-a-minimum-of-the-Branin-function" title="Permalink to this headline">#</a></h2>
+<p>In this example, as in many other tutorials, we look to find the minimum value of the familiar two-dimensional Branin function over the hypercube <span class="math notranslate nohighlight">\([0, 1]^2\)</span>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># convert the objective function to a single-output observer</span>
+<span class="n">observer</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">mk_observer</span><span class="p">(</span><span class="n">scaled_branin</span><span class="p">)</span>
+
+<span class="c1"># Sample the observer over the search space</span>
+<span class="n">num_initial_points</span> <span class="o">=</span> <span class="mi">5</span>
+<span class="n">search_space</span> <span class="o">=</span> <span class="n">BRANIN_SEARCH_SPACE</span>
+<span class="n">initial_query_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample_sobol</span><span class="p">(</span><span class="n">num_initial_points</span><span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">initial_query_points</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="section" id="Standard-way-of-setting-up-a-model-of-the-objective-function">
+<h2>Standard way of setting up a model of the objective function<a class="headerlink" href="#Standard-way-of-setting-up-a-model-of-the-objective-function" title="Permalink to this headline">#</a></h2>
+<p>The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. We’ll use Gaussian Process (GP) regression in this tutorial, as provided by GPflow.</p>
+<p>The GPflow models cannot be used directly in our Bayesian optimization routines, only through a valid model wrapper. Trieste has wrappers that support several popular models. For instance, <code class="docutils literal notranslate"><span class="pre">GPR</span></code> and <code class="docutils literal notranslate"><span class="pre">SGPR</span></code> models from GPflow have to be used with the <code class="docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code> wrapper. These wrappers standardise outputs from all models, deal with preparation of the data and implement additional methods needed for Bayesian optimization.</p>
+<p>Typical process of setting up a valid model would go as follow. We first set up a GPR model, using some initial data to set some parameters.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">gpflow.models</span> <span class="kn">import</span> <span class="n">GPR</span>
+<span class="kn">from</span> <span class="nn">trieste.models.gpflow</span> <span class="kn">import</span> <span class="n">GaussianProcessRegression</span>
+<span class="kn">from</span> <span class="nn">trieste.models.optimizer</span> <span class="kn">import</span> <span class="n">Optimizer</span>
+
+
+<span class="k">def</span> <span class="nf">build_model</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">variance</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_variance</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Matern52</span><span class="p">(</span><span class="n">variance</span><span class="o">=</span><span class="n">variance</span><span class="p">,</span> <span class="n">lengthscales</span><span class="o">=</span><span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">])</span>
+    <span class="n">gpr</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">GPR</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astuple</span><span class="p">(),</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">noise_variance</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gpr</span>
+
+
+<span class="n">gpflow_model</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Usually constructing a GPflow model would be enough, as it is the only required argument for the model wrappers. Wrappers have other arguments — an <code class="docutils literal notranslate"><span class="pre">optimizer</span></code> argument as a rule and potentially some additional model arguments (for example, <code class="docutils literal notranslate"><span class="pre">num_kernel_samples</span></code> in <code class="docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code>). These arguments are set to sensible defaults and hence typically we can simplify the model building.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpflow_model</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>However, as expert users, we might want to customize the optimizer for the model and set some arguments that we want to pass to it. We need to use Trieste’s optimizer wrappers for that; here <code class="docutils literal notranslate"><span class="pre">Optimizer</span></code> would be the suitable wrapper. We’ll optimize our model with GPflow’s Scipy optimizer and pass some custom parameters to it.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">optimizer</span> <span class="o">=</span> <span class="n">Optimizer</span><span class="p">(</span>
+    <span class="n">optimizer</span><span class="o">=</span><span class="n">gpflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Scipy</span><span class="p">(),</span>
+    <span class="n">minimize_args</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;options&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">maxiter</span><span class="o">=</span><span class="mi">100</span><span class="p">)},</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Finally we build a valid model that can be used with <code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code>. For the <code class="docutils literal notranslate"><span class="pre">GPR</span></code> model we need to use the <code class="docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code> wrapper. We also set a wrapper specific parameter for initialising the kernel.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span>
+    <span class="n">gpflow_model</span><span class="p">,</span> <span class="n">optimizer</span><span class="o">=</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">num_kernel_samples</span><span class="o">=</span><span class="mi">100</span>
+<span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We can now run the Bayesian optimization loop by defining a <code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> and calling its <code class="docutils literal notranslate"><span class="pre">optimize</span></code> method. We are not interested in results here, but for the sake of completeness, lets run the Bayesian optimization as well.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Using-configuration-dictionaries">
+<h2>Using configuration dictionaries<a class="headerlink" href="#Using-configuration-dictionaries" title="Permalink to this headline">#</a></h2>
+<p>Instead of working directly with model and optimizer wrappers, after you know them sufficiently well, you can skip them by using configuration dictionary. It consists of a dictionary with same four arguments that can be passed to any model wrapper: <code class="docutils literal notranslate"><span class="pre">model</span></code>, <code class="docutils literal notranslate"><span class="pre">model_args</span></code>, <code class="docutils literal notranslate"><span class="pre">optimizer</span></code> and <code class="docutils literal notranslate"><span class="pre">optimizer_args</span></code>.</p>
+<p>In the background Trieste combines the <code class="docutils literal notranslate"><span class="pre">optimizer</span></code> and <code class="docutils literal notranslate"><span class="pre">optimizer_args</span></code> to build an optimizer wrapper and then combines the <code class="docutils literal notranslate"><span class="pre">model</span></code>, <code class="docutils literal notranslate"><span class="pre">model_args</span></code> and optimizer wrapper to build a model using the appropriate model wrapper.</p>
+<p>Let’s see this in action. We will re-use the <code class="docutils literal notranslate"><span class="pre">GPR</span></code> model we have created above and use the same additional arguments. As you can see, you retain all the flexibility but can skip working with the interfaces if you know them well already.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">model_config</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">gpflow_model</span><span class="p">,</span>
+    <span class="s2">&quot;model_args&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;num_kernel_samples&quot;</span><span class="p">:</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;optimizer&quot;</span><span class="p">:</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Scipy</span><span class="p">(),</span>
+    <span class="s2">&quot;optimizer_args&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;minimize_args&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;options&quot;</span><span class="p">:</span> <span class="nb">dict</span><span class="p">(</span><span class="n">maxiter</span><span class="o">=</span><span class="mi">100</span><span class="p">)},</span>
+    <span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</div>
+<p>Next you simply pass the configuration dictionary to the <code class="docutils literal notranslate"><span class="pre">optimize</span></code> function and <code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> will sort out which model and optimizer wrapper needs to be used to build a valid model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model_config</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Using-configuration-dictionaries-for-setting-up-experiments">
+<h2>Using configuration dictionaries for setting up experiments<a class="headerlink" href="#Using-configuration-dictionaries-for-setting-up-experiments" title="Permalink to this headline">#</a></h2>
+<p>Another use case is in setting up experiments, where it becomes easier to benchmark Bayesian optimization algorithms. The advantage is that we can easily change the models and set up any argument for them from one experiment to another. We only need to change the object with the experiment specification (<code class="docutils literal notranslate"><span class="pre">experiment_conditions</span></code> below), while the rest of the code for executing experiments can stay the same. Below is an illustration of how could that look like.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">copy</span> <span class="kn">import</span> <span class="n">deepcopy</span>
+
+<span class="kn">from</span> <span class="nn">gpflow.models</span> <span class="kn">import</span> <span class="n">SVGP</span>
+
+
+<span class="k">def</span> <span class="nf">build_gpr_model</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">variance</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_variance</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Matern52</span><span class="p">(</span><span class="n">variance</span><span class="o">=</span><span class="n">variance</span><span class="p">,</span> <span class="n">lengthscales</span><span class="o">=</span><span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">])</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">GPR</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">astuple</span><span class="p">(),</span> <span class="n">kernel</span><span class="p">,</span> <span class="n">noise_variance</span><span class="o">=</span><span class="mf">1e-5</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">model</span>
+
+
+<span class="k">def</span> <span class="nf">build_svgp_model</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="n">inputs</span> <span class="o">=</span> <span class="n">data</span><span class="o">.</span><span class="n">query_points</span>
+    <span class="n">variance</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_variance</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">observations</span><span class="p">)</span>
+    <span class="n">kernel</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Matern52</span><span class="p">(</span><span class="n">variance</span><span class="o">=</span><span class="n">variance</span><span class="p">,</span> <span class="n">lengthscales</span><span class="o">=</span><span class="p">[</span><span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">])</span>
+    <span class="n">model</span> <span class="o">=</span> <span class="n">SVGP</span><span class="p">(</span>
+        <span class="n">kernel</span><span class="p">,</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">likelihoods</span><span class="o">.</span><span class="n">Gaussian</span><span class="p">(),</span> <span class="n">inputs</span><span class="p">[:</span><span class="mi">2</span><span class="p">],</span> <span class="n">num_data</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">model</span>
+
+
+<span class="k">def</span> <span class="nf">run_experiment</span><span class="p">(</span><span class="n">model_config</span><span class="p">):</span>
+    <span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model_config</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span>
+
+
+<span class="c1"># configuration shared by all experiments, this is modified by each experiment condition</span>
+<span class="n">basic_config</span> <span class="o">=</span> <span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">build_gpr_model</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)}</span>
+
+<span class="c1"># here we specify our experiments</span>
+<span class="n">experiment_conditions</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="p">{</span><span class="s2">&quot;model_args&quot;</span><span class="p">:</span> <span class="p">{</span><span class="s2">&quot;num_kernel_samples&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">}},</span>
+    <span class="p">{</span><span class="s2">&quot;model&quot;</span><span class="p">:</span> <span class="n">build_svgp_model</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)},</span>
+<span class="p">]</span>
+
+<span class="n">results</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">exp</span> <span class="ow">in</span> <span class="n">experiment_conditions</span><span class="p">:</span>
+    <span class="n">model_config</span> <span class="o">=</span> <span class="n">deepcopy</span><span class="p">(</span><span class="n">basic_config</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">exp</span><span class="p">:</span>
+        <span class="n">model_config</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">exp</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+    <span class="n">results</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">run_experiment</span><span class="p">(</span><span class="n">model_config</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Optimization failed at step 1, encountered error with traceback:
+Traceback (most recent call last):
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/trieste/bayesian_optimizer.py&#34;, line 701, in optimize
+    model.optimize(dataset)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/trieste/models/gpflow/models.py&#34;, line 278, in optimize
+    self.optimizer.optimize(self.model, dataset)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/trieste/models/optimizer.py&#34;, line 95, in optimize
+    return self.optimizer.minimize(loss_fn, variables, **self.minimize_args)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/gpflow/optimizers/scipy.py&#34;, line 95, in minimize
+    func, initial_params, jac=True, method=method, **scipy_kwargs
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/_minimize.py&#34;, line 624, in minimize
+    callback=callback, **options)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/lbfgsb.py&#34;, line 360, in _minimize_lbfgsb
+    f, g = func_and_grad(x)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/_differentiable_functions.py&#34;, line 267, in fun_and_grad
+    self._update_fun()
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/_differentiable_functions.py&#34;, line 233, in _update_fun
+    self._update_fun_impl()
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/_differentiable_functions.py&#34;, line 137, in update_fun
+    self.f = fun_wrapped(self.x)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/_differentiable_functions.py&#34;, line 134, in fun_wrapped
+    return fun(np.copy(x), *args)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/optimize.py&#34;, line 74, in __call__
+    self._compute_if_needed(x, *args)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/scipy/optimize/optimize.py&#34;, line 68, in _compute_if_needed
+    fg = self.fun(x, *args)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/gpflow/optimizers/scipy.py&#34;, line 136, in _eval
+    loss, grad = _tf_eval(tf.convert_to_tensor(x))
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/tensorflow/python/eager/def_function.py&#34;, line 828, in __call__
+    result = self._call(*args, **kwds)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/tensorflow/python/eager/def_function.py&#34;, line 862, in _call
+    results = self._stateful_fn(*args, **kwds)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/tensorflow/python/eager/function.py&#34;, line 2943, in __call__
+    filtered_flat_args, captured_inputs=graph_function.captured_inputs)  # pylint: disable=protected-access
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/tensorflow/python/eager/function.py&#34;, line 1919, in _call_flat
+    ctx, args, cancellation_manager=cancellation_manager))
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/tensorflow/python/eager/function.py&#34;, line 560, in call
+    ctx=ctx)
+  File &#34;/opt/hostedtoolcache/Python/3.7.13/x64/lib/python3.7/site-packages/tensorflow/python/eager/execute.py&#34;, line 60, in quick_execute
+    inputs, attrs, num_outputs)
+tensorflow.python.framework.errors_impl.InvalidArgumentError:  Input matrix is not invertible.
+         [[{{node StatefulPartitionedCall/triangular_solve/MatrixTriangularSolve}}]] [Op:__inference__tf_eval_34982]
+
+Function call stack:
+_tf_eval
+
+
+Terminating optimization and returning the optimization history. You may be able to use the history to restart the process from a previous successful optimization step.
+
+Optimization completed without errors
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Registry-of-supported-models">
+<h2>Registry of supported models<a class="headerlink" href="#Registry-of-supported-models" title="Permalink to this headline">#</a></h2>
+<p>Configuration dictionaries are made possible with the <code class="docutils literal notranslate"><span class="pre">ModelRegistry</span></code> that contains mapping between each model (e.g. GPflow or GPflux) and the corresponding model wrapper and optimizer wrapper. All models that Trieste currently supports are registered there.</p>
+<p>You can add new models to the registry, in case you have custom models with which you wish to use the configuration dictionaries. Let’s see an example of this. We will register the <code class="docutils literal notranslate"><span class="pre">GPMC</span></code> model from GPflow that is currently not supported. You would likely need to create a new model wrapper (and perhaps a new optimizer wrapper as well), but just for the sake of an example we will borrow here an existing <code class="docutils literal notranslate"><span class="pre">GaussianProcessRegression</span></code> wrapper.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.models</span> <span class="kn">import</span> <span class="n">ModelRegistry</span>
+
+<span class="c1"># adding the GPMC model to the registry</span>
+<span class="n">ModelRegistry</span><span class="o">.</span><span class="n">register_model</span><span class="p">(</span><span class="n">gpflow</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">GPMC</span><span class="p">,</span> <span class="n">GaussianProcessRegression</span><span class="p">)</span>
+
+<span class="c1"># check if it has been registered</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">gpflow</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">GPMC</span> <span class="ow">in</span> <span class="n">ModelRegistry</span><span class="o">.</span><span class="n">get_registered_models</span><span class="p">())</span>
+
+<span class="c1"># you can use the same command to get a list of all supported models and optimizers</span>
+<span class="nb">list</span><span class="p">(</span><span class="n">ModelRegistry</span><span class="o">.</span><span class="n">get_registered_models</span><span class="p">())</span>
+<span class="nb">list</span><span class="p">(</span><span class="n">ModelRegistry</span><span class="o">.</span><span class="n">get_registered_optimizers</span><span class="p">())</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+True
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[gpflow.optimizers.scipy.Scipy,
+ tensorflow.python.keras.optimizer_v2.optimizer_v2.OptimizerV2]
+</pre></div></div>
+</div>
+<p>Note that you can use the same operation to overwrite an existing entry in the registry. For example, if you want to modify the interface used with a registered model and use the modified one instead.</p>
+</div>
+<div class="section" id="LICENSE">
+<h2>LICENSE<a class="headerlink" href="#LICENSE" title="Permalink to this headline">#</a></h2>
+<p><a class="reference external" href="https://github.com/secondmind-labs/trieste/blob/develop/LICENSE">Apache License 2.0</a></p>
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

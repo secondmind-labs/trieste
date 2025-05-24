@@ -1,0 +1,917 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.utils.misc &#8212; trieste 4.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../" id="documentation_options" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script src="../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/utils/misc';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.0.0';
+        </script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      4.0.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      4.0.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.utils.misc</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.utils.misc</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">time</span> <span class="kn">import</span> <span class="n">perf_counter</span>
+<span class="kn">from</span> <span class="nn">types</span> <span class="kn">import</span> <span class="n">TracebackType</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">NoReturn</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Type</span><span class="p">,</span> <span class="n">TypeVar</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">tensorflow.python.util</span> <span class="kn">import</span> <span class="n">nest</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Final</span><span class="p">,</span> <span class="n">final</span>
+
+<span class="kn">from</span> <span class="nn">..observer</span> <span class="kn">import</span> <span class="n">OBJECTIVE</span>
+<span class="kn">from</span> <span class="nn">..types</span> <span class="kn">import</span> <span class="n">Tag</span><span class="p">,</span> <span class="n">TensorType</span>
+
+<div class="viewcode-block" id="C"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.C">[docs]</a><span class="n">C</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;C&quot;</span><span class="p">,</span> <span class="n">bound</span><span class="o">=</span><span class="n">Callable</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="nb">object</span><span class="p">])</span></div>
+<span class="sd">&quot;&quot;&quot; A type variable bound to `typing.Callable`. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="jit"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.jit">[docs]</a><span class="k">def</span> <span class="nf">jit</span><span class="p">(</span><span class="n">apply</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">optimize_kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">C</span><span class="p">],</span> <span class="n">C</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A decorator that conditionally wraps a function with `tf.function`.</span>
+
+<span class="sd">    :param apply: If `True`, the decorator is equivalent to `tf.function`. If `False`, the decorator</span>
+<span class="sd">        does nothing.</span>
+<span class="sd">    :param optimize_kwargs: Additional arguments to `tf.function`.</span>
+<span class="sd">    :return: The decorator.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">decorator</span><span class="p">(</span><span class="n">func</span><span class="p">:</span> <span class="n">C</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">C</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">function</span><span class="p">(</span><span class="n">func</span><span class="p">,</span> <span class="o">**</span><span class="n">optimize_kwargs</span><span class="p">)</span> <span class="k">if</span> <span class="n">apply</span> <span class="k">else</span> <span class="n">func</span>
+
+    <span class="k">return</span> <span class="n">decorator</span></div>
+
+
+<div class="viewcode-block" id="shapes_equal"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.shapes_equal">[docs]</a><span class="k">def</span> <span class="nf">shapes_equal</span><span class="p">(</span><span class="n">this</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">that</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a scalar tensor containing: `True` if ``this`` and ``that`` have equal runtime shapes,</span>
+<span class="sd">    else `False`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">this</span><span class="p">)</span> <span class="o">==</span> <span class="n">tf</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">that</span><span class="p">)</span> <span class="ow">and</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_all</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">this</span><span class="p">)</span> <span class="o">==</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">that</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="to_numpy"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.to_numpy">[docs]</a><span class="k">def</span> <span class="nf">to_numpy</span><span class="p">(</span><span class="n">t</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="s2">&quot;np.ndarray[Any, Any]&quot;</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    :param t: An array-like object.</span>
+<span class="sd">    :return: ``t`` as a NumPy array.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">t</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">):</span>
+        <span class="k">return</span> <span class="n">t</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">t</span></div>
+
+
+<div class="viewcode-block" id="ResultType"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.ResultType">[docs]</a><span class="n">ResultType</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;ResultType&quot;</span><span class="p">,</span> <span class="n">covariant</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; An unbounded covariant type variable. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="Result"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Result">[docs]</a><span class="k">class</span> <span class="nc">Result</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">ResultType</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Represents the result of an operation that can fail with an exception. It contains either the</span>
+<span class="sd">    operation return value (in an :class:`Ok`), or the exception raised (in an :class:`Err`).</span>
+
+<span class="sd">    To check whether instances such as</span>
+
+<span class="sd">        &gt;&gt;&gt; res = Ok(1)</span>
+<span class="sd">        &gt;&gt;&gt; other_res = Err(ValueError(&quot;whoops&quot;))</span>
+
+<span class="sd">    contain a value, use :attr:`is_ok` (or :attr:`is_err`)</span>
+
+<span class="sd">        &gt;&gt;&gt; res.is_ok</span>
+<span class="sd">        True</span>
+<span class="sd">        &gt;&gt;&gt; other_res.is_ok</span>
+<span class="sd">        False</span>
+
+<span class="sd">    We can access the value if it :attr:`is_ok` using :meth:`unwrap`.</span>
+
+<span class="sd">        &gt;&gt;&gt; res.unwrap()</span>
+<span class="sd">        1</span>
+
+<span class="sd">    Trying to access the value of a failed :class:`Result`, or :class:`Err`, will raise the wrapped</span>
+<span class="sd">    exception</span>
+
+<span class="sd">        &gt;&gt;&gt; other_res.unwrap()</span>
+<span class="sd">        Traceback (most recent call last):</span>
+<span class="sd">            ...</span>
+<span class="sd">        ValueError: whoops</span>
+
+<span class="sd">    **Note:** This class is not intended to be subclassed other than by :class:`Ok` and</span>
+<span class="sd">    :class:`Err`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Result.is_ok"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Result.is_ok">[docs]</a>    <span class="k">def</span> <span class="nf">is_ok</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;`True` if this :class:`Result` contains a value, else `False`.&quot;&quot;&quot;</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Result.is_err"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Result.is_err">[docs]</a>    <span class="k">def</span> <span class="nf">is_err</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        `True` if this :class:`Result` contains an error, else `False`. The opposite of</span>
+<span class="sd">        :attr:`is_ok`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_ok</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="Result.unwrap"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Result.unwrap">[docs]</a>    <span class="k">def</span> <span class="nf">unwrap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResultType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: The contained value, if it exists.</span>
+<span class="sd">        :raise Exception: If there is no contained value.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div></div>
+
+
+<span class="nd">@final</span>
+<div class="viewcode-block" id="Ok"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Ok">[docs]</a><span class="k">class</span> <span class="nc">Ok</span><span class="p">(</span><span class="n">Result</span><span class="p">[</span><span class="n">ResultType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wraps the result of a successful evaluation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">value</span><span class="p">:</span> <span class="n">ResultType</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param value: The result of a successful evaluation.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_value</span> <span class="o">=</span> <span class="n">value</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Ok(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_value</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Ok.is_ok"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Ok.is_ok">[docs]</a>    <span class="k">def</span> <span class="nf">is_ok</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;`True` always.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">True</span></div>
+
+<div class="viewcode-block" id="Ok.unwrap"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Ok.unwrap">[docs]</a>    <span class="k">def</span> <span class="nf">unwrap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ResultType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :return: The wrapped value.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_value</span></div></div>
+
+
+<span class="nd">@final</span>
+<div class="viewcode-block" id="Err"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Err">[docs]</a><span class="k">class</span> <span class="nc">Err</span><span class="p">(</span><span class="n">Result</span><span class="p">[</span><span class="n">NoReturn</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Wraps the exception that occurred during a failed evaluation.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">exc</span><span class="p">:</span> <span class="ne">Exception</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param exc: The exception that occurred.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_exc</span> <span class="o">=</span> <span class="n">exc</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;Err(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_exc</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="Err.is_ok"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Err.is_ok">[docs]</a>    <span class="k">def</span> <span class="nf">is_ok</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;`False` always.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="kc">False</span></div>
+
+<div class="viewcode-block" id="Err.unwrap"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Err.unwrap">[docs]</a>    <span class="k">def</span> <span class="nf">unwrap</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">NoReturn</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :raise Exception: Always. Raises the wrapped exception.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="bp">self</span><span class="o">.</span><span class="n">_exc</span></div></div>
+
+
+<div class="viewcode-block" id="DEFAULTS"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.DEFAULTS">[docs]</a><span class="k">class</span> <span class="nc">DEFAULTS</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Default constants used in Trieste.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="DEFAULTS.JITTER"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.DEFAULTS.JITTER">[docs]</a>    <span class="n">JITTER</span><span class="p">:</span> <span class="n">Final</span><span class="p">[</span><span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="mf">1e-6</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The default jitter, typically used to stabilise computations near singular points, such as in</span>
+<span class="sd">    Cholesky decomposition.</span>
+<span class="sd">    &quot;&quot;&quot;</span></div>
+
+
+<div class="viewcode-block" id="K"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.K">[docs]</a><span class="n">K</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;K&quot;</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; An unbound type variable. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="U"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.U">[docs]</a><span class="n">U</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;U&quot;</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; An unbound type variable. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="V"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.V">[docs]</a><span class="n">V</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;V&quot;</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; An unbound type variable. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="map_values"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.map_values">[docs]</a><span class="k">def</span> <span class="nf">map_values</span><span class="p">(</span><span class="n">f</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">U</span><span class="p">],</span> <span class="n">V</span><span class="p">],</span> <span class="n">mapping</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">K</span><span class="p">,</span> <span class="n">U</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">K</span><span class="p">,</span> <span class="n">V</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Apply ``f`` to each value in ``mapping`` and return the result. If ``f`` does not modify its</span>
+<span class="sd">    argument, :func:`map_values` does not modify ``mapping``. For example:</span>
+
+<span class="sd">    &gt;&gt;&gt; import math</span>
+<span class="sd">    &gt;&gt;&gt; squares = {&#39;a&#39;: 1, &#39;b&#39;: 4, &#39;c&#39;: 9}</span>
+<span class="sd">    &gt;&gt;&gt; map_values(math.sqrt, squares)[&#39;b&#39;]</span>
+<span class="sd">    2.0</span>
+<span class="sd">    &gt;&gt;&gt; squares</span>
+<span class="sd">    {&#39;a&#39;: 1, &#39;b&#39;: 4, &#39;c&#39;: 9}</span>
+
+<span class="sd">    :param f: The function to apply to the values in ``mapping``.</span>
+<span class="sd">    :param mapping: A mapping.</span>
+<span class="sd">    :return: A new mapping, whose keys are the same as ``mapping``, and values are the result of</span>
+<span class="sd">        applying ``f`` to each value in ``mapping``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">f</span><span class="p">(</span><span class="n">u</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">u</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span></div>
+
+
+<div class="viewcode-block" id="T"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.T">[docs]</a><span class="n">T</span> <span class="o">=</span> <span class="n">TypeVar</span><span class="p">(</span><span class="s2">&quot;T&quot;</span><span class="p">)</span></div>
+<span class="sd">&quot;&quot;&quot; An unbound type variable. &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="get_value_for_tag"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.get_value_for_tag">[docs]</a><span class="k">def</span> <span class="nf">get_value_for_tag</span><span class="p">(</span>
+    <span class="n">mapping</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">T</span><span class="p">]],</span> <span class="o">*</span><span class="n">tags</span><span class="p">:</span> <span class="n">Tag</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Tag</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">T</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Return the value from a mapping for the first tag found from a sequence of tags.</span>
+
+<span class="sd">    :param mapping: A mapping from tags to values.</span>
+<span class="sd">    :param tags: A tag or a sequence of tags. Sequence is searched in order. If no tags are</span>
+<span class="sd">        provided, the default tag OBJECTIVE is used.</span>
+<span class="sd">    :return: The chosen tag and value of the tag in the mapping, or None for each if the mapping is</span>
+<span class="sd">        None.</span>
+<span class="sd">    :raises ValueError: If none of the tags are in the mapping and the mapping is not None.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="n">tags</span><span class="p">:</span>
+        <span class="n">tags</span> <span class="o">=</span> <span class="p">(</span><span class="n">OBJECTIVE</span><span class="p">,)</span>
+
+    <span class="k">if</span> <span class="n">mapping</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">matched_tag</span> <span class="o">=</span> <span class="nb">next</span><span class="p">((</span><span class="n">tag</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">tags</span> <span class="k">if</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">mapping</span><span class="p">),</span> <span class="kc">None</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">matched_tag</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;none of the tags &#39;</span><span class="si">{</span><span class="n">tags</span><span class="si">}</span><span class="s2">&#39; found in mapping&quot;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">matched_tag</span><span class="p">,</span> <span class="n">mapping</span><span class="p">[</span><span class="n">matched_tag</span><span class="p">]</span></div>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="LocalizedTag"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.LocalizedTag">[docs]</a><span class="k">class</span> <span class="nc">LocalizedTag</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Manage a tag for a local model or dataset. These have a global tag and a local index.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LocalizedTag.global_tag"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.LocalizedTag.global_tag">[docs]</a>    <span class="n">global_tag</span><span class="p">:</span> <span class="n">Tag</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; The global portion of the tag. &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="LocalizedTag.local_index"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.LocalizedTag.local_index">[docs]</a>    <span class="n">local_index</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot; The local index of the tag. &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">__post_init__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_index</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;local index must be non-negative, got </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">local_index</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="LocalizedTag.is_local"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.LocalizedTag.is_local">[docs]</a>    <span class="k">def</span> <span class="nf">is_local</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return True if the tag is a local tag.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">local_index</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span></div>
+
+    <span class="nd">@staticmethod</span>
+<div class="viewcode-block" id="LocalizedTag.from_tag"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.LocalizedTag.from_tag">[docs]</a>    <span class="k">def</span> <span class="nf">from_tag</span><span class="p">(</span><span class="n">tag</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">LocalizedTag</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">LocalizedTag</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Return a LocalizedTag from a given tag.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="n">LocalizedTag</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">tag</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">LocalizedTag</span><span class="p">(</span><span class="n">tag</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="ignoring_local_tags"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.ignoring_local_tags">[docs]</a><span class="k">def</span> <span class="nf">ignoring_local_tags</span><span class="p">(</span><span class="n">mapping</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">T</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="n">Mapping</span><span class="p">[</span><span class="n">Tag</span><span class="p">,</span> <span class="n">T</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Filter out local tags from a mapping, returning a new mapping with only global tags.</span>
+
+<span class="sd">    :param mapping: A mapping from tags to values.</span>
+<span class="sd">    :return: A new mapping with only global tags.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="p">{</span><span class="n">k</span><span class="p">:</span> <span class="n">v</span> <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="n">mapping</span><span class="o">.</span><span class="n">items</span><span class="p">()</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">LocalizedTag</span><span class="o">.</span><span class="n">from_tag</span><span class="p">(</span><span class="n">k</span><span class="p">)</span><span class="o">.</span><span class="n">is_local</span><span class="p">}</span></div>
+
+
+<div class="viewcode-block" id="Timer"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.Timer">[docs]</a><span class="k">class</span> <span class="nc">Timer</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Functionality for timing chunks of code. For example:</span>
+<span class="sd">    &gt;&gt;&gt; from time import sleep</span>
+<span class="sd">    &gt;&gt;&gt; with Timer() as timer: sleep(2.0)</span>
+<span class="sd">    &gt;&gt;&gt; timer.time  # doctest: +SKIP</span>
+<span class="sd">    2.0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__enter__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Timer</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">start</span> <span class="o">=</span> <span class="n">perf_counter</span><span class="p">()</span>
+        <span class="k">return</span> <span class="bp">self</span>
+
+    <span class="k">def</span> <span class="fm">__exit__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="nb">type</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Type</span><span class="p">[</span><span class="ne">BaseException</span><span class="p">]],</span>
+        <span class="n">value</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="ne">BaseException</span><span class="p">],</span>
+        <span class="n">traceback</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TracebackType</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">=</span> <span class="n">perf_counter</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">end</span> <span class="o">-</span> <span class="bp">self</span><span class="o">.</span><span class="n">start</span></div>
+
+
+<div class="viewcode-block" id="flatten_leading_dims"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.flatten_leading_dims">[docs]</a><span class="k">def</span> <span class="nf">flatten_leading_dims</span><span class="p">(</span>
+    <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">output_dims</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flattens the leading dimensions of `x` (all but the last `output_dims` dimensions), and returns</span>
+<span class="sd">    a function that can be used to restore them (typically after first manipulating the</span>
+<span class="sd">    flattened tensor).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_positive</span><span class="p">(</span><span class="n">output_dims</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;output_dims must be positive&quot;</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_less_equal</span><span class="p">(</span>
+        <span class="n">output_dims</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">rank</span><span class="p">(</span><span class="n">x</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="s2">&quot;output_dims must no greater than tensor rank&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">x_batched_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">x</span><span class="p">)</span>
+    <span class="n">batch_shape</span> <span class="o">=</span> <span class="n">x_batched_shape</span><span class="p">[:</span> <span class="o">-</span><span class="n">output_dims</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span> <span class="k">if</span> <span class="n">output_dims</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="n">x_batched_shape</span>
+    <span class="n">input_shape</span> <span class="o">=</span> <span class="n">x_batched_shape</span><span class="p">[</span><span class="o">-</span><span class="n">output_dims</span> <span class="o">+</span> <span class="mi">1</span> <span class="p">:]</span> <span class="k">if</span> <span class="n">output_dims</span> <span class="o">&gt;</span> <span class="mi">1</span> <span class="k">else</span> <span class="p">[]</span>
+    <span class="n">x_flat_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">input_shape</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">unflatten</span><span class="p">(</span><span class="n">y</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">y_flat_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">y</span><span class="p">)</span>
+        <span class="n">output_shape</span> <span class="o">=</span> <span class="n">y_flat_shape</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">y_batched_shape</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">batch_shape</span><span class="p">,</span> <span class="n">output_shape</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">y_batched</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">y_batched_shape</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">y_batched</span>
+
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">x_flat_shape</span><span class="p">),</span> <span class="n">unflatten</span></div>
+
+
+<div class="viewcode-block" id="get_variables"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils.get_variables">[docs]</a><span class="k">def</span> <span class="nf">get_variables</span><span class="p">(</span><span class="nb">object</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">,</span> <span class="o">...</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return the sequence of variables in an object.</span>
+
+<span class="sd">    This is essentially a reimplementation of the `variables` property of tf.Module</span>
+<span class="sd">    but doesn&#39;t require that we, or any of our substructures, inherit from that.</span>
+
+<span class="sd">    :return: A sequence of variables of the object (sorted by attribute</span>
+<span class="sd">      name) followed by variables from all submodules recursively (breadth</span>
+<span class="sd">      first).</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">_is_variable</span><span class="p">(</span><span class="n">obj</span><span class="p">:</span> <span class="n">Any</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">obj</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Variable</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">_flatten</span><span class="p">(</span><span class="nb">object</span><span class="p">,</span> <span class="n">predicate</span><span class="o">=</span><span class="n">_is_variable</span><span class="p">,</span> <span class="n">expand_composites</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span></div>
+
+
+<span class="n">_TF_MODULE_IGNORED_PROPERTIES</span> <span class="o">=</span> <span class="nb">frozenset</span><span class="p">(</span>
+    <span class="p">(</span><span class="s2">&quot;_self_unconditional_checkpoint_dependencies&quot;</span><span class="p">,</span> <span class="s2">&quot;_self_unconditional_dependency_names&quot;</span><span class="p">)</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="_flatten"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils._flatten">[docs]</a><span class="k">def</span> <span class="nf">_flatten</span><span class="p">(</span>  <span class="c1"># type: ignore[no-untyped-def]</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">recursive</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">predicate</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">attribute_traversal_key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+    <span class="n">with_path</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">expand_composites</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Flattened attribute values in sorted order by attribute name.</span>
+
+<span class="sd">    This is taken verbatim from tensorflow core but uses a modified _flatten_module.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">predicate</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">predicate</span> <span class="o">=</span> <span class="k">lambda</span> <span class="n">_</span><span class="p">:</span> <span class="kc">True</span>  <span class="c1"># noqa: E731</span>
+
+    <span class="k">return</span> <span class="n">_flatten_module</span><span class="p">(</span>
+        <span class="n">model</span><span class="p">,</span>
+        <span class="n">recursive</span><span class="o">=</span><span class="n">recursive</span><span class="p">,</span>
+        <span class="n">predicate</span><span class="o">=</span><span class="n">predicate</span><span class="p">,</span>
+        <span class="n">attributes_to_ignore</span><span class="o">=</span><span class="n">_TF_MODULE_IGNORED_PROPERTIES</span><span class="p">,</span>
+        <span class="n">attribute_traversal_key</span><span class="o">=</span><span class="n">attribute_traversal_key</span><span class="p">,</span>
+        <span class="n">with_path</span><span class="o">=</span><span class="n">with_path</span><span class="p">,</span>
+        <span class="n">expand_composites</span><span class="o">=</span><span class="n">expand_composites</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="_flatten_module"><a class="viewcode-back" href="../../../autoapi/trieste/utils/misc/index.html#trieste.utils._flatten_module">[docs]</a><span class="k">def</span> <span class="nf">_flatten_module</span><span class="p">(</span>  <span class="c1"># type: ignore[no-untyped-def]</span>
+    <span class="n">module</span><span class="p">,</span>
+    <span class="n">recursive</span><span class="p">,</span>
+    <span class="n">predicate</span><span class="p">,</span>
+    <span class="n">attribute_traversal_key</span><span class="p">,</span>
+    <span class="n">attributes_to_ignore</span><span class="p">,</span>
+    <span class="n">with_path</span><span class="p">,</span>
+    <span class="n">expand_composites</span><span class="p">,</span>
+    <span class="n">module_path</span><span class="o">=</span><span class="p">(),</span>
+    <span class="n">seen</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Implementation of `flatten`.</span>
+
+<span class="sd">    This is a reimplementation of the equivalent function in tf.Module so</span>
+<span class="sd">    that we can extract the list of variables from a Trieste model wrapper</span>
+<span class="sd">    without the need to inherit from it.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">seen</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">seen</span> <span class="o">=</span> <span class="p">{</span><span class="nb">id</span><span class="p">(</span><span class="n">module</span><span class="p">)}</span>
+
+    <span class="c1"># [CHANGED] Differently from the original version, here we catch an exception</span>
+    <span class="c1"># as some of the components of the wrapper do not implement __dict__</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">module_dict</span> <span class="o">=</span> <span class="nb">vars</span><span class="p">(</span><span class="n">module</span><span class="p">)</span>
+    <span class="k">except</span> <span class="ne">TypeError</span><span class="p">:</span>
+        <span class="n">module_dict</span> <span class="o">=</span> <span class="p">{}</span>
+
+    <span class="n">submodules</span> <span class="o">=</span> <span class="p">[]</span>
+
+    <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">module_dict</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="n">attribute_traversal_key</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">attributes_to_ignore</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="n">prop</span> <span class="o">=</span> <span class="n">module_dict</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">leaves</span> <span class="o">=</span> <span class="n">nest</span><span class="o">.</span><span class="n">flatten_with_tuple_paths</span><span class="p">(</span><span class="n">prop</span><span class="p">,</span> <span class="n">expand_composites</span><span class="o">=</span><span class="n">expand_composites</span><span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>  <span class="c1"># pylint: disable=broad-except</span>
+            <span class="n">leaves</span> <span class="o">=</span> <span class="p">[]</span>
+
+        <span class="k">for</span> <span class="n">leaf_path</span><span class="p">,</span> <span class="n">leaf</span> <span class="ow">in</span> <span class="n">leaves</span><span class="p">:</span>
+            <span class="n">leaf_path</span> <span class="o">=</span> <span class="p">(</span><span class="n">key</span><span class="p">,)</span> <span class="o">+</span> <span class="n">leaf_path</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">with_path</span><span class="p">:</span>
+                <span class="n">leaf_id</span> <span class="o">=</span> <span class="nb">id</span><span class="p">(</span><span class="n">leaf</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">leaf_id</span> <span class="ow">in</span> <span class="n">seen</span><span class="p">:</span>
+                    <span class="k">continue</span>
+                <span class="n">seen</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">leaf_id</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">predicate</span><span class="p">(</span><span class="n">leaf</span><span class="p">):</span>
+                <span class="k">if</span> <span class="n">with_path</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">module_path</span> <span class="o">+</span> <span class="n">leaf_path</span><span class="p">,</span> <span class="n">leaf</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">yield</span> <span class="n">leaf</span>
+
+            <span class="c1"># [CHANGED] Differently from the original, here we skip checking whether the leaf</span>
+            <span class="c1"># is a module, since the trieste models do NOT inherit from tf.Module</span>
+            <span class="k">if</span> <span class="n">recursive</span><span class="p">:</span>  <span class="c1"># and _is_module(leaf):</span>
+                <span class="c1"># Walk direct properties first then recurse.</span>
+                <span class="n">submodules</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">module_path</span> <span class="o">+</span> <span class="n">leaf_path</span><span class="p">,</span> <span class="n">leaf</span><span class="p">))</span>
+
+    <span class="k">for</span> <span class="n">submodule_path</span><span class="p">,</span> <span class="n">submodule</span> <span class="ow">in</span> <span class="n">submodules</span><span class="p">:</span>
+        <span class="n">subvalues</span> <span class="o">=</span> <span class="n">_flatten_module</span><span class="p">(</span>
+            <span class="n">submodule</span><span class="p">,</span>
+            <span class="n">recursive</span><span class="o">=</span><span class="n">recursive</span><span class="p">,</span>
+            <span class="n">predicate</span><span class="o">=</span><span class="n">predicate</span><span class="p">,</span>
+            <span class="n">attribute_traversal_key</span><span class="o">=</span><span class="n">attribute_traversal_key</span><span class="p">,</span>
+            <span class="n">attributes_to_ignore</span><span class="o">=</span><span class="n">_TF_MODULE_IGNORED_PROPERTIES</span><span class="p">,</span>
+            <span class="n">with_path</span><span class="o">=</span><span class="n">with_path</span><span class="p">,</span>
+            <span class="n">expand_composites</span><span class="o">=</span><span class="n">expand_composites</span><span class="p">,</span>
+            <span class="n">module_path</span><span class="o">=</span><span class="n">submodule_path</span><span class="p">,</span>
+            <span class="n">seen</span><span class="o">=</span><span class="n">seen</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">subvalue</span> <span class="ow">in</span> <span class="n">subvalues</span><span class="p">:</span>
+            <span class="c1"># Predicate is already tested for these values.</span>
+            <span class="k">yield</span> <span class="n">subvalue</span></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

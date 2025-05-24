@@ -1,0 +1,1192 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.function.active_learning &#8212; trieste 0.12.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../../" src="../../../../../_static/documentation_options.js"></script>
+    <script src="../../../../../_static/jquery.js"></script>
+    <script src="../../../../../_static/underscore.js"></script>
+    <script src="../../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script async="async" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/latest.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <script type="text/x-mathjax-config">MathJax.Hub.Config({"tex2jax": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true, "ignoreClass": "tex2jax_ignore|mathjax_ignore|document", "processClass": "tex2jax_process|mathjax_process|math|output_area"}})</script>
+    <link rel="index" title="Index" href="../../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../../search.html" />
+    <link rel="next" title="trieste.acquisition.function.continuous_thompson_sampling" href="../continuous_thompson_sampling/index.html" />
+    <link rel="prev" title="trieste.acquisition.function" href="../index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../../index.html">
+  <img src="../../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.12.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables autoapi/trieste/acquisition/function/active_learning/index and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.12.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "autoapi/trieste/acquisition/function/active_learning/index.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "autoapi/trieste/acquisition/function/active_learning/index.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.12.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="current nav bd-sidenav">
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../../index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 current active has-children">
+    <a class="reference internal" href="../index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+    <input checked="" class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul class="current">
+     <li class="toctree-l3 current active">
+      <a class="current reference internal" href="#">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.active_learning
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../continuous_thompson_sampling/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.continuous_thompson_sampling
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../entropy/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.entropy
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.function
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../greedy_batch/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.greedy_batch
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../multi_objective/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.multi_objective
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../multi_objective/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.multi_objective
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/dominance/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.dominance
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/pareto/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.pareto
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../multi_objective/partition/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.partition
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../interface/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.interface
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../models/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflow/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflow
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/inducing_point_selectors/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.inducing_point_selectors
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/optimizer/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.optimizer
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflow/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/gpflux/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflux
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/gpflux/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflux.builders
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../../models/keras/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.keras
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/architectures/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.architectures
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../../models/keras/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../models/config/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.config
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../models/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../../objectives/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.objectives
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+  <label for="toctree-checkbox-8">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/single_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.single_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../../objectives/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../utils/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../ask_tell_optimization/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.ask_tell_optimization
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../logging/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.logging
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../space/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../../types/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.types
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.PredictiveVariance">
+     PredictiveVariance
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.PredictiveVariance.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.PredictiveVariance.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.predictive_variance">
+     predictive_variance
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.ExpectedFeasibility">
+     ExpectedFeasibility
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.ExpectedFeasibility.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.ExpectedFeasibility.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.bichon_ranjan_criterion">
+     bichon_ranjan_criterion
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.IntegratedVarianceReduction">
+     IntegratedVarianceReduction
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.IntegratedVarianceReduction.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.IntegratedVarianceReduction.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.integrated_variance_reduction">
+     integrated_variance_reduction
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.integrated_variance_reduction.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement">
+     BayesianActiveLearningByDisagreement
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement.prepare_acquisition_function">
+       prepare_acquisition_function
+      </a>
+     </li>
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement.update_acquisition_function">
+       update_acquisition_function
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.bayesian_active_learning_by_disagreement">
+     bayesian_active_learning_by_disagreement
+    </a>
+    <ul class="nav section-nav flex-column">
+     <li class="toc-h4 nav-item toc-entry">
+      <a class="reference internal nav-link" href="#trieste.acquisition.function.active_learning.bayesian_active_learning_by_disagreement.__call__">
+       __call__
+      </a>
+     </li>
+    </ul>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.acquisition.function.active_learning">
+<span id="trieste-acquisition-function-active-learning"></span><h1><a class="reference internal" href="#module-trieste.acquisition.function.active_learning" title="trieste.acquisition.function.active_learning"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.active_learning</span></code></a><a class="headerlink" href="#module-trieste.acquisition.function.active_learning" title="Permalink to this headline">#</a></h1>
+<p>This module contains acquisition function builders and acquisition functions for Bayesian active
+learning.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">#</a></h2>
+<dl class="py class">
+<dt id="trieste.acquisition.function.active_learning.PredictiveVariance">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">PredictiveVariance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">DEFAULTS.JITTER</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#PredictiveVariance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.PredictiveVariance" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></code></a>[<a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></code></a>]</p>
+<p>Builder for the determinant of the predictive covariance matrix over the batch points.
+For a batch of size 1 it is the same as maximizing the predictive variance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>jitter</strong> – The size of the jitter to use when stabilising the Cholesky decomposition of
+the covariance matrix.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.PredictiveVariance.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#PredictiveVariance.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.PredictiveVariance.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – Unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The determinant of the predictive function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.PredictiveVariance.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#PredictiveVariance.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.PredictiveVariance.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – Unused.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.function.active_learning.predictive_variance">
+<code class="sig-name descname"><span class="pre">predictive_variance</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.SupportsPredictJoint" title="trieste.models.interfaces.SupportsPredictJoint"><span class="pre">trieste.models.interfaces.SupportsPredictJoint</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#predictive_variance"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.predictive_variance" title="Permalink to this definition">#</a></dt>
+<dd><p>The predictive variance acquisition function for active learning, based on
+the determinant of the covariance (see <span id="id1">[<a class="reference internal" href="../../../index.html#id22" title="David J. C. MacKay. Information-based objective functions for active data selection. Neural Computation, 4(4):590–604, 1992.">Mac92</a>]</span> for details).
+Note that the model needs to supply covariance of the joint marginal distribution,
+which can be expensive to compute.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function.</p></li>
+<li><p><strong>jitter</strong> – The size of the jitter to use when stabilising the Cholesky decomposition of
+the covariance matrix.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.active_learning.ExpectedFeasibility">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ExpectedFeasibility</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#ExpectedFeasibility"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.ExpectedFeasibility" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></code></a>[<a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>Builder for the Expected feasibility acquisition function for identifying a failure or
+feasibility region. It implements two related sampling strategies called <em>bichon</em> criterion
+(<span id="id2">[<a class="reference internal" href="../../../index.html#id28" title="Barron J Bichon, Michael S Eldred, Laura Painton Swiler, Sandaran Mahadevan, and John M McFarland. Efficient global reliability analysis for nonlinear implicit performance functions. AIAA journal, 46(10):2459–2468, 2008.">BES+08</a>]</span>) and <em>ranjan</em> criterion (<span id="id3">[<a class="reference internal" href="../../../index.html#id27" title="Pritam Ranjan, Derek Bingham, and George Michailidis. Sequential experiment design for contour estimation from complex computer codes. Technometrics, 50(4):527–541, 2008.">RBM08</a>]</span>). The goal
+of both criteria is to sample points with a mean close to the threshold and a high variance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>threshold</strong> – The failure or feasibility threshold.</p></li>
+<li><p><strong>alpha</strong> – The parameter which determines the neighbourhood around the estimated contour
+line as a percentage of the posterior variance in which to allocate new points. Defaults
+to value of 1.</p></li>
+<li><p><strong>delta</strong> – The parameter identifying which criterion is used, <em>bichon</em> for value of 1
+(default) and <em>ranjan</em> for value of 2.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.10)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If arguments are not a scalar, or <cite>alpha</cite> is
+not positive, or <cite>delta</cite> is not 1 or 2.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.ExpectedFeasibility.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#ExpectedFeasibility.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.ExpectedFeasibility.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – Unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The expected feasibility function. This function will raise
+<a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.10)"><code class="xref py py-exc docutils literal notranslate"><span class="pre">ValueError</span></code></a> or <code class="xref py py-exc docutils literal notranslate"><span class="pre">InvalidArgumentError</span></code> if used with a batch size
+greater than one.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.ExpectedFeasibility.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#ExpectedFeasibility.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.ExpectedFeasibility.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – The data from the observer (optional).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The updated acquisition function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.function.active_learning.bichon_ranjan_criterion">
+<code class="sig-name descname"><span class="pre">bichon_ranjan_criterion</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">alpha</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">delta</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.10)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#bichon_ranjan_criterion"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.bichon_ranjan_criterion" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the <em>bichon</em> criterion (<span id="id4">[<a class="reference internal" href="../../../index.html#id28" title="Barron J Bichon, Michael S Eldred, Laura Painton Swiler, Sandaran Mahadevan, and John M McFarland. Efficient global reliability analysis for nonlinear implicit performance functions. AIAA journal, 46(10):2459–2468, 2008.">BES+08</a>]</span>) and <em>ranjan</em> criterion
+(<span id="id5">[<a class="reference internal" href="../../../index.html#id27" title="Pritam Ranjan, Derek Bingham, and George Michailidis. Sequential experiment design for contour estimation from complex computer codes. Technometrics, 50(4):527–541, 2008.">RBM08</a>]</span>) used in Expected feasibility acquisition function for active
+learning of failure or feasibility regions.</p>
+<p>The problem of identifying a failure or feasibility region of a function <span class="math notranslate nohighlight">\(f\)</span> can be
+formalized as estimating the excursion set, <span class="math notranslate nohighlight">\(\Gamma^* = \{ x \in X: f(x) \ge T\}\)</span>, or
+estimating the contour line, <span class="math notranslate nohighlight">\(C^* = \{ x \in X: f(x) = T\}\)</span>, for some threshold <span class="math notranslate nohighlight">\(T\)</span>
+(see <span id="id6">[<a class="reference internal" href="../../../index.html#id29" title="Julien Bect, David Ginsbourger, Ling Li, Victor Picheny, and Emmanuel Vazquez. Sequential design of computer experiments for the estimation of a probability of failure. Statistics and Computing, 22(3):773–793, 2012.">BGL+12</a>]</span> for more details).</p>
+<p>It turns out that probabilistic models can be used as classifiers for identifying where
+excursion probability is larger than 1/2 and this idea is used to build many sequential
+sampling strategies. We follow <span id="id7">[<a class="reference internal" href="../../../index.html#id29" title="Julien Bect, David Ginsbourger, Ling Li, Victor Picheny, and Emmanuel Vazquez. Sequential design of computer experiments for the estimation of a probability of failure. Statistics and Computing, 22(3):773–793, 2012.">BGL+12</a>]</span> and use a formulation which provides
+a common expression for these two criteria:</p>
+<div class="math notranslate nohighlight">
+\[\mathbb{E}[\max(0, (\alpha s(x))^\delta - |T - m(x)|^\delta)]\]</div>
+<p>Here <span class="math notranslate nohighlight">\(m(x)\)</span> and <span class="math notranslate nohighlight">\(s(x)\)</span> are the mean and standard deviation of the predictive
+posterior of a probabilistic model. <em>Bichon</em> criterion is obtained when <span class="math notranslate nohighlight">\(\delta = 1\)</span> while
+<em>ranjan</em> criterion is obtained when <span class="math notranslate nohighlight">\(\delta = 2\)</span>. <span class="math notranslate nohighlight">\(\alpha&gt;0\)</span> is another parameter
+that acts as a percentage of standard deviation of the posterior around the current boundary
+estimate where we want to sample. The goal is to sample a point with a mean close to the
+threshold <span class="math notranslate nohighlight">\(T\)</span> and a high variance, so that the positive difference in the equation above
+is as large as possible.</p>
+<p>Note that only batches of size 1 are allowed.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The probabilistic model of the objective function.</p></li>
+<li><p><strong>threshold</strong> – The failure or feasibility threshold.</p></li>
+<li><p><strong>alpha</strong> – The parameter which determines the neighbourhood around the estimated contour
+line as a percentage of the posterior variance in which to allocate new points.</p></li>
+<li><p><strong>delta</strong> – The parameter identifying which criterion is used, <em>bichon</em> for value of 1
+and <em>ranjan</em> for value of 2.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.active_learning.IntegratedVarianceReduction">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">IntegratedVarianceReduction</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">integration_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#IntegratedVarianceReduction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.IntegratedVarianceReduction" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></code></a>[<a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.FastUpdateModel" title="trieste.models.interfaces.FastUpdateModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.FastUpdateModel</span></code></a>]</p>
+<p>Builder for the reduction of the integral of the predicted variance over the search
+space given a batch of query points.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>integration_points</strong> – set of points to integrate the prediction variance over.</p></li>
+<li><p><strong>threshold</strong> – either None, a float or a sequence of 1 or 2 float values.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.IntegratedVarianceReduction.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.FastUpdateModel" title="trieste.models.interfaces.FastUpdateModel"><span class="pre">trieste.models.interfaces.FastUpdateModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#IntegratedVarianceReduction.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.IntegratedVarianceReduction.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – Unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The integral of the predictive variance.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.IntegratedVarianceReduction.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.FastUpdateModel" title="trieste.models.interfaces.FastUpdateModel"><span class="pre">trieste.models.interfaces.FastUpdateModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#IntegratedVarianceReduction.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.IntegratedVarianceReduction.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – Unused.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.active_learning.integrated_variance_reduction">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">integrated_variance_reduction</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/interfaces/index.html#trieste.models.interfaces.FastUpdateModel" title="trieste.models.interfaces.FastUpdateModel"><span class="pre">trieste.models.interfaces.FastUpdateModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">integration_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">threshold</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#integrated_variance_reduction"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.integrated_variance_reduction" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionClass" title="trieste.acquisition.interface.AcquisitionFunctionClass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionClass</span></code></a></p>
+<p>The reduction of the (weighted) average of the predicted variance over the integration points
+(a.k.a. Integrated Means Square Error or IMSE criterion).
+See <span id="id8">[<a class="reference internal" href="../../../index.html#id30" title="Victor Picheny, David Ginsbourger, Olivier Roustant, Raphael T Haftka, and Nam-Ho Kim. Adaptive designs of experiments for accurate approximation of target regions. Journal of Mechanical Design, 2010.">PGR+10</a>]</span> for details.</p>
+<p>The criterion (to maximise) writes as:</p>
+<blockquote>
+<div><div class="math notranslate nohighlight">
+\[\int_x (v_{old}(x) - v_{new}(x)) * weights(x),\]</div>
+</div></blockquote>
+<p>where <span class="math notranslate nohighlight">\(v_{old}(x)\)</span> is the predictive variance of the model at <span class="math notranslate nohighlight">\(x\)</span>, and
+<span class="math notranslate nohighlight">\(v_{new}(x)\)</span> is the updated predictive variance, given that the GP is further
+conditioned on the query points.</p>
+<p>Note that since <span class="math notranslate nohighlight">\(v_{old}(x)\)</span> is constant w.r.t. the query points, this function
+only returns <span class="math notranslate nohighlight">\(-\int_x v_{new}(x) * weights(x)\)</span>.</p>
+<p>If no threshold is provided, the goal is to learn a globally accurate model, and
+the predictive variance (<span class="math notranslate nohighlight">\(v_{new}\)</span>) is used. Otherwise, learning is ‘targeted’
+towards regions where the GP is close to particular values, and the variance is weighted
+by the posterior GP pdf evaluated at the threshold T (if a single value is given) or by the
+probability that the GP posterior belongs to the interval between the 2 thresholds T1 and T2
+(note the slightly different parametrisation compared to <span id="id9">[<a class="reference internal" href="../../../index.html#id30" title="Victor Picheny, David Ginsbourger, Olivier Roustant, Raphael T Haftka, and Nam-Ho Kim. Adaptive designs of experiments for accurate approximation of target regions. Journal of Mechanical Design, 2010.">PGR+10</a>]</span> in that case).</p>
+<p>This criterion allows batch size &gt; 1. Note that the computational cost grows cubically with
+the batch size.</p>
+<p>This criterion requires a method (conditional_predict_f) to compute the new predictive variance
+given that query points are added to the data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function.</p></li>
+<li><p><strong>integration_points</strong> – Points over which to integrate the objective prediction variance.</p></li>
+<li><p><strong>threshold</strong> – Either None, a float or a sequence of 1 or 2 float values.
+See class docs for details.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises</dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.10)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If <code class="docutils literal notranslate"><span class="pre">threshold</span></code> has more than 2 values.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.integrated_variance_reduction.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#integrated_variance_reduction.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.integrated_variance_reduction.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call acquisition function.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">BayesianActiveLearningByDisagreement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">DEFAULTS.JITTER</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#BayesianActiveLearningByDisagreement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.SingleModelAcquisitionBuilder" title="trieste.acquisition.interface.SingleModelAcquisitionBuilder"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.SingleModelAcquisitionBuilder</span></code></a>[<a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.ProbabilisticModel</span></code></a>]</p>
+<p>Builder for the <em>Bayesian Active Learning By Disagreement</em> acquisition function defined in
+<span id="id10">[<a class="reference internal" href="../../../index.html#id48" title="Neil Houlsby, Ferenc Huszár, Zoubin Ghahramani, and Máté Lengyel. Bayesian active learning for classification and preference learning. 2011. arXiv:1112.5745.">HHGL11</a>]</span>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>jitter</strong> – The size of the jitter to avoid numerical problem caused by the
+log operation if variance is close to zero.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement.prepare_acquisition_function">
+<code class="sig-name descname"><span class="pre">prepare_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#BayesianActiveLearningByDisagreement.prepare_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement.prepare_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – Unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The determinant of the predictive function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement.update_acquisition_function">
+<code class="sig-name descname"><span class="pre">update_acquisition_function</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">function</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#BayesianActiveLearningByDisagreement.update_acquisition_function"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.BayesianActiveLearningByDisagreement.update_acquisition_function" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>function</strong> – The acquisition function to update.</p></li>
+<li><p><strong>model</strong> – The model.</p></li>
+<li><p><strong>dataset</strong> – Unused.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.function.active_learning.bayesian_active_learning_by_disagreement">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">bayesian_active_learning_by_disagreement</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../models/index.html#trieste.models.ProbabilisticModel" title="trieste.models.ProbabilisticModel"><span class="pre">trieste.models.ProbabilisticModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.10)"><span class="pre">float</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#bayesian_active_learning_by_disagreement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.bayesian_active_learning_by_disagreement" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../../interface/index.html#trieste.acquisition.interface.AcquisitionFunctionClass" title="trieste.acquisition.interface.AcquisitionFunctionClass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.acquisition.interface.AcquisitionFunctionClass</span></code></a></p>
+<p>An <code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionFunctionClass</span></code> is an acquisition function represented using a class
+rather than as a standalone function. Using a class to represent an acquisition function
+makes it easier to update it, to avoid having to retrace the function on every call.</p>
+<p>The Bayesian active learning by disagrement acquisition function computes
+the information gain of the predictive entropy <span id="id11">[<a class="reference internal" href="../../../index.html#id48" title="Neil Houlsby, Ferenc Huszár, Zoubin Ghahramani, and Máté Lengyel. Bayesian active learning for classification and preference learning. 2011. arXiv:1112.5745.">HHGL11</a>]</span>.
+the acquisiton function is calculated by:</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{h}\left(\Phi\left(\frac{\mu_{\boldsymbol{x}, \mathcal{D}}}
+{\sqrt{\sigma_{\boldsymbol{x}, \mathcal{D}}^{2}+1}}\right)\right)
+-\frac{C \exp \left(-\frac{\mu_{\boldsymbol{x}, \mathcal{D}}^{2}}
+{2\left(\sigma_{\boldsymbol{w}, \mathcal{D}}^{+C^{2}}\right)}\right)}
+{\sqrt{\sigma_{\boldsymbol{x}, \mathcal{D}}^{2}+C^{2}}}\]</div>
+<p>Here <span class="math notranslate nohighlight">\(\mathrm{h}(p)\)</span> is defined as:</p>
+<div class="math notranslate nohighlight">
+\[\mathrm{h}(p)=-p \log p-(1-p) \log (1-p)\]</div>
+<p>This acquisition function is intended to use for Binary Gaussian Process Classification
+model with Bernoulli likelihood. It is designed for VGP but other Gaussian approximation
+of the posterior can be used. SVGP for instance, or some other model that is not currently
+supported by Trieste. Integrating over nuisance parameters is currently not
+supported (see equation 6 of the paper).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function.</p></li>
+<li><p><strong>jitter</strong> – The size of the jitter to avoid numerical problem caused by the
+log operation if variance is close to zero.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The Bayesian Active Learning By Disagreement acquisition function.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt id="trieste.acquisition.function.active_learning.bayesian_active_learning_by_disagreement.__call__">
+<code class="sig-name descname"><span class="pre">__call__</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">self</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../../_modules/trieste/acquisition/function/active_learning.html#bayesian_active_learning_by_disagreement.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.function.active_learning.bayesian_active_learning_by_disagreement.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call acquisition function.</p>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

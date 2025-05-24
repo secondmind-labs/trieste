@@ -1,0 +1,661 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflow.interface &#8212; trieste 3.4.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/models/gpflow/interface';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.4.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.4.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.4.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.models.gpflow.interface</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.models.gpflow.interface</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">check_shapes</span> <span class="kn">import</span> <span class="n">inherit_check_shapes</span>
+<span class="kn">from</span> <span class="nn">gpflow.models</span> <span class="kn">import</span> <span class="n">GPModel</span>
+<span class="kn">from</span> <span class="nn">gpflow.posteriors</span> <span class="kn">import</span> <span class="n">BasePosterior</span><span class="p">,</span> <span class="n">PrecomputeCacheType</span>
+<span class="kn">from</span> <span class="nn">typing_extensions</span> <span class="kn">import</span> <span class="n">Protocol</span>
+
+<span class="kn">from</span> <span class="nn">...</span> <span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..interfaces</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">HasReparamSampler</span><span class="p">,</span>
+    <span class="n">ReparametrizationSampler</span><span class="p">,</span>
+    <span class="n">SupportsGetKernel</span><span class="p">,</span>
+    <span class="n">SupportsGetObservationNoise</span><span class="p">,</span>
+    <span class="n">SupportsPredictJoint</span><span class="p">,</span>
+    <span class="n">SupportsPredictY</span><span class="p">,</span>
+    <span class="n">TrainableProbabilisticModel</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..optimizer</span> <span class="kn">import</span> <span class="n">Optimizer</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">write_summary_data_based_metrics</span><span class="p">,</span>
+    <span class="n">write_summary_kernel_parameters</span><span class="p">,</span>
+    <span class="n">write_summary_likelihood_parameters</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.sampler</span> <span class="kn">import</span> <span class="n">BatchReparametrizationSampler</span>
+
+
+<div class="viewcode-block" id="GPflowPredictor"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor">[docs]</a><span class="k">class</span> <span class="nc">GPflowPredictor</span><span class="p">(</span>
+    <span class="n">SupportsPredictJoint</span><span class="p">,</span>
+    <span class="n">SupportsGetKernel</span><span class="p">,</span>
+    <span class="n">SupportsGetObservationNoise</span><span class="p">,</span>
+    <span class="n">SupportsPredictY</span><span class="p">,</span>
+    <span class="n">HasReparamSampler</span><span class="p">,</span>
+    <span class="n">TrainableProbabilisticModel</span><span class="p">,</span>
+    <span class="n">ABC</span><span class="p">,</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A trainable wrapper for a GPflow Gaussian process model.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">:</span> <span class="n">Optimizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param optimizer: The optimizer with which to train the model. Defaults to</span>
+<span class="sd">            :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">optimizer</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">optimizer</span> <span class="o">=</span> <span class="n">Optimizer</span><span class="p">(</span><span class="n">gpflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Scipy</span><span class="p">(),</span> <span class="nb">compile</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">optimizer</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">BasePosterior</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="GPflowPredictor.optimizer"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.optimizer">[docs]</a>    <span class="k">def</span> <span class="nf">optimizer</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Optimizer</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The optimizer with which to train the model.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.create_posterior_cache"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.create_posterior_cache">[docs]</a>    <span class="k">def</span> <span class="nf">create_posterior_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a posterior cache for fast sequential predictions.  Note that this must happen</span>
+<span class="sd">        at initialisation and *after* we ensure the model data is variable. Furthermore,</span>
+<span class="sd">        the cache must be updated whenever the underlying model is changed.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">posterior</span><span class="p">(</span><span class="n">PrecomputeCacheType</span><span class="o">.</span><span class="n">VARIABLE</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor._ensure_variable_model_data"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor._ensure_variable_model_data">[docs]</a>    <span class="k">def</span> <span class="nf">_ensure_variable_model_data</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Ensure GPflow data, which is normally stored in Tensors, is instead stored in</span>
+<span class="sd">        dynamically shaped Variables. Override this as required.&quot;&quot;&quot;</span></div>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># when unpickling we may need to regenerate the posterior cache</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ensure_variable_model_data</span><span class="p">()</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">create_posterior_cache</span><span class="p">()</span>
+
+<div class="viewcode-block" id="GPflowPredictor.update_posterior_cache"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.update_posterior_cache">[docs]</a>    <span class="k">def</span> <span class="nf">update_posterior_cache</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Update the posterior cache. This needs to be called whenever the underlying model</span>
+<span class="sd">        is changed.&quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span><span class="o">.</span><span class="n">update_cache</span><span class="p">()</span></div>
+
+    <span class="nd">@property</span>
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="GPflowPredictor.model"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GPModel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The underlying GPflow model.&quot;&quot;&quot;</span></div>
+
+    <span class="nd">@inherit_check_shapes</span>
+<div class="viewcode-block" id="GPflowPredictor.predict"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.predict">[docs]</a>    <span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>
+        <span class="c1"># posterior predict can return negative variance values [cf GPFlow issue #1813]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cov</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_value</span><span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="mf">1e-12</span><span class="p">,</span> <span class="n">cov</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">max</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span></div>
+
+    <span class="nd">@inherit_check_shapes</span>
+<div class="viewcode-block" id="GPflowPredictor.predict_joint"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.predict_joint">[docs]</a>    <span class="k">def</span> <span class="nf">predict_joint</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span> <span class="o">=</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="c1"># posterior predict can return negative variance values [cf GPFlow issue #1813]</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_posterior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">cov</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">set_diag</span><span class="p">(</span>
+                <span class="n">cov</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">clip_by_value</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">diag_part</span><span class="p">(</span><span class="n">cov</span><span class="p">),</span> <span class="mf">1e-12</span><span class="p">,</span> <span class="n">cov</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">max</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">mean</span><span class="p">,</span> <span class="n">cov</span></div>
+
+    <span class="nd">@inherit_check_shapes</span>
+<div class="viewcode-block" id="GPflowPredictor.sample"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_f_samples</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">)</span></div>
+
+    <span class="nd">@inherit_check_shapes</span>
+<div class="viewcode-block" id="GPflowPredictor.predict_y"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.predict_y">[docs]</a>    <span class="k">def</span> <span class="nf">predict_y</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_y</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.get_kernel"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.get_kernel">[docs]</a>    <span class="k">def</span> <span class="nf">get_kernel</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the kernel of the model.</span>
+
+<span class="sd">        :return: The kernel.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">kernel</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.get_mean_function"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.get_mean_function">[docs]</a>    <span class="k">def</span> <span class="nf">get_mean_function</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">mean_functions</span><span class="o">.</span><span class="n">MeanFunction</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the mean function of the model.</span>
+
+<span class="sd">        :return: The mean function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">mean_function</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.get_observation_noise"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.get_observation_noise">[docs]</a>    <span class="k">def</span> <span class="nf">get_observation_noise</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the variance of observation noise for homoscedastic likelihoods.</span>
+
+<span class="sd">        :return: The observation noise.</span>
+<span class="sd">        :raise NotImplementedError: If the model does not have a homoscedastic likelihood.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">noise_variance</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">likelihood</span><span class="o">.</span><span class="n">variance</span>
+        <span class="k">except</span> <span class="ne">AttributeError</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Model </span><span class="si">{</span><span class="bp">self</span><span class="si">!r}</span><span class="s2"> does not have scalar observation noise&quot;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">noise_variance</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.log"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.log">[docs]</a>    <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log model training information at a given optimization step to the Tensorboard.</span>
+<span class="sd">        We log kernel and likelihood parameters. We also log several training data based metrics,</span>
+<span class="sd">        such as root mean square error between predictions and observations and several others.</span>
+
+<span class="sd">        :param dataset: Optional data that can be used to log additional data-based model summaries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()):</span>
+                <span class="n">write_summary_kernel_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_kernel</span><span class="p">())</span>
+                <span class="n">write_summary_likelihood_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">likelihood</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">dataset</span><span class="p">:</span>
+                    <span class="n">write_summary_data_based_metrics</span><span class="p">(</span>
+                        <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;training_&quot;</span>
+                    <span class="p">)</span></div>
+
+<div class="viewcode-block" id="GPflowPredictor.reparam_sampler"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.GPflowPredictor.reparam_sampler">[docs]</a>    <span class="k">def</span> <span class="nf">reparam_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReparametrizationSampler</span><span class="p">[</span><span class="n">GPflowPredictor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a reparametrization sampler providing `num_samples` samples.</span>
+
+<span class="sd">        :return: The reparametrization sampler.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">BatchReparametrizationSampler</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="SupportsCovarianceBetweenPoints"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.SupportsCovarianceBetweenPoints">[docs]</a><span class="k">class</span> <span class="nc">SupportsCovarianceBetweenPoints</span><span class="p">(</span><span class="n">SupportsPredictJoint</span><span class="p">,</span> <span class="n">Protocol</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;A probabilistic model that supports covariance_between_points.&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SupportsCovarianceBetweenPoints.covariance_between_points"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/interface/index.html#trieste.models.gpflow.SupportsCovarianceBetweenPoints.covariance_between_points">[docs]</a>    <span class="k">def</span> <span class="nf">covariance_between_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">query_points_1</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">:</span> <span class="n">TensorType</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Compute the posterior covariance between sets of query points.</span>
+
+<span class="sd">        .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}</span>
+
+<span class="sd">        Note that query_points_2 must be a rank 2 tensor, but query_points_1 can</span>
+<span class="sd">        have leading dimensions.</span>
+
+<span class="sd">        :param query_points_1: Set of query points with shape [..., N, D]</span>
+<span class="sd">        :param query_points_2: Sets of query points with shape [M, D]</span>
+<span class="sd">        :return: Covariance matrix between the sets of query points with shape [..., L, N, M]</span>
+<span class="sd">            (L being the number of latent GPs = number of output dimensions)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

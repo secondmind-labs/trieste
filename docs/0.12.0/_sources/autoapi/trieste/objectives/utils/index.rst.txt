@@ -1,0 +1,23 @@
+:py:mod:`trieste.objectives.utils`
+==================================
+
+.. py:module:: trieste.objectives.utils
+
+.. autoapi-nested-parse::
+
+   This module contains functions convenient for creating :class:`Observer` objects that return data
+   from objective functions, appropriately formatted for usage with the toolbox.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: mk_observer(objective: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]) -> trieste.observer.SingleObserver
+              mk_observer(objective: collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType], key: str) -> trieste.observer.MultiObserver
+
+   :param objective: An objective function designed to be used with a single data set and model.
+   :param key: An optional key to use to access the data from the observer result.
+   :return: An observer returning the data from ``objective``.
+
+

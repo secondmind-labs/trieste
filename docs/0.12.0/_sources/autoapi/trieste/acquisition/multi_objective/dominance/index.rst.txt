@@ -1,0 +1,27 @@
+:py:mod:`trieste.acquisition.multi_objective.dominance`
+=======================================================
+
+.. py:module:: trieste.acquisition.multi_objective.dominance
+
+.. autoapi-nested-parse::
+
+   This module contains functionality for computing the non-dominated set
+   given a set of data points.
+
+
+
+Module Contents
+---------------
+
+.. py:function:: non_dominated(observations: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+   Computes the non-dominated set for a set of data points.
+   If there are duplicate point(s) in the non-dominated set, this function will return
+   as it is without removing the duplicate.
+
+   :param observations: set of points with shape [N,D]
+   :return: tf.Tensor of the non-dominated set [P,D] and the degree of dominance [N],
+       P is the number of points in pareto front dominances gives the number of
+       dominating points for each data point
+
+

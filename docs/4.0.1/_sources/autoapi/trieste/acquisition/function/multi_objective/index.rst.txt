@@ -1,0 +1,270 @@
+trieste.acquisition.function.multi_objective
+============================================
+
+.. py:module:: trieste.acquisition.function.multi_objective
+
+.. autoapi-nested-parse::
+
+   This module contains multi-objective acquisition function builders.
+
+
+
+
+
+
+
+Module Contents
+---------------
+
+.. py:class:: ExpectedHypervolumeImprovement(reference_point_spec: Sequence[float] | trieste.types.TensorType | Callable[Ellipsis, trieste.types.TensorType] = get_reference_point)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+
+   Builder for the expected hypervolume improvement acquisition function.
+   The implementation of the acquisition function largely
+   follows :cite:`yang2019efficient`
+
+   :param reference_point_spec: this method is used to determine how the reference point is
+       calculated. If a Callable function specified, it is expected to take existing
+       posterior mean-based observations (to screen out the observation noise) and return
+       a reference point with shape [D] (D represents number of objectives). If the Pareto
+       front location is known, this arg can be used to specify a fixed reference point
+       in each bo iteration. A dynamic reference point updating strategy is used by
+       default to set a reference point according to the datasets.
+
+
+   .. py:method:: __repr__() -> str
+
+      Return repr(self).
+
+
+
+   .. py:method:: prepare_acquisition_function(model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model.
+      :param dataset: The data from the observer. Must be populated.
+      :return: The expected hypervolume improvement acquisition function.
+
+
+
+   .. py:method:: update_acquisition_function(function: trieste.acquisition.interface.AcquisitionFunction, model: trieste.models.ProbabilisticModel, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param model: The model.
+      :param dataset: The data from the observer. Must be populated.
+
+
+
+.. py:class:: expected_hv_improvement(model: trieste.models.ProbabilisticModel, partition_bounds: tuple[trieste.types.TensorType, trieste.types.TensorType])
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionClass`
+
+
+   An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class
+   rather than as a standalone function. Using a class to represent an acquisition function
+   makes it easier to update it, to avoid having to retrace the function on every call.
+
+   expected Hyper-volume (HV) calculating using Eq. 44 of :cite:`yang2019efficient` paper.
+   The expected hypervolume improvement calculation in the non-dominated region
+   can be decomposed into sub-calculations based on each partitioned cell.
+   For easier calculation, this sub-calculation can be reformulated as a combination
+   of two generalized expected improvements, corresponding to Psi (Eq. 44) and Nu (Eq. 45)
+   function calculations, respectively.
+
+   Note:
+   1. Since in Trieste we do not assume the use of a certain non-dominated region partition
+   algorithm, we do not assume the last dimension of the partitioned cell has only one
+   (lower) bound (i.e., minus infinity, which is used in the :cite:`yang2019efficient` paper).
+   This is not as efficient as the original paper, but is applicable to different non-dominated
+   partition algorithm.
+   2. As the Psi and nu function in the original paper are defined for maximization problems,
+   we inverse our minimisation problem (to also be a maximisation), allowing use of the
+   original notation and equations.
+
+   :param model: The model of the objective function.
+   :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+       bounds for hypervolume improvement calculation
+   :return: The expected_hv_improvement acquisition function modified for objective
+       minimisation. This function will raise :exc:`ValueError` or
+       :exc:`~tf.errors.InvalidArgumentError` if used with a batch size greater than one.
+
+
+   .. py:method:: update(partition_bounds: tuple[trieste.types.TensorType, trieste.types.TensorType]) -> None
+
+      Update the acquisition function with new partition bounds.
+
+
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call acquisition function.
+
+
+
+.. py:class:: BatchMonteCarloExpectedHypervolumeImprovement(sample_size: int, reference_point_spec: Sequence[float] | trieste.types.TensorType | Callable[Ellipsis, trieste.types.TensorType] = get_reference_point, *, jitter: float = DEFAULTS.JITTER)
+
+   Bases: :py:obj:`trieste.acquisition.interface.SingleModelAcquisitionBuilder`\ [\ :py:obj:`trieste.models.interfaces.HasReparamSampler`\ ]
+
+
+   Builder for the batch expected hypervolume improvement acquisition function.
+   The implementation of the acquisition function largely
+   follows :cite:`daulton2020differentiable`
+
+   :param sample_size: The number of samples from model predicted distribution for
+       each batch of points.
+   :param reference_point_spec: this method is used to determine how the reference point is
+       calculated. If a Callable function specified, it is expected to take existing
+       posterior mean-based observations (to screen out the observation noise) and return
+       a reference point with shape [D] (D represents number of objectives). If the Pareto
+       front location is known, this arg can be used to specify a fixed reference point
+       in each bo iteration. A dynamic reference point updating strategy is used by
+       default to set a reference point according to the datasets.
+   :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+       the covariance matrix.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive, or
+       ``jitter`` is negative.
+
+
+   .. py:method:: __repr__() -> str
+
+      Return repr(self).
+
+
+
+   .. py:method:: prepare_acquisition_function(model: trieste.models.interfaces.HasReparamSampler, dataset: Optional[trieste.data.Dataset] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param model: The model. Must have event shape [1].
+      :param dataset: The data from the observer. Must be populated.
+      :return: The batch expected hypervolume improvement acquisition function.
+
+
+
+.. py:function:: batch_ehvi(sampler: trieste.models.ReparametrizationSampler[trieste.models.interfaces.HasReparamSampler], sampler_jitter: float, partition_bounds: tuple[trieste.types.TensorType, trieste.types.TensorType]) -> trieste.acquisition.interface.AcquisitionFunction
+
+   :param sampler: The posterior sampler, which given query points `at`, is able to sample
+       the possible observations at 'at'.
+   :param sampler_jitter: The size of the jitter to use in sampler when stabilising the Cholesky
+       decomposition of the covariance matrix.
+   :param partition_bounds: with shape ([N, D], [N, D]), partitioned non-dominated hypercell
+       bounds for hypervolume improvement calculation
+   :return: The batch expected hypervolume improvement acquisition
+       function for objective minimisation.
+
+
+.. py:class:: ExpectedConstrainedHypervolumeImprovement(objective_tag: trieste.types.Tag, constraint_builder: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.acquisition.interface.ProbabilisticModelType], min_feasibility_probability: float | trieste.types.TensorType = 0.5, reference_point_spec: Sequence[float] | trieste.types.TensorType | Callable[Ellipsis, trieste.types.TensorType] = get_reference_point)
+
+   Bases: :py:obj:`trieste.acquisition.function.function.ExpectedConstrainedImprovement`\ [\ :py:obj:`trieste.acquisition.interface.ProbabilisticModelType`\ ]
+
+
+   Builder for the constrained expected hypervolume improvement acquisition function.
+   This function essentially combines ExpectedConstrainedImprovement and
+   ExpectedHypervolumeImprovement.
+
+   :param objective_tag: The tag for the objective data and model.
+   :param constraint_builder: The builder for the constraint function.
+   :param min_feasibility_probability: The minimum probability of feasibility for a
+       "best point" to be considered feasible.
+   :param reference_point_spec: this method is used to determine how the reference point is
+       calculated. If a Callable function specified, it is expected to take existing posterior
+       mean-based feasible observations (to screen out the observation noise) and return a
+       reference point with shape [D] (D represents number of objectives). If the feasible
+       Pareto front location is known, this arg can be used to specify a fixed reference
+       point in each bo iteration. A dynamic reference point updating strategy is used by
+       default to set a reference point according to the datasets.
+
+
+   .. py:method:: _update_expected_improvement_fn(objective_model: trieste.acquisition.interface.ProbabilisticModelType, feasible_mean: trieste.types.TensorType) -> None
+
+      Set or update the unconstrained expected improvement function.
+
+      :param objective_model: The objective model.
+      :param feasible_mean: The mean of the feasible query points.
+
+
+
+.. py:class:: HIPPO(objective_tag: trieste.types.Tag = OBJECTIVE, base_acquisition_function_builder: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.acquisition.interface.ProbabilisticModelType] | trieste.acquisition.interface.SingleModelAcquisitionBuilder[trieste.acquisition.interface.ProbabilisticModelType] | None = None)
+
+   Bases: :py:obj:`trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder`\ [\ :py:obj:`trieste.acquisition.interface.ProbabilisticModelType`\ ]
+
+
+   HIPPO: HIghly Parallelizable Pareto Optimization
+
+   Builder of the acquisition function for greedily collecting batches by HIPPO
+   penalization in multi-objective optimization by penalizing batch points
+   by their distance in the objective space. The resulting acquistion function
+   takes in a set of pending points and returns a base multi-objective acquisition function
+   penalized around those points.
+
+   Penalization is applied to the acquisition function multiplicatively. However, to
+   improve numerical stability, we perform additive penalization in a log space.
+
+   Initializes the HIPPO acquisition function builder.
+
+   :param objective_tag: The tag for the objective data and model.
+   :param base_acquisition_function_builder: Base acquisition function to be
+       penalized. Defaults to Expected Hypervolume Improvement, also supports
+       its constrained version.
+
+
+   .. py:method:: prepare_acquisition_function(models: Mapping[trieste.types.Tag, trieste.acquisition.interface.ProbabilisticModelType], datasets: Optional[Mapping[trieste.types.Tag, trieste.data.Dataset]] = None, pending_points: Optional[trieste.types.TensorType] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      Creates a new instance of the acquisition function.
+
+      :param models: The models.
+      :param datasets: The data from the observer. Must be populated.
+      :param pending_points: The points we penalize with respect to.
+      :return: The HIPPO acquisition function.
+      :raise tf.errors.InvalidArgumentError: If the ``dataset`` is empty.
+
+
+
+   .. py:method:: update_acquisition_function(function: trieste.acquisition.interface.AcquisitionFunction, models: Mapping[trieste.types.Tag, trieste.acquisition.interface.ProbabilisticModelType], datasets: Optional[Mapping[trieste.types.Tag, trieste.data.Dataset]] = None, pending_points: Optional[trieste.types.TensorType] = None, new_optimization_step: bool = True) -> trieste.acquisition.interface.AcquisitionFunction
+
+      Updates the acquisition function.
+
+      :param function: The acquisition function to update.
+      :param models: The models.
+      :param datasets: The data from the observer. Must be populated.
+      :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),
+          where M is the number of pending points and D is the search space dimension.
+      :param new_optimization_step: Indicates whether this call to update_acquisition_function
+          is to start of a new optimization step, of to continue collecting batch of points
+          for the current step. Defaults to ``True``.
+      :return: The updated acquisition function.
+
+
+
+.. py:class:: hippo_penalizer(model: trieste.models.ProbabilisticModel, pending_points: trieste.types.TensorType)
+
+   Returns the penalization function used for multi-objective greedy batch Bayesian
+   optimization.
+
+   A candidate point :math:`x` is penalized based on the Mahalanobis distance to a
+   given pending point :math:`p_i`. Since we assume objectives to be independent,
+   the Mahalanobis distance between these points becomes a Eucledian distance
+   normalized by standard deviation. Penalties for multiple pending points are multiplied,
+   and the resulting quantity is warped with the arctan function to :math:`[0, 1]` interval.
+
+   :param model: The model over the specified ``dataset``.
+   :param pending_points: The points we penalize with respect to.
+   :return: The penalization function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+   Initialize the MO penalizer.
+
+   :param model: The model.
+   :param pending_points: The points we penalize with respect to.
+   :raise ValueError: If pending points are empty or None.
+   :return: The penalization function. This function will raise
+       :exc:`ValueError` or :exc:`~tf.errors.InvalidArgumentError` if used with a batch size
+       greater than one.
+
+
+   .. py:method:: update(pending_points: trieste.types.TensorType) -> None
+
+      Update the penalizer with new pending points.
+
+
+

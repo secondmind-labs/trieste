@@ -1,0 +1,184 @@
+:py:mod:`trieste.objectives.multi_objectives`
+=============================================
+
+.. py:module:: trieste.objectives.multi_objectives
+
+.. autoapi-nested-parse::
+
+   This module contains synthetic multi-objective functions, useful for experimentation.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: MultiObjectiveTestProblem
+
+   Bases: :py:obj:`abc.ABC`
+
+   Base class for synthetic multi-objective test functions.
+   Prepares the synthetic function and generates pareto optimal points.
+   The latter can be used as a reference of performance measure of certain
+   multi-objective optimization algorithms.
+
+   .. py:method:: dim(self) -> int
+      :property:
+
+      The input dimensionality of the test function
+
+
+   .. py:method:: bounds(self) -> list[list[float]]
+      :property:
+
+      The input space bounds of the test function
+
+
+   .. py:method:: objective(self) -> collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]
+      :abstractmethod:
+
+      Get the synthetic test function.
+
+      :return: A callable synthetic function
+
+
+   .. py:method:: gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Generate `n` Pareto optimal points.
+
+      :param n: The number of pareto optimal points to be generated.
+      :param seed: An integer used to create a random seed for distributions that
+       used to generate pareto optimal points.
+      :return: The Pareto optimal points
+
+
+
+.. py:class:: VLMOP2
+
+   Bases: :py:obj:`MultiObjectiveTestProblem`
+
+   The VLMOP2 problem, typically evaluated over :math:`[-2, 2]^2`.
+   The idea pareto fronts lies on -1/sqrt(2) - 1/sqrt(2) and x1=x2.
+   See :cite:`van1999multiobjective` and  :cite: fonseca1995multiobjective
+   (the latter for discussion of pareto front property) for details.
+
+   .. py:method:: objective(self) -> collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]
+
+      Get the synthetic test function.
+
+      :return: A callable synthetic function
+
+
+   .. py:method:: gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> trieste.types.TensorType
+
+      Generate `n` Pareto optimal points.
+
+      :param n: The number of pareto optimal points to be generated.
+      :param seed: An integer used to create a random seed for distributions that
+       used to generate pareto optimal points.
+      :return: The Pareto optimal points
+
+
+
+.. py:function:: vlmop2(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+   The VLMOP2 synthetic function.
+
+   :param x: The points at which to evaluate the function, with shape [..., 2].
+   :return: The function values at ``x``, with shape [..., 2].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:class:: DTLZ(input_dim: int, num_objective: int)
+
+   Bases: :py:obj:`MultiObjectiveTestProblem`
+
+   DTLZ series multi-objective test problem.
+   See :cite:deb2002scalable for details.
+
+   .. py:method:: dim(self) -> int
+      :property:
+
+      The input dimensionality of the test function
+
+
+   .. py:method:: bounds(self) -> list[list[float]]
+      :property:
+
+      The input space bounds of the test function
+
+
+
+.. py:class:: DTLZ1(input_dim: int, num_objective: int)
+
+   Bases: :py:obj:`DTLZ`
+
+   The DTLZ1 problem, the idea pareto fronts lie on a linear hyper-plane.
+   See :cite:deb2002scalable for details.
+
+   .. py:method:: objective(self) -> collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]
+
+      Get the synthetic test function.
+
+      :return: A callable synthetic function
+
+
+   .. py:method:: gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> trieste.types.TensorType
+
+      Generate `n` Pareto optimal points.
+
+      :param n: The number of pareto optimal points to be generated.
+      :param seed: An integer used to create a random seed for distributions that
+       used to generate pareto optimal points.
+      :return: The Pareto optimal points
+
+
+
+.. py:function:: dtlz1(x: trieste.types.TensorType, m: int, k: int, d: int) -> trieste.types.TensorType
+
+   The DTLZ1 synthetic function.
+
+   :param x: The points at which to evaluate the function, with shape [..., d].
+   :param m: The objective numbers.
+   :param k: The input dimensionality for g.
+   :param d: The dimensionality of the synthetic function.
+   :return: The function values at ``x``, with shape [..., m].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+
+.. py:class:: DTLZ2(input_dim: int, num_objective: int)
+
+   Bases: :py:obj:`DTLZ`
+
+   The DTLZ2 problem, the idea pareto fronts lie on (part of) a unit hyper sphere.
+   See :cite:deb2002scalable for details.
+
+   .. py:method:: objective(self) -> collections.abc.Callable[[trieste.types.TensorType], trieste.types.TensorType]
+
+      Get the synthetic test function.
+
+      :return: A callable synthetic function
+
+
+   .. py:method:: gen_pareto_optimal_points(self, n: int, seed: int | None = None) -> trieste.types.TensorType
+
+      Generate `n` Pareto optimal points.
+
+      :param n: The number of pareto optimal points to be generated.
+      :param seed: An integer used to create a random seed for distributions that
+       used to generate pareto optimal points.
+      :return: The Pareto optimal points
+
+
+
+.. py:function:: dtlz2(x: trieste.types.TensorType, m: int, d: int) -> trieste.types.TensorType
+
+   The DTLZ2 synthetic function.
+
+   :param x: The points at which to evaluate the function, with shape [..., d].
+   :param m: The objective numbers.
+   :param d: The dimensionality of the synthetic function.
+   :return: The function values at ``x``, with shape [..., m].
+   :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.
+
+

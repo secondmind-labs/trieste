@@ -1,0 +1,653 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.interface &#8212; trieste 0.12.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../index.html">
+  <img src="../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.12.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/acquisition/interface and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.12.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/acquisition/interface.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/acquisition/interface.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.12.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.acquisition.interface</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains the interfaces relating to acquisition function --- functions that estimate</span>
+<span class="sd">the utility of evaluating sets of candidate points.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Generic</span><span class="p">,</span> <span class="n">Mapping</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">from</span> <span class="nn">..data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">..models.interfaces</span> <span class="kn">import</span> <span class="n">ProbabilisticModelType</span>
+<span class="kn">from</span> <span class="nn">..types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+
+<div class="viewcode-block" id="AcquisitionFunction"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.AcquisitionFunction">[docs]</a><span class="n">AcquisitionFunction</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]</span></div>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">Type alias for acquisition functions.</span>
+
+<span class="sd">An :const:`AcquisitionFunction` maps a set of `B` query points (each of dimension `D`) to a single</span>
+<span class="sd">value that describes how useful it would be evaluate all these points together (to our goal of</span>
+<span class="sd">optimizing the objective function). Thus, with leading dimensions, an :const:`AcquisitionFunction`</span>
+<span class="sd">takes input shape `[..., B, D]` and returns shape `[..., 1]`.</span>
+
+<span class="sd">Note that :const:`AcquisitionFunction`s which do not support batch optimization still expect inputs</span>
+<span class="sd">with a batch dimension, i.e. an input of shape `[..., 1, D]`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="AcquisitionFunctionClass"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.AcquisitionFunctionClass">[docs]</a><span class="k">class</span> <span class="nc">AcquisitionFunctionClass</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An :class:`AcquisitionFunctionClass` is an acquisition function represented using a class</span>
+<span class="sd">    rather than as a standalone function. Using a class to represent an acquisition function</span>
+<span class="sd">    makes it easier to update it, to avoid having to retrace the function on every call.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AcquisitionFunctionClass.__call__"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.AcquisitionFunctionClass.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span></div></div>
+        <span class="sd">&quot;&quot;&quot;Call acquisition function.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="AcquisitionFunctionBuilder"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.AcquisitionFunctionBuilder">[docs]</a><span class="k">class</span> <span class="nc">AcquisitionFunctionBuilder</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An :class:`AcquisitionFunctionBuilder` builds and updates an acquisition function.&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="AcquisitionFunctionBuilder.prepare_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.AcquisitionFunctionBuilder.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Prepare an acquisition function. We assume that this requires at least models, but</span>
+<span class="sd">        it may sometimes also need data.</span>
+
+<span class="sd">        :param models: The models for each tag.</span>
+<span class="sd">        :param datasets: The data from the observer (optional).</span>
+<span class="sd">        :return: An acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AcquisitionFunctionBuilder.update_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.AcquisitionFunctionBuilder.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update an acquisition function. By default this generates a new acquisition function each</span>
+<span class="sd">        time. However, if the function is decorated with `@tf.function`, then you can override</span>
+<span class="sd">        this method to update its variables instead and avoid retracing the acquisition function on</span>
+<span class="sd">        every optimization loop.</span>
+
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param models: The models for each tag.</span>
+<span class="sd">        :param datasets: The data from the observer (optional).</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span><span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="o">=</span><span class="n">datasets</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="SingleModelAcquisitionBuilder"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelAcquisitionBuilder">[docs]</a><span class="k">class</span> <span class="nc">SingleModelAcquisitionBuilder</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience acquisition function builder for an acquisition function (or component of a</span>
+<span class="sd">    composite acquisition function) that requires only one model, dataset pair.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleModelAcquisitionBuilder.using"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelAcquisitionBuilder.using">[docs]</a>    <span class="k">def</span> <span class="nf">using</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param tag: The tag for the model, dataset pair to use to build this acquisition function.</span>
+<span class="sd">        :return: An acquisition function builder that selects the model and dataset specified by</span>
+<span class="sd">            ``tag``, as defined in :meth:`prepare_acquisition_function`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">single_builder</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">class</span> <span class="nc">_Anon</span><span class="p">(</span><span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+            <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span>
+                <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+                <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">single_builder</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+                    <span class="n">models</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">datasets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span>
+                <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+                <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+                <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">single_builder</span><span class="o">.</span><span class="n">update_acquisition_function</span><span class="p">(</span>
+                    <span class="n">function</span><span class="p">,</span> <span class="n">models</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">datasets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">single_builder</span><span class="si">!r}</span><span class="s2"> using tag </span><span class="si">{</span><span class="n">tag</span><span class="si">!r}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="n">_Anon</span><span class="p">()</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SingleModelAcquisitionBuilder.prepare_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelAcquisitionBuilder.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data to use to build the acquisition function (optional).</span>
+<span class="sd">        :return: An acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleModelAcquisitionBuilder.update_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelAcquisitionBuilder.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer (optional).</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">)</span></div></div>
+
+
+<div class="viewcode-block" id="GreedyAcquisitionFunctionBuilder"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.GreedyAcquisitionFunctionBuilder">[docs]</a><span class="k">class</span> <span class="nc">GreedyAcquisitionFunctionBuilder</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`GreedyAcquisitionFunctionBuilder` builds an acquisition function</span>
+<span class="sd">    suitable for greedily building batches for batch Bayesian</span>
+<span class="sd">    Optimization. A :class:`GreedyAcquisitionFunctionBuilder` differs</span>
+<span class="sd">    from an :class:`AcquisitionFunctionBuilder` by requiring that a set</span>
+<span class="sd">    of pending points is passed to the builder. Note that this acquisition function</span>
+<span class="sd">    is typically called `B` times each Bayesian optimization step, when building batches</span>
+<span class="sd">    of size `B`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="GreedyAcquisitionFunctionBuilder.prepare_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.GreedyAcquisitionFunctionBuilder.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Generate a new acquisition function. The first time this is called, ``pending_points``</span>
+<span class="sd">        will be `None`. Subsequent calls will be via ``update_acquisition_function`` below,</span>
+<span class="sd">        unless that has been overridden.</span>
+
+<span class="sd">        :param models: The models over each tag.</span>
+<span class="sd">        :param datasets: The data from the observer (optional).</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :return: An acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="GreedyAcquisitionFunctionBuilder.update_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.GreedyAcquisitionFunctionBuilder.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+        <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Update an acquisition function. By default this generates a new acquisition function each</span>
+<span class="sd">        time. However, if the function is decorated with`@tf.function`, then you can override</span>
+<span class="sd">        this method to update its variables instead and avoid retracing the acquisition function on</span>
+<span class="sd">        every optimization loop.</span>
+
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param models: The models over each tag.</span>
+<span class="sd">        :param datasets: The data from the observer (optional).</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :param new_optimization_step: Indicates whether this call to update_acquisition_function</span>
+<span class="sd">            is to start of a new optimization step, of to continue collecting batch of points</span>
+<span class="sd">            for the current step. Defaults to ``True``.</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+            <span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="o">=</span><span class="n">datasets</span><span class="p">,</span> <span class="n">pending_points</span><span class="o">=</span><span class="n">pending_points</span></div></div>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="SingleModelGreedyAcquisitionBuilder"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelGreedyAcquisitionBuilder">[docs]</a><span class="k">class</span> <span class="nc">SingleModelGreedyAcquisitionBuilder</span><span class="p">(</span><span class="n">Generic</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">],</span> <span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience acquisition function builder for a greedy acquisition function (or component of a</span>
+<span class="sd">    composite greedy acquisition function) that requires only one model, dataset pair.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleModelGreedyAcquisitionBuilder.using"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelGreedyAcquisitionBuilder.using">[docs]</a>    <span class="k">def</span> <span class="nf">using</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">GreedyAcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param tag: The tag for the model, dataset pair to use to build this acquisition function.</span>
+<span class="sd">        :return: An acquisition function builder that selects the model and dataset specified by</span>
+<span class="sd">            ``tag``, as defined in :meth:`prepare_acquisition_function`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">single_builder</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">class</span> <span class="nc">_Anon</span><span class="p">(</span><span class="n">GreedyAcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+            <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span>
+                <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+                <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">single_builder</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+                    <span class="n">models</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span>
+                    <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">datasets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span>
+                    <span class="n">pending_points</span><span class="o">=</span><span class="n">pending_points</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span>
+                <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+                <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+                <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+                <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">single_builder</span><span class="o">.</span><span class="n">update_acquisition_function</span><span class="p">(</span>
+                    <span class="n">function</span><span class="p">,</span>
+                    <span class="n">models</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span>
+                    <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">datasets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span>
+                    <span class="n">pending_points</span><span class="o">=</span><span class="n">pending_points</span><span class="p">,</span>
+                    <span class="n">new_optimization_step</span><span class="o">=</span><span class="n">new_optimization_step</span><span class="p">,</span>
+                <span class="p">)</span>
+
+            <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">single_builder</span><span class="si">!r}</span><span class="s2"> using tag </span><span class="si">{</span><span class="n">tag</span><span class="si">!r}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="n">_Anon</span><span class="p">()</span></div>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="SingleModelGreedyAcquisitionBuilder.prepare_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelGreedyAcquisitionBuilder.prepare_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer (optional).</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :return: An acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleModelGreedyAcquisitionBuilder.update_acquisition_function"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelGreedyAcquisitionBuilder.update_acquisition_function">[docs]</a>    <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">new_optimization_step</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param function: The acquisition function to update.</span>
+<span class="sd">        :param model: The model.</span>
+<span class="sd">        :param dataset: The data from the observer (optional).</span>
+<span class="sd">        :param pending_points: Points already chosen to be in the current batch (of shape [M,D]),</span>
+<span class="sd">            where M is the number of pending points and D is the search space dimension.</span>
+<span class="sd">        :param new_optimization_step: Indicates whether this call to update_acquisition_function</span>
+<span class="sd">            is to start of a new optimization step, of to continue collecting batch of points</span>
+<span class="sd">            for the current step. Defaults to ``True``.</span>
+<span class="sd">        :return: The updated acquisition function.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+            <span class="n">model</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+            <span class="n">pending_points</span><span class="o">=</span><span class="n">pending_points</span><span class="p">,</span></div></div>
+        <span class="p">)</span>
+
+
+<div class="viewcode-block" id="VectorizedAcquisitionFunctionBuilder"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.VectorizedAcquisitionFunctionBuilder">[docs]</a><span class="k">class</span> <span class="nc">VectorizedAcquisitionFunctionBuilder</span><span class="p">(</span><span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]):</span></div>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An :class:`VectorizedAcquisitionFunctionBuilder` builds and updates a vectorized</span>
+<span class="sd">    acquisition function These differ from normal acquisition functions only by their output shape:</span>
+<span class="sd">    rather than returning a single value, they return one value per potential query point.</span>
+<span class="sd">    Thus, with leading dimensions, they take input shape `[..., B, D]` and returns shape `[..., B]`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="SingleModelVectorizedAcquisitionBuilder"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelVectorizedAcquisitionBuilder">[docs]</a><span class="k">class</span> <span class="nc">SingleModelVectorizedAcquisitionBuilder</span><span class="p">(</span>
+    <span class="n">SingleModelAcquisitionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]</span>
+<span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience acquisition function builder for vectorized acquisition functions (or component</span>
+<span class="sd">    of a composite vectorized acquisition function) that requires only one model, dataset pair.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleModelVectorizedAcquisitionBuilder.using"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.SingleModelVectorizedAcquisitionBuilder.using">[docs]</a>    <span class="k">def</span> <span class="nf">using</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tag</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]:</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param tag: The tag for the model, dataset pair to use to build this acquisition function.</span>
+<span class="sd">        :return: An acquisition function builder that selects the model and dataset specified by</span>
+<span class="sd">            ``tag``, as defined in :meth:`prepare_acquisition_function`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">single_builder</span> <span class="o">=</span> <span class="bp">self</span>
+
+        <span class="k">class</span> <span class="nc">_Anon</span><span class="p">(</span><span class="n">VectorizedAcquisitionFunctionBuilder</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+            <span class="k">def</span> <span class="nf">prepare_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span>
+                <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+                <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">single_builder</span><span class="o">.</span><span class="n">prepare_acquisition_function</span><span class="p">(</span>
+                    <span class="n">models</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">datasets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="k">def</span> <span class="nf">update_acquisition_function</span><span class="p">(</span>
+                <span class="bp">self</span><span class="p">,</span>
+                <span class="n">function</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+                <span class="n">models</span><span class="p">:</span> <span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">ProbabilisticModelType</span><span class="p">],</span>
+                <span class="n">datasets</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Mapping</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Dataset</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+            <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">AcquisitionFunction</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">single_builder</span><span class="o">.</span><span class="n">update_acquisition_function</span><span class="p">(</span>
+                    <span class="n">function</span><span class="p">,</span> <span class="n">models</span><span class="p">[</span><span class="n">tag</span><span class="p">],</span> <span class="n">dataset</span><span class="o">=</span><span class="kc">None</span> <span class="k">if</span> <span class="n">datasets</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">datasets</span><span class="p">[</span><span class="n">tag</span><span class="p">]</span>
+                <span class="p">)</span>
+
+            <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+                <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">single_builder</span><span class="si">!r}</span><span class="s2"> using tag </span><span class="si">{</span><span class="n">tag</span><span class="si">!r}</span><span class="s2">&quot;</span>
+
+        <span class="k">return</span> <span class="n">_Anon</span><span class="p">()</span></div></div>
+
+
+<div class="viewcode-block" id="PenalizationFunction"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.PenalizationFunction">[docs]</a><span class="n">PenalizationFunction</span> <span class="o">=</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]</span></div>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">An :const:`PenalizationFunction` maps a query point (of dimension `D`) to a single</span>
+<span class="sd">value that described how heavily it should be penalized (a positive quantity).</span>
+<span class="sd">As penalization is applied multiplicatively to acquisition functions, small</span>
+<span class="sd">penalization outputs correspond to a stronger penalization effect. Thus, with</span>
+<span class="sd">leading dimensions, an :const:`PenalizationFunction` takes input</span>
+<span class="sd">shape `[..., 1, D]` and returns shape `[..., 1]`.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="UpdatablePenalizationFunction"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.UpdatablePenalizationFunction">[docs]</a><span class="k">class</span> <span class="nc">UpdatablePenalizationFunction</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;An :class:`UpdatablePenalizationFunction` builds and updates a penalization function.</span>
+<span class="sd">    Defining a penalization function that can be updated avoids having to retrace on every call.&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="UpdatablePenalizationFunction.__call__"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.UpdatablePenalizationFunction.__call__">[docs]</a>    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span></div>
+        <span class="sd">&quot;&quot;&quot;Call penalization function..&quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="UpdatablePenalizationFunction.update"><a class="viewcode-back" href="../../../autoapi/trieste/acquisition/interface/index.html#trieste.acquisition.UpdatablePenalizationFunction.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">pending_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">lipschitz_constant</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">eta</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span></div></div>
+        <span class="sd">&quot;&quot;&quot;Update penalization function.&quot;&quot;&quot;</span>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

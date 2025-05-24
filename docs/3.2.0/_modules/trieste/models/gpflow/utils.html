@@ -1,0 +1,803 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflow.utils &#8212; trieste 3.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/models/gpflow/utils';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.models.gpflow.utils</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.models.gpflow.utils</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Tuple</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">...utils</span> <span class="kn">import</span> <span class="n">DEFAULTS</span>
+<span class="kn">from</span> <span class="nn">..optimizer</span> <span class="kn">import</span> <span class="n">BatchOptimizer</span><span class="p">,</span> <span class="n">Optimizer</span>
+<span class="kn">from</span> <span class="nn">.interface</span> <span class="kn">import</span> <span class="n">GPflowPredictor</span>
+
+
+<div class="viewcode-block" id="assert_data_is_compatible"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/utils/index.html#trieste.models.gpflow.assert_data_is_compatible">[docs]</a><span class="k">def</span> <span class="nf">assert_data_is_compatible</span><span class="p">(</span><span class="n">new_data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span> <span class="n">existing_data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Checks that new data is compatible with existing data.</span>
+
+<span class="sd">    :param new_data: New data.</span>
+<span class="sd">    :param existing_data: Existing data.</span>
+<span class="sd">    :raise ValueError: if trailing dimensions of the query point or observation differ.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">new_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">existing_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Shape </span><span class="si">{</span><span class="n">new_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of new query points is incompatible with&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; shape </span><span class="si">{</span><span class="n">existing_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of existing query points. Trailing&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; dimensions must match.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">new_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">existing_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Shape </span><span class="si">{</span><span class="n">new_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of new observations is incompatible with&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; shape </span><span class="si">{</span><span class="n">existing_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of existing observations. Trailing&quot;</span>
+            <span class="sa">f</span><span class="s2">&quot; dimensions must match.&quot;</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="randomize_hyperparameters"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/utils/index.html#trieste.models.gpflow.randomize_hyperparameters">[docs]</a><span class="k">def</span> <span class="nf">randomize_hyperparameters</span><span class="p">(</span><span class="nb">object</span><span class="p">:</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">Module</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Sets hyperparameters to random samples from their prior distributions or (for Sigmoid</span>
+<span class="sd">    constraints with no priors) their constrained domains. Note that it is up to the caller</span>
+<span class="sd">    to ensure that the prior, if defined, is compatible with the transform.</span>
+
+<span class="sd">    :param object: Any gpflow Module.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">trainable_parameters</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">prior</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># handle constant priors for multi-dimensional parameters</span>
+            <span class="c1"># Use python conditionals here to avoid creating tensorflow `tf.cond` ops,</span>
+            <span class="c1"># i.e. using `len(param.shape)` instead of `tf.rank(param)`.</span>
+            <span class="c1"># Otherwise, tensorflow generates repeating random sequences for hyperparameters, see</span>
+            <span class="c1"># https://github.com/tensorflow/tensorflow/issues/61912.</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">batch_shape</span> <span class="o">==</span> <span class="n">param</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">event_shape</span> <span class="o">==</span> <span class="p">[]</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">param</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">sample</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">prior</span><span class="o">.</span><span class="n">sample</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">param</span><span class="o">.</span><span class="n">prior_on</span> <span class="ow">is</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">base</span><span class="o">.</span><span class="n">PriorOn</span><span class="o">.</span><span class="n">UNCONSTRAINED</span><span class="p">:</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">unconstrained_variable</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="p">,</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Sigmoid</span><span class="p">):</span>
+            <span class="n">sample</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+                <span class="n">minval</span><span class="o">=</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">low</span><span class="p">,</span>
+                <span class="n">maxval</span><span class="o">=</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">high</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">low</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">param</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">sample</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="squeeze_hyperparameters"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/utils/index.html#trieste.models.gpflow.squeeze_hyperparameters">[docs]</a><span class="k">def</span> <span class="nf">squeeze_hyperparameters</span><span class="p">(</span>
+    <span class="nb">object</span><span class="p">:</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">Module</span><span class="p">,</span> <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-2</span><span class="p">,</span> <span class="n">epsilon</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-7</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Squeezes the parameters to be strictly inside their range defined by the Sigmoid,</span>
+<span class="sd">    or strictly greater than the limit defined by the Shift+Softplus.</span>
+<span class="sd">    This avoids having Inf unconstrained values when the parameters are exactly at the boundary.</span>
+
+<span class="sd">    :param object: Any gpflow Module.</span>
+<span class="sd">    :param alpha: the proportion of the range with which to squeeze for the Sigmoid case</span>
+<span class="sd">    :param epsilon: the value with which to offset the shift for the Softplus case.</span>
+<span class="sd">    :raise ValueError: If ``alpha`` is not in (0,1) or epsilon &lt;= 0</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="ow">not</span> <span class="mi">0</span> <span class="o">&lt;</span> <span class="n">alpha</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;squeeze factor alpha must be in (0, 1), found </span><span class="si">{</span><span class="n">alpha</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">epsilon</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;offset factor epsilon must be &gt; 0, found </span><span class="si">{</span><span class="n">epsilon</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">param</span> <span class="ow">in</span> <span class="nb">object</span><span class="o">.</span><span class="n">trainable_parameters</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="p">,</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Sigmoid</span><span class="p">):</span>
+            <span class="n">delta</span> <span class="o">=</span> <span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">high</span> <span class="o">-</span> <span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">low</span><span class="p">)</span> <span class="o">*</span> <span class="n">alpha</span>
+            <span class="n">squeezed_param</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">high</span> <span class="o">-</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">squeezed_param</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">squeezed_param</span><span class="p">,</span> <span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">low</span> <span class="o">+</span> <span class="n">delta</span><span class="p">)</span>
+            <span class="n">param</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">squeezed_param</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="p">(</span>
+            <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="p">,</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Chain</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">bijectors</span><span class="p">)</span> <span class="o">==</span> <span class="mi">2</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">bijectors</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Shift</span><span class="p">)</span>
+            <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">bijectors</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Softplus</span><span class="p">)</span>
+        <span class="p">):</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">bijectors</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Shift</span><span class="p">)</span> <span class="ow">and</span> <span class="nb">isinstance</span><span class="p">(</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">bijectors</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">tfp</span><span class="o">.</span><span class="n">bijectors</span><span class="o">.</span><span class="n">Softplus</span>
+            <span class="p">):</span>
+                <span class="n">low</span> <span class="o">=</span> <span class="n">param</span><span class="o">.</span><span class="n">bijector</span><span class="o">.</span><span class="n">bijectors</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">shift</span>
+                <span class="n">squeezed_param</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">param</span><span class="p">,</span> <span class="n">low</span> <span class="o">+</span> <span class="n">epsilon</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones_like</span><span class="p">(</span><span class="n">param</span><span class="p">))</span>
+                <span class="n">param</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="n">squeezed_param</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="check_optimizer"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/utils/index.html#trieste.models.gpflow.check_optimizer">[docs]</a><span class="k">def</span> <span class="nf">check_optimizer</span><span class="p">(</span><span class="n">optimizer</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">BatchOptimizer</span><span class="p">,</span> <span class="n">Optimizer</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check that the optimizer for the GPflow models is using a correct optimizer wrapper.</span>
+
+<span class="sd">    Stochastic gradient descent based methods implemented in TensorFlow would not</span>
+<span class="sd">    work properly without mini-batches and hence :class:`~trieste.models.optimizers.BatchOptimizer`</span>
+<span class="sd">    that prepares mini-batches and calls the optimizer iteratively needs to be used. GPflow&#39;s</span>
+<span class="sd">    :class:`~gpflow.optimizers.Scipy` optimizer on the other hand should use the non-batch wrapper</span>
+<span class="sd">    :class:`~trieste.models.optimizers.Optimizer`.</span>
+
+<span class="sd">    :param optimizer: An instance of the optimizer wrapper with the underlying optimizer.</span>
+<span class="sd">    :raise ValueError: If :class:`~tf.optimizers.Optimizer` is not using</span>
+<span class="sd">        :class:`~trieste.models.optimizers.BatchOptimizer` or :class:`~gpflow.optimizers.Scipy` is</span>
+<span class="sd">        using :class:`~trieste.models.optimizers.BatchOptimizer`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Scipy</span><span class="p">):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">BatchOptimizer</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                The gpflow.optimizers.Scipy can only be used with an Optimizer wrapper,</span>
+<span class="s2">                however received </span><span class="si">{</span><span class="n">optimizer</span><span class="si">}</span><span class="s2">.</span>
+<span class="s2">                &quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">BatchOptimizer</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                The tf.optimizers.Optimizer can only be used with a BatchOptimizer wrapper,</span>
+<span class="s2">                however received </span><span class="si">{</span><span class="n">optimizer</span><span class="si">}</span><span class="s2">.</span>
+<span class="s2">                &quot;&quot;&quot;</span>
+            <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="_covariance_between_points_for_variational_models"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/utils/index.html#trieste.models.gpflow._covariance_between_points_for_variational_models">[docs]</a><span class="k">def</span> <span class="nf">_covariance_between_points_for_variational_models</span><span class="p">(</span>
+    <span class="n">kernel</span><span class="p">:</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">,</span>
+    <span class="n">inducing_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">q_sqrt</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">query_points_1</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">query_points_2</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">whiten</span><span class="p">:</span> <span class="nb">bool</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sa">r</span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Compute the posterior covariance between sets of query points.</span>
+
+<span class="sd">    .. math:: \Sigma_{12} = K_{1x}BK_{x2} + K_{12} - K_{1x}K_{xx}^{-1}K_{x2}</span>
+
+<span class="sd">    where :math:`B = K_{xx}^{-1}(q_{sqrt}q_{sqrt}^T)K_{xx}^{-1}`</span>
+<span class="sd">    or :math:`B = L^{-1}(q_{sqrt}q_{sqrt}^T)(L^{-1})^T` if we are using</span>
+<span class="sd">    a whitened representation in our variational approximation. Here</span>
+<span class="sd">    :math:`L` is the Cholesky decomposition of :math:`K_{xx}`.</span>
+<span class="sd">    See :cite:`titsias2009variational` for a derivation.</span>
+
+<span class="sd">    Note that this function can also be applied to</span>
+<span class="sd">    our :class:`VariationalGaussianProcess` models by passing in the training</span>
+<span class="sd">    data rather than the locations of the inducing points.</span>
+
+<span class="sd">    Although query_points_2 must be a rank 2 tensor, query_points_1 can</span>
+<span class="sd">    have leading dimensions.</span>
+
+<span class="sd">    :inducing points: The input locations chosen for our variational approximation.</span>
+<span class="sd">    :q_sqrt: The Cholesky decomposition of the covariance matrix of our</span>
+<span class="sd">        variational distribution.</span>
+<span class="sd">    :param query_points_1: Set of query points with shape [..., A, D]</span>
+<span class="sd">    :param query_points_2: Sets of query points with shape [B, D]</span>
+<span class="sd">    :param whiten:  If True then use whitened representations.</span>
+<span class="sd">    :return: Covariance matrix between the sets of query points with shape [..., L, A, B]</span>
+<span class="sd">        (L being the number of latent GPs = number of output dimensions)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">query_points_1</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span> <span class="p">(</span><span class="n">query_points_2</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;B&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">])])</span>
+
+    <span class="n">num_latent</span> <span class="o">=</span> <span class="n">q_sqrt</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">K</span><span class="p">,</span> <span class="n">Kx1</span><span class="p">,</span> <span class="n">Kx2</span><span class="p">,</span> <span class="n">K12</span> <span class="o">=</span> <span class="n">_compute_kernel_blocks</span><span class="p">(</span>
+        <span class="n">kernel</span><span class="p">,</span> <span class="n">inducing_points</span><span class="p">,</span> <span class="n">query_points_1</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">,</span> <span class="n">num_latent</span>
+    <span class="p">)</span>
+
+    <span class="n">L</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">K</span><span class="p">)</span>  <span class="c1"># [L, M, M]</span>
+    <span class="n">Linv_Kx1</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">Kx1</span><span class="p">)</span>  <span class="c1"># [..., L, M, A]</span>
+    <span class="n">Linv_Kx2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">Kx2</span><span class="p">)</span>  <span class="c1"># [..., L, M, B]</span>
+
+    <span class="k">def</span> <span class="nf">_leading_mul</span><span class="p">(</span><span class="n">M_1</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">M_2</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">transpose_a</span><span class="p">:</span> <span class="nb">bool</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">transpose_a</span><span class="p">:</span>  <span class="c1"># The einsum below is just A^T*B over the last 2 dimensions.</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;...lji,ljk-&gt;...lik&quot;</span><span class="p">,</span> <span class="n">M_1</span><span class="p">,</span> <span class="n">M_2</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># The einsum below is just A*B^T over the last 2 dimensions.</span>
+            <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">einsum</span><span class="p">(</span><span class="s2">&quot;...lij,lkj-&gt;...lik&quot;</span><span class="p">,</span> <span class="n">M_1</span><span class="p">,</span> <span class="n">M_2</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">whiten</span><span class="p">:</span>
+        <span class="n">first_cov_term</span> <span class="o">=</span> <span class="n">_leading_mul</span><span class="p">(</span>
+            <span class="n">_leading_mul</span><span class="p">(</span><span class="n">Linv_Kx1</span><span class="p">,</span> <span class="n">q_sqrt</span><span class="p">,</span> <span class="n">transpose_a</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># [..., L, A, M]</span>
+            <span class="n">_leading_mul</span><span class="p">(</span><span class="n">Linv_Kx2</span><span class="p">,</span> <span class="n">q_sqrt</span><span class="p">,</span> <span class="n">transpose_a</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># [..., L, B, M]</span>
+            <span class="n">transpose_a</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># [..., L, A, B]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">Linv_qsqrt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">L</span><span class="p">,</span> <span class="n">q_sqrt</span><span class="p">)</span>  <span class="c1"># [L, M, M]</span>
+        <span class="n">first_cov_term</span> <span class="o">=</span> <span class="n">_leading_mul</span><span class="p">(</span>
+            <span class="n">_leading_mul</span><span class="p">(</span><span class="n">Linv_Kx1</span><span class="p">,</span> <span class="n">Linv_qsqrt</span><span class="p">,</span> <span class="n">transpose_a</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># [..., L, A, M]</span>
+            <span class="n">_leading_mul</span><span class="p">(</span><span class="n">Linv_Kx2</span><span class="p">,</span> <span class="n">Linv_qsqrt</span><span class="p">,</span> <span class="n">transpose_a</span><span class="o">=</span><span class="kc">True</span><span class="p">),</span>  <span class="c1"># [..., L, B, M]</span>
+            <span class="n">transpose_a</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># [..., L, A, B]</span>
+
+    <span class="n">second_cov_term</span> <span class="o">=</span> <span class="n">K12</span>  <span class="c1"># [..., L, A, B]</span>
+    <span class="n">third_cov_term</span> <span class="o">=</span> <span class="n">_leading_mul</span><span class="p">(</span><span class="n">Linv_Kx1</span><span class="p">,</span> <span class="n">Linv_Kx2</span><span class="p">,</span> <span class="n">transpose_a</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># [..., L, A, B]</span>
+    <span class="n">cov</span> <span class="o">=</span> <span class="n">first_cov_term</span> <span class="o">+</span> <span class="n">second_cov_term</span> <span class="o">-</span> <span class="n">third_cov_term</span>  <span class="c1"># [..., L, A, B]</span>
+
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="n">query_points_1</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+            <span class="p">(</span><span class="n">query_points_2</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;D&quot;</span><span class="p">]),</span>
+            <span class="p">(</span><span class="n">cov</span><span class="p">,</span> <span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="s2">&quot;L&quot;</span><span class="p">,</span> <span class="s2">&quot;N&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">]),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">cov</span></div>
+
+
+<div class="viewcode-block" id="_compute_kernel_blocks"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/utils/index.html#trieste.models.gpflow._compute_kernel_blocks">[docs]</a><span class="k">def</span> <span class="nf">_compute_kernel_blocks</span><span class="p">(</span>
+    <span class="n">kernel</span><span class="p">:</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">,</span>
+    <span class="n">inducing_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">query_points_1</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">query_points_2</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">num_latent</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return all the prior covariances required to calculate posterior covariances for each latent</span>
+<span class="sd">    Gaussian process, as specified by the `num_latent` input.</span>
+
+<span class="sd">    This function returns the covariance between: `inducing_points` and `query_points_1`;</span>
+<span class="sd">    `inducing_points` and `query_points_2`; `query_points_1` and `query_points_2`;</span>
+<span class="sd">    `inducing_points` and `inducing_points`.</span>
+
+<span class="sd">    The calculations are performed differently depending on the type of</span>
+<span class="sd">    kernel (single output, separate independent multi-output or shared independent</span>
+<span class="sd">    multi-output) and inducing variables (simple set, SharedIndependent or SeparateIndependent).</span>
+
+<span class="sd">    Note that `num_latents` is only used when we use a single kernel for a multi-output model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">kernel</span><span class="p">,</span> <span class="p">(</span><span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">SharedIndependent</span><span class="p">,</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">SeparateIndependent</span><span class="p">)):</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="n">K</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">ker</span><span class="p">(</span><span class="n">Z</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="k">for</span> <span class="n">ker</span><span class="p">,</span> <span class="n">Z</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span> <span class="n">inducing_points</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>
+            <span class="n">Kx1</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">ker</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">query_points_1</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">ker</span><span class="p">,</span> <span class="n">Z</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span> <span class="n">inducing_points</span><span class="p">)</span>
+                <span class="p">],</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span>  <span class="c1"># [..., L, M, A]</span>
+            <span class="n">Kx2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="p">[</span>
+                    <span class="n">ker</span><span class="p">(</span><span class="n">Z</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">ker</span><span class="p">,</span> <span class="n">Z</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">kernel</span><span class="o">.</span><span class="n">kernels</span><span class="p">,</span> <span class="n">inducing_points</span><span class="p">)</span>
+                <span class="p">],</span>
+                <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="p">)</span>  <span class="c1"># [L, M, B]</span>
+            <span class="n">K12</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">ker</span><span class="p">(</span><span class="n">query_points_1</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">)[</span><span class="kc">None</span><span class="p">,</span> <span class="o">...</span><span class="p">]</span> <span class="k">for</span> <span class="n">ker</span> <span class="ow">in</span> <span class="n">kernel</span><span class="o">.</span><span class="n">kernels</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span>
+            <span class="p">)</span>  <span class="c1"># [L, M, B]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">K</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">full_output_cov</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  <span class="c1"># [L, M, M]</span>
+            <span class="n">Kx1</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span>
+                <span class="n">inducing_points</span><span class="p">,</span> <span class="n">query_points_1</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">full_output_cov</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>  <span class="c1"># [..., L, M, A]</span>
+            <span class="n">Kx2</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span>
+                <span class="n">inducing_points</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">full_output_cov</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>  <span class="c1"># [L, M, B]</span>
+            <span class="n">K12</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span>
+                <span class="n">query_points_1</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">full_output_cov</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>  <span class="c1"># [..., L, A, B]</span>
+    <span class="k">else</span><span class="p">:</span>  <span class="c1"># simple calculations for the single output case</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">)</span>  <span class="c1"># [M, M]</span>
+        <span class="n">Kx1</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="n">query_points_1</span><span class="p">)</span>  <span class="c1"># [..., M, A]</span>
+        <span class="n">Kx2</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">)</span>  <span class="c1"># [M, B]</span>
+        <span class="n">K12</span> <span class="o">=</span> <span class="n">kernel</span><span class="p">(</span><span class="n">query_points_1</span><span class="p">,</span> <span class="n">query_points_2</span><span class="p">)</span>  <span class="c1"># [..., A, B]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">K</span><span class="p">))</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>  <span class="c1"># if single kernel then repeat for all latent dimensions</span>
+        <span class="n">K</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">),</span> <span class="n">num_latent</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">Kx1</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">Kx1</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">),</span> <span class="n">num_latent</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">Kx2</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">Kx2</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">),</span> <span class="n">num_latent</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">K12</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">K12</span><span class="p">,</span> <span class="o">-</span><span class="mi">3</span><span class="p">),</span> <span class="n">num_latent</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">3</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">K</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+            <span class="s2">&quot;Covariance between points is not supported for kernels of type {type(kernel)}.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">(</span><span class="n">K</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;L&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">]),</span>
+            <span class="p">(</span><span class="n">Kx1</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;L&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;A&quot;</span><span class="p">]),</span>
+            <span class="p">(</span><span class="n">Kx2</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;L&quot;</span><span class="p">,</span> <span class="s2">&quot;M&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">]),</span>
+            <span class="p">(</span><span class="n">K12</span><span class="p">,</span> <span class="p">[</span><span class="s2">&quot;L&quot;</span><span class="p">,</span> <span class="s2">&quot;A&quot;</span><span class="p">,</span> <span class="s2">&quot;B&quot;</span><span class="p">]),</span>
+        <span class="p">]</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">K</span><span class="p">,</span> <span class="n">Kx1</span><span class="p">,</span> <span class="n">Kx2</span><span class="p">,</span> <span class="n">K12</span></div>
+
+
+<div class="viewcode-block" id="_whiten_points"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/utils/index.html#trieste.models.gpflow._whiten_points">[docs]</a><span class="k">def</span> <span class="nf">_whiten_points</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">inducing_points</span><span class="p">:</span> <span class="n">TensorType</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    GPFlow&#39;s VGP and SVGP can use whitened representation, i.e.</span>
+<span class="sd">    q_mu and q_sqrt parametrize q(v), and u = f(X) = L v, where L = cholesky(K(X, X))</span>
+<span class="sd">    Hence we need to back-transform from f_mu and f_cov to obtain the updated</span>
+<span class="sd">    new_q_mu and new_q_sqrt.</span>
+
+<span class="sd">    :param model: The whitened model.</span>
+<span class="sd">    :para inducing_points: The new inducing point locations.</span>
+<span class="sd">    :return: The updated q_mu and q_sqrt with shapes [N, L] and [L, N, N], respectively.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">f_mu</span><span class="p">,</span> <span class="n">f_cov</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># [N, L], [L, N, N]</span>
+    <span class="n">f_mu</span> <span class="o">-=</span> <span class="n">model</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">mean_function</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">)</span>
+    <span class="n">Knn</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">get_kernel</span><span class="p">()(</span><span class="n">inducing_points</span><span class="p">,</span> <span class="n">full_cov</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>  <span class="c1"># [N, N]</span>
+    <span class="n">jitter_mat</span> <span class="o">=</span> <span class="n">DEFAULTS</span><span class="o">.</span><span class="n">JITTER</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">inducing_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">Knn</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="n">Lnn</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">Knn</span> <span class="o">+</span> <span class="n">jitter_mat</span><span class="p">)</span>  <span class="c1"># [N, N]</span>
+    <span class="n">new_q_mu</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">Lnn</span><span class="p">,</span> <span class="n">f_mu</span><span class="p">)</span>  <span class="c1"># [N, L]</span>
+    <span class="n">tmp</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">Lnn</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">f_cov</span><span class="p">)</span>  <span class="c1"># [L, N, N], L⁻¹ f_cov</span>
+    <span class="n">S_v</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">triangular_solve</span><span class="p">(</span><span class="n">Lnn</span><span class="p">[</span><span class="kc">None</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">matrix_transpose</span><span class="p">(</span><span class="n">tmp</span><span class="p">))</span>  <span class="c1"># [L, N, N]</span>
+    <span class="n">new_q_sqrt</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linalg</span><span class="o">.</span><span class="n">cholesky</span><span class="p">(</span><span class="n">S_v</span> <span class="o">+</span> <span class="n">jitter_mat</span><span class="p">)</span>  <span class="c1"># [L, N, N]</span>
+
+    <span class="k">return</span> <span class="n">new_q_mu</span><span class="p">,</span> <span class="n">new_q_sqrt</span></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

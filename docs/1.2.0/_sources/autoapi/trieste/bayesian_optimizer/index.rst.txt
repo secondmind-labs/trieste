@@ -1,0 +1,391 @@
+:py:mod:`trieste.bayesian_optimizer`
+====================================
+
+.. py:module:: trieste.bayesian_optimizer
+
+.. autoapi-nested-parse::
+
+   This module contains the :class:`BayesianOptimizer` class, used to perform Bayesian optimization.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: StateType
+
+   Unbound type variable. 
+
+
+.. py:data:: SearchSpaceType
+
+   Type variable bound to :class:`SearchSpace`. 
+
+
+.. py:data:: TrainableProbabilisticModelType
+
+   Contravariant type variable bound to :class:`TrainableProbabilisticModel`. 
+
+
+.. py:data:: EarlyStopCallback
+
+   Early stop callback type, generic in the model and state types. 
+
+
+.. py:class:: Record
+
+
+   Bases: :py:obj:`Generic`\ [\ :py:obj:`StateType`\ ]
+
+   Container to record the state of each step of the optimization process.
+
+   .. py:property:: dataset
+      :type: trieste.data.Dataset
+
+      The dataset when there is just one dataset.
+
+
+   .. py:property:: model
+      :type: trieste.models.TrainableProbabilisticModel
+
+      The model when there is just one dataset.
+
+
+   .. py:attribute:: datasets
+      :type: Mapping[trieste.types.Tag, trieste.data.Dataset]
+
+      The known data from the observer. 
+
+
+   .. py:attribute:: models
+      :type: Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel]
+
+      The models over the :attr:`datasets`. 
+
+
+   .. py:attribute:: acquisition_state
+      :type: StateType | None
+
+      The acquisition state. 
+
+
+   .. py:method:: save(path: pathlib.Path | str) -> FrozenRecord[StateType]
+
+      Save the record to disk. Will overwrite any existing file at the same path.
+
+
+
+.. py:class:: FrozenRecord
+
+
+   Bases: :py:obj:`Generic`\ [\ :py:obj:`StateType`\ ]
+
+   A Record container saved on disk.
+
+   Note that records are saved via pickling and are therefore neither portable nor secure.
+   Only open frozen records generated on the same system.
+
+   .. py:property:: datasets
+      :type: Mapping[trieste.types.Tag, trieste.data.Dataset]
+
+      The known data from the observer.
+
+
+   .. py:property:: models
+      :type: Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel]
+
+      The models over the :attr:`datasets`.
+
+
+   .. py:property:: acquisition_state
+      :type: StateType | None
+
+      The acquisition state.
+
+
+   .. py:property:: dataset
+      :type: trieste.data.Dataset
+
+      The dataset when there is just one dataset.
+
+
+   .. py:property:: model
+      :type: trieste.models.TrainableProbabilisticModel
+
+      The model when there is just one dataset.
+
+
+   .. py:attribute:: path
+      :type: pathlib.Path
+
+      The path to the pickled Record. 
+
+
+   .. py:method:: load() -> Record[StateType]
+
+      Load the record into memory.
+
+
+
+.. py:class:: OptimizationResult
+
+
+   Bases: :py:obj:`Generic`\ [\ :py:obj:`StateType`\ ]
+
+   The final result, and the historical data of the optimization process.
+
+   .. py:property:: is_ok
+      :type: bool
+
+      `True` if the final result contains a :class:`Record`.
+
+
+   .. py:property:: is_err
+      :type: bool
+
+      `True` if the final result contains an exception.
+
+
+   .. py:property:: loaded_history
+      :type: list[Record[StateType]]
+
+      The history of the optimization process loaded into memory.
+
+
+   .. py:attribute:: final_result
+      :type: trieste.utils.Result[Record[StateType]]
+
+      The final result of the optimization process. This contains either a :class:`Record` or an
+      exception.
+
+
+   .. py:attribute:: history
+      :type: list[Record[StateType] | FrozenRecord[StateType]]
+
+      The history of the :class:`Record`\ s from each step of the optimization process. These
+      :class:`Record`\ s are created at the *start* of each loop, and as such will never
+      include the :attr:`final_result`. The records may be either in memory or on disk.
+
+
+   .. py:method:: step_filename(step: int, num_steps: int) -> str
+      :staticmethod:
+
+      Default filename for saved optimization steps.
+
+
+   .. py:method:: astuple() -> tuple[trieste.utils.Result[Record[StateType]], list[Record[StateType] | FrozenRecord[StateType]]]
+
+      **Note:** In contrast to the standard library function :func:`dataclasses.astuple`, this
+      method does *not* deepcopy instance attributes.
+
+      :return: The :attr:`final_result` and :attr:`history` as a 2-tuple.
+
+
+   .. py:method:: try_get_final_datasets() -> Mapping[trieste.types.Tag, trieste.data.Dataset]
+
+      Convenience method to attempt to get the final data.
+
+      :return: The final data, if the optimization completed successfully.
+      :raise Exception: If an exception occurred during optimization.
+
+
+   .. py:method:: try_get_final_dataset() -> trieste.data.Dataset
+
+      Convenience method to attempt to get the final data for a single dataset run.
+
+      :return: The final data, if the optimization completed successfully.
+      :raise Exception: If an exception occurred during optimization.
+      :raise ValueError: If the optimization was not a single dataset run.
+
+
+   .. py:method:: try_get_optimal_point() -> tuple[trieste.types.TensorType, trieste.types.TensorType, trieste.types.TensorType]
+
+      Convenience method to attempt to get the optimal point for a single dataset,
+      single objective run.
+
+      :return: Tuple of the optimal query point, observation and its index.
+
+
+   .. py:method:: try_get_final_models() -> Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel]
+
+      Convenience method to attempt to get the final models.
+
+      :return: The final models, if the optimization completed successfully.
+      :raise Exception: If an exception occurred during optimization.
+
+
+   .. py:method:: try_get_final_model() -> trieste.models.TrainableProbabilisticModel
+
+      Convenience method to attempt to get the final model for a single model run.
+
+      :return: The final model, if the optimization completed successfully.
+      :raise Exception: If an exception occurred during optimization.
+      :raise ValueError: If the optimization was not a single model run.
+
+
+   .. py:method:: save_result(path: pathlib.Path | str) -> None
+
+      Save the final result to disk. Will overwrite any existing file at the same path.
+
+
+   .. py:method:: save(base_path: pathlib.Path | str) -> None
+
+      Save the optimization result to disk. Will overwrite existing files at the same path.
+
+
+   .. py:method:: from_path(base_path: pathlib.Path | str) -> OptimizationResult[StateType]
+      :classmethod:
+
+      Load a previously saved OptimizationResult.
+
+
+
+.. py:class:: BayesianOptimizer(observer: trieste.observer.Observer, search_space: SearchSpaceType)
+
+
+   Bases: :py:obj:`Generic`\ [\ :py:obj:`SearchSpaceType`\ ]
+
+   This class performs Bayesian optimization, the data-efficient optimization of an expensive
+   black-box *objective function* over some *search space*. Since we may not have access to the
+   objective function itself, we speak instead of an *observer* that observes it.
+
+   :param observer: The observer of the objective function.
+   :param search_space: The space over which to search. Must be a
+       :class:`~trieste.space.SearchSpace`.
+
+   .. py:method:: optimize(num_steps: int, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel], *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[trieste.models.TrainableProbabilisticModel, object]] = None, start_step: int = 0) -> OptimizationResult[None]
+                  optimize(num_steps: int, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, TrainableProbabilisticModelType], acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType, SearchSpaceType, TrainableProbabilisticModelType], *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, object]] = None, start_step: int = 0) -> OptimizationResult[object]
+                  optimize(num_steps: int, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, TrainableProbabilisticModelType], acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType, SearchSpaceType, TrainableProbabilisticModelType], *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, object]] = None, start_step: int = 0) -> OptimizationResult[object]
+                  optimize(num_steps: int, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, TrainableProbabilisticModelType], acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType], acquisition_state: StateType | None = None, *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, StateType]] = None, start_step: int = 0) -> OptimizationResult[StateType]
+                  optimize(num_steps: int, datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, TrainableProbabilisticModelType], acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType], acquisition_state: StateType | None = None, *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, StateType]] = None, start_step: int = 0) -> OptimizationResult[StateType]
+                  optimize(num_steps: int, datasets: trieste.data.Dataset, models: trieste.models.TrainableProbabilisticModel, *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[trieste.models.TrainableProbabilisticModel, object]] = None, start_step: int = 0) -> OptimizationResult[None]
+                  optimize(num_steps: int, datasets: trieste.data.Dataset, models: TrainableProbabilisticModelType, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType, SearchSpaceType, TrainableProbabilisticModelType], *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, object]] = None, start_step: int = 0) -> OptimizationResult[object]
+                  optimize(num_steps: int, datasets: trieste.data.Dataset, models: TrainableProbabilisticModelType, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType, SearchSpaceType, TrainableProbabilisticModelType], *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, object]] = None, start_step: int = 0) -> OptimizationResult[object]
+                  optimize(num_steps: int, datasets: trieste.data.Dataset, models: TrainableProbabilisticModelType, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType], acquisition_state: StateType | None = None, *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, StateType]] = None, start_step: int = 0) -> OptimizationResult[StateType]
+                  optimize(num_steps: int, datasets: trieste.data.Dataset, models: TrainableProbabilisticModelType, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType], acquisition_state: StateType | None = None, *, track_state: bool = True, track_path: Optional[pathlib.Path | str] = None, fit_model: bool = True, fit_initial_model: bool = True, early_stop_callback: Optional[EarlyStopCallback[TrainableProbabilisticModelType, StateType]] = None, start_step: int = 0) -> OptimizationResult[StateType]
+
+      Attempt to find the minimizer of the ``observer`` in the ``search_space`` (both specified at
+      :meth:`__init__`). This is the central implementation of the Bayesian optimization loop.
+
+      For each step in ``num_steps``, this method:
+          - Finds the next points with which to query the ``observer`` using the
+            ``acquisition_rule``'s :meth:`acquire` method, passing it the ``search_space``,
+            ``datasets``, ``models``, and current acquisition state.
+          - Queries the ``observer`` *once* at those points.
+          - Updates the datasets and models with the data from the ``observer``.
+
+      If any errors are raised during the optimization loop, this method will catch and return
+      them instead and print a message (using `absl` at level `absl.logging.ERROR`).
+      If ``track_state`` is enabled, then in addition to the final result, the history of the
+      optimization process will also be returned. If ``track_path`` is also set, then
+      the history and final result will be saved to disk rather than all being kept in memory.
+
+      **Type hints:**
+          - The ``acquisition_rule`` must use the same type of
+            :class:`~trieste.space.SearchSpace` as specified in :meth:`__init__`.
+          - The ``acquisition_state`` must be of the type expected by the ``acquisition_rule``.
+            Any acquisition state in the optimization result will also be of this type.
+
+      :param num_steps: The number of optimization steps to run.
+      :param datasets: The known observer query points and observations for each tag.
+      :param models: The model to use for each :class:`~trieste.data.Dataset` in
+          ``datasets``.
+      :param acquisition_rule: The acquisition rule, which defines how to search for a new point
+          on each optimization step. Defaults to
+          :class:`~trieste.acquisition.rule.EfficientGlobalOptimization` with default
+          arguments. Note that if the default is used, this implies the tags must be
+          `OBJECTIVE`, the search space can be any :class:`~trieste.space.SearchSpace`, and the
+          acquisition state returned in the :class:`OptimizationResult` will be `None`.
+      :param acquisition_state: The acquisition state to use on the first optimization step.
+          This argument allows the caller to restore the optimization process from an existing
+          :class:`Record`.
+      :param track_state: If `True`, this method saves the optimization state at the start of each
+          step. Models and acquisition state are copied using `copy.deepcopy`.
+      :param track_path: If set, the optimization state is saved to disk at this path,
+          rather than being copied in memory.
+      :param fit_model: If `False` then we never fit the model during BO (e.g. if we
+          are using a rule that doesn't rely on the models and don't want to waste computation).
+      :param fit_initial_model: If `False` then we assume that the initial models have
+          already been optimized on the datasets and so do not require optimization before
+          the first optimization step.
+      :param early_stop_callback: An optional callback that is evaluated with the current
+          datasets, models and optimization state before every optimization step. If this
+          returns `True` then the optimization loop is terminated early.
+      :param start_step: The step number to start with. This number is removed from ``num_steps``
+          and is useful for restarting previous computations.
+      :return: An :class:`OptimizationResult`. The :attr:`final_result` element contains either
+          the final optimization data, models and acquisition state, or, if an exception was
+          raised while executing the optimization loop, it contains the exception raised. In
+          either case, the :attr:`history` element is the history of the data, models and
+          acquisition state at the *start* of each optimization step (up to and including any step
+          that fails to complete). The history will never include the final optimization result.
+      :raise ValueError: If any of the following are true:
+
+          - ``num_steps`` is negative.
+          - the keys in ``datasets`` and ``models`` do not match
+          - ``datasets`` or ``models`` are empty
+          - the default `acquisition_rule` is used and the tags are not `OBJECTIVE`.
+
+
+   .. py:method:: continue_optimization(num_steps: int, optimization_result: OptimizationResult[StateType], *args: Any, **kwargs: Any) -> OptimizationResult[StateType]
+
+      Continue a previous optimization that either failed, was terminated early, or which
+      you simply wish to run for more steps.
+
+      :param num_steps: The total number of optimization steps, including any that have already
+          been run.
+      :param optimization_result: The optimization result from which to extract the datasets,
+          models and acquisition state. If the result was successful then the final result is
+          used; otherwise the last record in the history is used. The size of the history
+          is used to determine how many more steps are required.
+      :param args: Any more positional arguments to pass on to optimize.
+      :param kwargs: Any more keyword arguments to pass on to optimize.
+      :return: An :class:`OptimizationResult`. The history will contain both the history from
+          `optimization_result` (including the `final_result` if that was successful) and
+          any new records.
+
+
+
+.. py:function:: write_summary_init(observer: trieste.observer.Observer, search_space: trieste.space.SearchSpace, acquisition_rule: trieste.acquisition.rule.AcquisitionRule[trieste.types.TensorType | trieste.types.State[StateType | None, trieste.types.TensorType], SearchSpaceType, TrainableProbabilisticModelType], datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel], num_steps: int) -> None
+
+   Write initial BO loop TensorBoard summary.
+
+
+.. py:function:: write_summary_initial_model_fit(datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel], model_fitting_timer: trieste.utils.Timer) -> None
+
+   Write TensorBoard summary for the model fitting to the initial data.
+
+
+.. py:function:: observation_plot_init(datasets: Mapping[trieste.types.Tag, trieste.data.Dataset]) -> dict[trieste.types.Tag, pandas.DataFrame]
+
+   Initialise query point pairplot dataframes with initial observations.
+   Also logs warnings if pairplot dependencies are not installed.
+
+
+.. py:function:: write_summary_observations(datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel], tagged_output: Mapping[trieste.types.Tag, trieste.types.TensorType], model_fitting_timer: trieste.utils.Timer, observation_plot_dfs: MutableMapping[trieste.types.Tag, pandas.DataFrame]) -> None
+
+   Write TensorBoard summary for the current step observations.
+
+
+.. py:function:: write_summary_query_points(datasets: Mapping[trieste.types.Tag, trieste.data.Dataset], models: Mapping[trieste.types.Tag, trieste.models.TrainableProbabilisticModel], search_space: trieste.space.SearchSpace, query_points: trieste.types.TensorType, query_point_generation_timer: trieste.utils.Timer, query_plot_dfs: MutableMapping[int, pandas.DataFrame]) -> None
+
+   Write TensorBoard summary for the current step query points.
+
+
+.. py:function:: stop_at_minimum(minimum: Optional[tensorflow.Tensor] = None, minimizers: Optional[tensorflow.Tensor] = None, minimum_atol: float = 0, minimum_rtol: float = 0.05, minimizers_atol: float = 0, minimizers_rtol: float = 0.05, objective_tag: trieste.types.Tag = OBJECTIVE, minimum_step_number: Optional[int] = None) -> EarlyStopCallback[trieste.models.TrainableProbabilisticModel, object]
+
+   Generate an early stop function that terminates a BO loop when it gets close enough to the
+   given objective minimum and/or minimizer points.
+
+   :param minimum: Optional minimum to stop at, with shape [1].
+   :param minimizers: Optional minimizer points to stop at, with shape [N, D].
+   :param minimum_atol: Absolute tolerance for minimum.
+   :param minimum_rtol: Relative tolerance for minimum.
+   :param minimizers_atol: Absolute tolerance for minimizer point.
+   :param minimizers_rtol: Relative tolerance for minimizer point.
+   :param objective_tag: The tag for the objective data.
+   :param minimum_step_number: Minimum step number to stop at.
+   :return: An early stop function that terminates if we get close enough to both the minimum
+       and any of the minimizer points.
+
+

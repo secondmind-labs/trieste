@@ -1,0 +1,740 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.multi_objective.pareto &#8212; trieste 4.0.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/acquisition/multi_objective/pareto';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.0.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      4.0.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      4.0.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.acquisition.multi_objective.pareto</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.acquisition.multi_objective.pareto</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot; This module contains functions and classes for Pareto based multi-objective optimization. &quot;&quot;&quot;</span>
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">import</span> <span class="nn">cvxpy</span> <span class="k">as</span> <span class="nn">cp</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>  <span class="c1"># pragma: no cover (tested but not by coverage)</span>
+    <span class="n">cp</span> <span class="o">=</span> <span class="kc">None</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">.dominance</span> <span class="kn">import</span> <span class="n">non_dominated</span>
+<span class="kn">from</span> <span class="nn">.partition</span> <span class="kn">import</span> <span class="n">prepare_default_non_dominated_partition_bounds</span>
+
+
+<div class="viewcode-block" id="Pareto"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/pareto/index.html#trieste.acquisition.multi_objective.Pareto">[docs]</a><span class="k">class</span> <span class="nc">Pareto</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`Pareto` constructs a Pareto set.</span>
+<span class="sd">    Stores a Pareto set and calculates hypervolume of the Pareto set given a</span>
+<span class="sd">    specified reference point</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">observations</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">already_non_dominated</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param observations: The observations for all objectives, with shape [N, D].</span>
+<span class="sd">        :param already_non_dominated: Whether the observations are already non dominated</span>
+<span class="sd">        :raise ValueError (or InvalidArgumentError): If ``observations`` has an invalid shape.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_rank</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">observations</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">2</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">already_non_dominated</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">front</span> <span class="o">=</span> <span class="n">non_dominated</span><span class="p">(</span><span class="n">observations</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">front</span> <span class="o">=</span> <span class="n">observations</span>
+
+<div class="viewcode-block" id="Pareto.hypervolume_indicator"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/pareto/index.html#trieste.acquisition.multi_objective.Pareto.hypervolume_indicator">[docs]</a>    <span class="k">def</span> <span class="nf">hypervolume_indicator</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reference</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the hypervolume indicator based on self.front and a reference point</span>
+<span class="sd">        The hypervolume indicator is the volume of the dominated region.</span>
+
+<span class="sd">        :param reference: a reference point to use, with shape [D].</span>
+<span class="sd">            Defines the upper bound of the hypervolume.</span>
+<span class="sd">            Should be equal or bigger than the anti-ideal point of the Pareto set.</span>
+<span class="sd">            For comparing results across runs, the same reference point must be used.</span>
+<span class="sd">        :return: hypervolume indicator, if reference point is less than all of the front</span>
+<span class="sd">            in any dimension, the hypervolume indicator will be zero.</span>
+<span class="sd">        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``reference`` has an invalid</span>
+<span class="sd">            shape.</span>
+<span class="sd">        :raise ValueError (or `tf.errors.InvalidArgumentError`): If ``self.front`` is empty</span>
+<span class="sd">            (which can happen if the concentration point is too strict so no frontier</span>
+<span class="sd">            exists after the screening)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">),</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;empty front cannot be used to calculate hypervolume indicator&quot;</span><span class="p">)</span>
+
+        <span class="n">helper_anti_reference</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span>
+            <span class="n">shape</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">dtype</span>
+        <span class="p">)</span>
+        <span class="n">lower</span><span class="p">,</span> <span class="n">upper</span> <span class="o">=</span> <span class="n">prepare_default_non_dominated_partition_bounds</span><span class="p">(</span>
+            <span class="n">reference</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">helper_anti_reference</span>
+        <span class="p">)</span>
+        <span class="n">non_dominated_hypervolume</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">upper</span> <span class="o">-</span> <span class="n">lower</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">hypervolume_indicator</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">reduce_prod</span><span class="p">(</span><span class="n">reference</span> <span class="o">-</span> <span class="n">helper_anti_reference</span><span class="p">)</span> <span class="o">-</span> <span class="n">non_dominated_hypervolume</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">hypervolume_indicator</span></div>
+
+<div class="viewcode-block" id="Pareto.sample_diverse_subset"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/pareto/index.html#trieste.acquisition.multi_objective.Pareto.sample_diverse_subset">[docs]</a>    <span class="k">def</span> <span class="nf">sample_diverse_subset</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">allow_repeats</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+        <span class="n">bounds_delta_scale_factor</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.2</span><span class="p">,</span>
+        <span class="n">bounds_min_delta</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1e-9</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample a set of diverse points from the Pareto set using</span>
+<span class="sd">        Hypervolume Sharpe-Ratio Indicator</span>
+
+<span class="sd">        :param sample_size: The number of points to sample from the Pareto front</span>
+<span class="sd">        :param allow_repeats: Whether the sample may contain repeats</span>
+<span class="sd">        :param bounds_delta_scale_factor: The factor by which to grow the distance</span>
+<span class="sd">            between extrema when calculating lower and upper bounds</span>
+<span class="sd">        :param bounds_min_delta: The minimum value of the distance between extrema</span>
+<span class="sd">        :return: sample: Tensor of query points selected in the sample</span>
+<span class="sd">                 and sample_ids: Tensor of indices of points selected from the Pareto set</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="n">cp</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ImportError</span><span class="p">(</span>
+                <span class="s2">&quot;Pareto.sample method requires cvxpy, &quot;</span>
+                <span class="s2">&quot;this can be installed via `pip install trieste[qhsri]`&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">bounds_delta_scale_factor</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="s2">&quot;bounds_delta_scale_factor should be non-negative,&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; got </span><span class="si">{</span><span class="n">bounds_delta_scale_factor</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">bounds_delta_scale_factor</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;bounds_delta_min should be non-negative, got </span><span class="si">{bounds_min_delta}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="n">front_size</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="k">if</span> <span class="p">(</span><span class="n">front_size</span> <span class="o">&lt;</span> <span class="n">sample_size</span><span class="p">)</span> <span class="ow">and</span> <span class="n">allow_repeats</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Tried to sample </span><span class="si">{</span><span class="n">sample_size</span><span class="si">}</span><span class="s2"> points from a Pareto&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot; set of size </span><span class="si">{</span><span class="n">front_size</span><span class="si">}</span><span class="s2">, please ensure sample size is smaller than&quot;</span>
+                <span class="s2">&quot; Pareto set size.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">lower_bound</span><span class="p">,</span> <span class="n">upper_bound</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_get_bounds</span><span class="p">(</span><span class="n">bounds_delta_scale_factor</span><span class="p">,</span> <span class="n">bounds_min_delta</span><span class="p">)</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_calculate_p_matrix</span><span class="p">(</span><span class="n">lower_bound</span><span class="p">,</span> <span class="n">upper_bound</span><span class="p">)</span>
+
+        <span class="c1"># Calculate q matrix</span>
+        <span class="n">p_diag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diagonal</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">q</span> <span class="o">=</span> <span class="n">p</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">dot</span><span class="p">(</span><span class="n">p_diag</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">p_diag</span><span class="p">))</span>
+
+        <span class="n">x_star</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_find_x_star</span><span class="p">(</span><span class="n">q</span><span class="p">,</span> <span class="n">p</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">allow_repeats</span><span class="p">:</span>
+            <span class="n">samples</span><span class="p">,</span> <span class="n">sample_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_choose_batch_with_repeats</span><span class="p">(</span><span class="n">x_star</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">samples</span><span class="p">,</span> <span class="n">sample_ids</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_choose_batch_no_repeats</span><span class="p">(</span><span class="n">x_star</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">samples</span><span class="p">,</span> <span class="n">sample_ids</span></div>
+
+    <span class="k">def</span> <span class="nf">_choose_batch_with_repeats</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x_star</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="c1"># Calculate number of times each point is sampled</span>
+        <span class="n">n_times_sampled</span> <span class="o">=</span> <span class="n">x_star</span> <span class="o">*</span> <span class="n">sample_size</span>
+
+        <span class="c1"># Round each number to an int</span>
+        <span class="n">n_times_sampled</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">round</span><span class="p">(</span><span class="n">n_times_sampled</span><span class="p">)</span>
+
+        <span class="c1"># Check difference in number of samples and required sample size</span>
+        <span class="n">n_samples_difference</span> <span class="o">=</span> <span class="n">sample_size</span> <span class="o">-</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">n_times_sampled</span><span class="p">))</span>
+
+        <span class="k">if</span> <span class="n">n_samples_difference</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># We need to randomly remove samples</span>
+            <span class="c1"># Get indices of point that were to be sampled &gt;0 times</span>
+            <span class="n">non_zero_indices</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">flatnonzero</span><span class="p">(</span><span class="n">n_times_sampled</span><span class="p">)</span>
+            <span class="c1"># Choose indices to decrement</span>
+            <span class="n">samples_to_decr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span><span class="n">non_zero_indices</span><span class="p">,</span> <span class="n">size</span><span class="o">=-</span><span class="n">n_samples_difference</span><span class="p">)</span>
+            <span class="c1"># Decrement indices</span>
+            <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">samples_to_decr</span><span class="p">:</span>
+                <span class="n">n_times_sampled</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">-=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">n_samples_difference</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="c1"># We need to randomly add samples</span>
+            <span class="n">samples_to_incr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">choice</span><span class="p">(</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">n_times_sampled</span><span class="p">)),</span> <span class="n">size</span><span class="o">=</span><span class="n">n_samples_difference</span>
+            <span class="p">)</span>
+            <span class="k">for</span> <span class="n">idx</span> <span class="ow">in</span> <span class="n">samples_to_incr</span><span class="p">:</span>
+                <span class="n">n_times_sampled</span><span class="p">[</span><span class="n">idx</span><span class="p">]</span> <span class="o">+=</span> <span class="mi">1</span>
+
+        <span class="c1"># Create a list of the sample indices</span>
+        <span class="n">sample_ids</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">repeats</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">n_times_sampled</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">repeats</span><span class="p">)):</span>
+                <span class="n">sample_ids</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">idx</span><span class="p">)</span>
+        <span class="c1"># Convert to array for indexing and return</span>
+        <span class="n">sample_ids_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">sample_ids</span><span class="p">)</span>
+
+        <span class="c1"># Create batch with each of the selected samples</span>
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">)[</span><span class="n">sample_ids_array</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">samples</span><span class="p">,</span> <span class="n">sample_ids_array</span>
+
+    <span class="k">def</span> <span class="nf">_choose_batch_no_repeats</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">x_star</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">sample_size</span><span class="p">:</span> <span class="nb">int</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="n">front_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="c1"># Create id array to keep track of points</span>
+        <span class="n">id_arr</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">front_size</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Stitch id array, x_star and the front together</span>
+        <span class="n">stitched_array</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">id_arr</span><span class="p">,</span> <span class="n">x_star</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">)],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Sort array by x_star descending</span>
+        <span class="n">sorted_array</span> <span class="o">=</span> <span class="n">stitched_array</span><span class="p">[</span><span class="n">stitched_array</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">argsort</span><span class="p">()[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]]</span>
+
+        <span class="n">samples</span> <span class="o">=</span> <span class="n">sorted_array</span><span class="p">[:</span><span class="n">sample_size</span><span class="p">,</span> <span class="mi">2</span><span class="p">:]</span>
+        <span class="n">sample_ids</span> <span class="o">=</span> <span class="n">sorted_array</span><span class="p">[:</span><span class="n">sample_size</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">samples</span><span class="p">,</span> <span class="n">sample_ids</span>
+
+    <span class="k">def</span> <span class="nf">_find_x_star</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">q</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">p</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">front_size</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">p_diag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">diagonal</span><span class="p">(</span><span class="n">p</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Solve quadratic program for y*</span>
+        <span class="n">P</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">atoms</span><span class="o">.</span><span class="n">affine</span><span class="o">.</span><span class="n">wraps</span><span class="o">.</span><span class="n">psd_wrap</span><span class="p">(</span><span class="n">q</span><span class="p">)</span>
+        <span class="n">G</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">eye</span><span class="p">(</span><span class="n">front_size</span><span class="p">)</span>
+        <span class="n">h</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">front_size</span><span class="p">)</span>
+        <span class="n">A</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">p_diag</span><span class="p">)</span>
+        <span class="n">b</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+        <span class="c1"># Define and solve the CVXPY problem.</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Variable</span><span class="p">(</span><span class="n">front_size</span><span class="p">)</span>
+        <span class="n">prob</span> <span class="o">=</span> <span class="n">cp</span><span class="o">.</span><span class="n">Problem</span><span class="p">(</span><span class="n">cp</span><span class="o">.</span><span class="n">Minimize</span><span class="p">((</span><span class="mi">1</span> <span class="o">/</span> <span class="mi">2</span><span class="p">)</span> <span class="o">*</span> <span class="n">cp</span><span class="o">.</span><span class="n">quad_form</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">P</span><span class="p">)),</span> <span class="p">[</span><span class="n">G</span> <span class="o">@</span> <span class="n">y</span> <span class="o">&gt;=</span> <span class="n">h</span><span class="p">,</span> <span class="n">A</span> <span class="o">@</span> <span class="n">y</span> <span class="o">==</span> <span class="n">b</span><span class="p">])</span>
+        <span class="n">prob</span><span class="o">.</span><span class="n">solve</span><span class="p">()</span>
+
+        <span class="n">y_star</span> <span class="o">=</span> <span class="n">y</span><span class="o">.</span><span class="n">value</span>
+
+        <span class="c1"># Calculate x*</span>
+        <span class="n">x_star</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">y_star</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">y_star</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">x_star</span>
+
+    <span class="k">def</span> <span class="nf">_calculate_p_matrix</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">lower_bound</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">upper_bound</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">front_size</span><span class="p">,</span> <span class="n">front_dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="o">.</span><span class="n">shape</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">([</span><span class="n">front_size</span><span class="p">,</span> <span class="n">front_size</span><span class="p">])</span>
+
+        <span class="c1"># Calculate denominator value for p matrix elements</span>
+        <span class="n">denominator</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">front_dims</span><span class="p">):</span>
+            <span class="k">if</span> <span class="n">upper_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">lower_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="s2">&quot;Pareto set has identical upper and lower bounds&quot;</span>
+                    <span class="s2">&quot; in a dimension, you can avoid this by setting a &quot;</span>
+                    <span class="s2">&quot;nonzero value for bounds_min_delta&quot;</span>
+                <span class="p">)</span>
+            <span class="n">denominator</span> <span class="o">*=</span> <span class="n">upper_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">-</span> <span class="n">lower_bound</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+
+        <span class="c1"># Fill entries of p</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">front_size</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">front_size</span><span class="p">):</span>
+                <span class="n">pij</span> <span class="o">=</span> <span class="mi">1</span>
+                <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">front_dims</span><span class="p">):</span>
+                    <span class="n">pij</span> <span class="o">*=</span> <span class="n">upper_bound</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">-</span> <span class="nb">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">k</span><span class="p">],</span> <span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">[</span><span class="n">j</span><span class="p">,</span> <span class="n">k</span><span class="p">])</span>
+                <span class="n">p</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="n">j</span><span class="p">]</span> <span class="o">=</span> <span class="n">pij</span>
+
+        <span class="n">p</span> <span class="o">=</span> <span class="n">p</span> <span class="o">/</span> <span class="n">denominator</span>
+
+        <span class="k">return</span> <span class="n">p</span>
+
+    <span class="k">def</span> <span class="nf">_get_bounds</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">delta_scaling_factor</span><span class="p">:</span> <span class="nb">float</span><span class="p">,</span> <span class="n">min_delta</span><span class="p">:</span> <span class="nb">float</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+        <span class="c1"># Find min and max for each dimension in the front</span>
+        <span class="n">dim_mins</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">dim_maxes</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># Calculate the deltas to add to the min/max to get the upper and lower bounds</span>
+        <span class="n">deltas</span> <span class="o">=</span> <span class="p">((</span><span class="n">dim_maxes</span> <span class="o">-</span> <span class="n">dim_mins</span><span class="p">)</span> <span class="o">*</span> <span class="n">delta_scaling_factor</span><span class="p">)</span> <span class="o">+</span> <span class="n">min_delta</span>
+        <span class="c1"># Calculate the bounds</span>
+        <span class="n">lower_bound</span> <span class="o">=</span> <span class="n">dim_mins</span> <span class="o">-</span> <span class="n">deltas</span>
+        <span class="n">upper_bound</span> <span class="o">=</span> <span class="n">dim_maxes</span> <span class="o">+</span> <span class="n">deltas</span>
+
+        <span class="k">return</span> <span class="n">lower_bound</span><span class="p">,</span> <span class="n">upper_bound</span></div>
+
+
+<div class="viewcode-block" id="get_reference_point"><a class="viewcode-back" href="../../../../autoapi/trieste/acquisition/multi_objective/pareto/index.html#trieste.acquisition.multi_objective.get_reference_point">[docs]</a><span class="k">def</span> <span class="nf">get_reference_point</span><span class="p">(</span>
+    <span class="n">observations</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Default reference point calculation method that calculates the reference</span>
+<span class="sd">    point according to a Pareto front extracted from set of observations.</span>
+
+<span class="sd">    :param observations: observations referred to calculate the reference</span>
+<span class="sd">        point, with shape [..., N, D]</span>
+<span class="sd">    :return: a reference point to use, with shape [..., D].</span>
+<span class="sd">    :raise ValueError: If ``observations`` is empty</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">observations</span><span class="p">),</span> <span class="mi">0</span><span class="p">):</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;empty observations cannot be used to calculate reference point&quot;</span><span class="p">)</span>
+
+    <span class="n">front</span> <span class="o">=</span> <span class="n">Pareto</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span><span class="o">.</span><span class="n">front</span>
+    <span class="n">f</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_min</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">front</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">)</span> <span class="o">+</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">f</span> <span class="o">/</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">front</span><span class="p">)[</span><span class="o">-</span><span class="mi">2</span><span class="p">],</span> <span class="n">f</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
