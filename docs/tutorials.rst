@@ -24,6 +24,7 @@ The following tutorials illustrate solving different types of optimization probl
    :maxdepth: 1
 
    notebooks/expected_improvement
+   notebooks/log_expected_improvement
    notebooks/batch_optimization
    notebooks/thompson_sampling
    notebooks/inequality_constraints

@@ -1,0 +1,4 @@
+replace:
+  - { from: "num_initial_points = \\d+", to: "num_initial_points = 5" }
+  - { from: "n_step = \\d+", to: "n_step = 1" }
+  - { from: "ndim = \\d+", to: "ndim = 1" }
