@@ -891,7 +891,7 @@ class Box(SearchSpace):
 
         :param num_samples: The number of points to sample from this search space.
         :param seed: Random seed for the halton sequence
-        :return: ``num_samples`` of points, using halton sequence with shape '[num_samples, D]' ,
+        :return: ``num_samples`` of points, using halton se_sample_feasible_loopquence with shape '[num_samples, D]' ,
             where D is the search space dimension.
         """
         return self._sample_halton(0, num_samples, seed)

@@ -317,7 +317,11 @@ class OptimizationResult(Generic[StateType, ProbabilisticModelType]):
         """Save the final result to disk. Will overwrite any existing file at the same path."""
         Path(path).parent.mkdir(exist_ok=True, parents=True)
         with open(path, "wb") as f:
-            dill.dump(self.final_result, f, dill.HIGHEST_PROTOCOL)
+            try:
+                dill.dump(self.final_result, f, dill.HIGHEST_PROTOCOL)
+            except Exception:
+                print(self.final_result)
+                raise
 
     def save(self, base_path: Path | str) -> None:
         """Save the optimization result to disk. Will overwrite existing files at the same path."""
