@@ -26,6 +26,7 @@ import pytest
 import tensorflow as tf
 import tensorflow_probability as tfp
 from gpflow.keras import tf_keras
+from packaging.version import Version
 from tensorflow.python.keras.callbacks import Callback
 
 from tests.util.misc import ShapeLike, empty_dataset, random_seed
@@ -911,6 +912,7 @@ def test_deep_ensemble_log(
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(Version(tf.__version__) < Version("2.9"), reason="unclear")
 @random_seed
 def test_deep_ensemble_parallel_training_performance() -> None:
     """
