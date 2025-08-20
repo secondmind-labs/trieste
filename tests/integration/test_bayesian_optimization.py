@@ -26,6 +26,7 @@ import pytest
 import tensorflow as tf
 from _pytest.mark import ParameterSet
 from gpflow.keras import tf_keras
+from packaging.version import Version
 
 from tests.util.misc import random_seed
 from trieste.acquisition import (
@@ -102,7 +103,7 @@ except ImportError:  # pragma: no cover (tested but not by coverage)
 # Optimizer parameters for testing GPR against the branin function.
 # We also use these for a quicker test against a simple quadratic function
 # (regenerating is necessary as some of the acquisition rules are stateful).
-def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
+def GPR_OPTIMIZER_PARAMS(skip_bmcei: bool = False) -> Tuple[str, List[ParameterSet]]:
     return (
         "num_steps, acquisition_rule",
         [
@@ -155,6 +156,7 @@ def GPR_OPTIMIZER_PARAMS() -> Tuple[str, List[ParameterSet]]:
                     num_query_points=3,
                 ),
                 id="BatchMonteCarloExpectedImprovement",
+                marks=pytest.mark.skipif(skip_bmcei, reason="trieste issue #918"),
             ),
             pytest.param(
                 12, AsynchronousOptimization(num_query_points=3), id="AsynchronousOptimization"
@@ -312,7 +314,9 @@ AcquisitionRuleType = Union[
 
 @random_seed
 @pytest.mark.slow  # to run this, add --runslow yes to the pytest command
-@pytest.mark.parametrize(*GPR_OPTIMIZER_PARAMS())
+@pytest.mark.parametrize(
+    *GPR_OPTIMIZER_PARAMS(skip_bmcei=(Version(tf.__version__) >= Version("2.16")))
+)
 def test_bayesian_optimizer_with_gpr_finds_minima_of_scaled_branin(
     num_steps: int,
     acquisition_rule: (
