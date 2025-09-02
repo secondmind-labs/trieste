@@ -210,7 +210,7 @@ def custom_get_ref_point(
     ],
 )
 def test_ehvi_builder_builds_expected_hv_improvement_based_on_specified_ref_points(
-    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType],
 ) -> None:
     num_obj = 2
     train_x = tf.constant([[-2.0], [0.0]])
@@ -742,7 +742,7 @@ def custom_get_ref_point_echvi(
     ],
 )
 def test_expected_constrained_hypervolume_improvement_based_on_specified_ref_points(
-    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType]
+    specify_ref_points: TensorType | Sequence[float] | Callable[..., TensorType],
 ) -> None:
     num_obj = 2
     train_x = tf.constant(
