@@ -18,7 +18,7 @@ import io
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, TypeVar, Union
 
-import absl
+import absl.logging
 import tensorflow as tf
 from tensorflow.python.eager import context
 
