@@ -1,5 +1,6 @@
-mypy==1.10.0
-mypy-extensions==1.0.0
-tomli==2.0.1
-types-PyYAML==6.0.12.20240311
-typing_extensions==4.12.2
+mypy==1.17.1
+mypy_extensions==1.1.0
+pathspec==0.12.1
+tomli==2.2.1
+types-PyYAML==6.0.12.20250822
+typing_extensions==4.15.0
