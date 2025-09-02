@@ -23,4 +23,3 @@ tensorflow-probability ~= 0.13.0
 # tensorflow-probability 0.13 depends on np.bool which is deprecated
 numpy < 1.22.0
 scipy < 1.8
-dm-tree == 0.1.8
