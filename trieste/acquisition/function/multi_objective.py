@@ -500,7 +500,7 @@ class ExpectedConstrainedHypervolumeImprovement(
             tf.debugging.Assert(
                 isinstance(self._expected_improvement_fn, expected_hv_improvement), []
             )
-            self._expected_improvement_fn.update(_partition_bounds)  # type: ignore
+            self._expected_improvement_fn.update(_partition_bounds)
 
 
 class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
@@ -630,7 +630,7 @@ class HIPPO(GreedyAcquisitionFunctionBuilder[ProbabilisticModelType]):
         ):
             # if possible, just update the penalization function variables
             # (the type ignore is due to mypy getting confused by tf.function)
-            self._penalization.update(pending_points)  # type: ignore[unreachable]
+            self._penalization.update(pending_points)
             return self._penalized_acquisition
         else:
             # otherwise construct a new penalized acquisition function

@@ -294,7 +294,10 @@ class SearchSpace(ABC):
     def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType: ...
 
     @overload
-    def __mul__(self: SearchSpaceType, other: SearchSpace) -> SearchSpace:  # type: ignore[misc]
+    def __mul__(  # type: ignore[overload-cannot-match]
+        self: SearchSpaceType,
+        other: SearchSpace,
+    ) -> SearchSpace:
         # mypy complains that this is superfluous, but it seems to use it fine to infer
         # that Box * Box = Box, while Box * Discrete = SearchSpace.
         ...
