@@ -430,7 +430,7 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
     @property
     def acquisition_state(self) -> StateType | None:
         """The current acquisition state."""
-        return self._acquisition_state
+        return self._acquisition_state  # type: ignore[return-value]
 
     @classmethod
     def dataset_len(cls, datasets: Mapping[Tag, Dataset]) -> int:
@@ -525,7 +525,11 @@ class AskTellOptimizerABC(ABC, Generic[SearchSpaceType, ProbabilisticModelType])
                 "modified by subsequent optimization."
             ) from e
 
-        return Record(datasets=datasets_copy, models=models_copy, acquisition_state=state_copy)
+        return Record(
+            datasets=datasets_copy,
+            models=models_copy,
+            acquisition_state=state_copy,  # type: ignore[arg-type]
+        )
 
     def to_result(self, copy: bool = True) -> OptimizationResult[StateType, ProbabilisticModelType]:
         """Converts current state of the optimization

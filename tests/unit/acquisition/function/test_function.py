@@ -694,7 +694,7 @@ def test_mc_expected_improvement_close_to_expected_improvement(
 
     best = tf.reduce_min(Branin.objective(dataset.query_points))
     eif = expected_improvement(model, best)
-    ei = eif(xs[..., None, :])  # type: ignore
+    ei = eif(xs[..., None, :])
 
     npt.assert_allclose(ei, ei_approx, rtol=rtol, atol=atol)
 
@@ -864,7 +864,7 @@ def test_mc_augmented_expected_improvement_close_to_augmented_expected_improveme
 
     best = tf.reduce_min(Branin.objective(dataset.query_points))
     aeif = augmented_expected_improvement(model, best)
-    aei = aeif(xs[..., None, :])  # type: ignore
+    aei = aeif(xs[..., None, :])
 
     npt.assert_allclose(aei, aei_approx, rtol=rtol, atol=atol)
 

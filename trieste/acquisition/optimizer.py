@@ -721,7 +721,6 @@ class ScipyOptimizerGreenlet(gr.greenlet):  # type: ignore[misc]
             x: "np.ndarray[Any, Any]",
         ) -> Tuple["np.ndarray[Any, Any]", "np.ndarray[Any, Any]"]:
             # Collect function evaluations from parent greenlet
-            nonlocal cache_x
             nonlocal cache_y
             nonlocal cache_dy_dx
 

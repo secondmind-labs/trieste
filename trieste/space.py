@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" This module contains implementations of various types of search space. """
+"""This module contains implementations of various types of search space."""
 from __future__ import annotations
 
 import operator
@@ -294,7 +294,10 @@ class SearchSpace(ABC):
     def __mul__(self: SearchSpaceType, other: SearchSpaceType) -> SearchSpaceType: ...
 
     @overload
-    def __mul__(self: SearchSpaceType, other: SearchSpace) -> SearchSpace:  # type: ignore[misc]
+    def __mul__(  # type: ignore[overload-cannot-match]
+        self: SearchSpaceType,
+        other: SearchSpace,
+    ) -> SearchSpace:
         # mypy complains that this is superfluous, but it seems to use it fine to infer
         # that Box * Box = Box, while Box * Discrete = SearchSpace.
         ...

@@ -83,7 +83,7 @@ def test_dgp_reparam_sampler_sample_raises_for_invalid_at_shape(shape: ShapeLike
 
 
 def _build_dataset_and_train_deep_gp(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> Tuple[Dataset, DeepGaussianProcess]:
     x = tf.random.uniform([100, 2], minval=-10.0, maxval=10.0, dtype=tf.float64)
     y = tf.random.normal([100, 1], dtype=tf.float64)
@@ -104,7 +104,7 @@ def _build_dataset_and_train_deep_gp(
 
 @random_seed
 def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     sample_size = 250
     dataset, model = _build_dataset_and_train_deep_gp(two_layer_model)
@@ -136,7 +136,7 @@ def test_dgp_reparam_sampler_samples_approximate_expected_distribution(
 
 @random_seed
 def test_dgp_reparam_sampler_sample_is_continuous(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -146,7 +146,7 @@ def test_dgp_reparam_sampler_sample_is_continuous(
 
 
 def test_dgp_reparam_sampler_sample_is_repeatable(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -167,7 +167,7 @@ def test_dgp_reparam_sampler_sample_is_repeatable(
 
 @random_seed
 def test_dgp_reparam_sampler_samples_are_distinct_for_new_instances(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -221,7 +221,7 @@ def test_dgp_decoupled_trajectory_sampler_returns_trajectory_function_with_corre
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_returns_deterministic_trajectory(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -236,7 +236,7 @@ def test_dgp_decoupled_trajectory_sampler_returns_deterministic_trajectory(
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_sample_is_continuous(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -249,7 +249,7 @@ def test_dgp_decoupled_trajectory_sampler_sample_is_continuous(
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribution(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     sample_size = 100
     dataset, model = _build_dataset_and_train_deep_gp(two_layer_model)
@@ -284,7 +284,7 @@ def test_dgp_decoupled_trajectory_sampler_samples_approximate_expected_distribut
 
 @random_seed
 def test_dgp_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -308,7 +308,7 @@ def test_dgp_decoupled_trajectory_sampler_samples_are_distinct_for_new_instances
 
 @random_seed
 def test_dgp_decoupled_trajectory_resample_trajectory_provides_new_samples_without_retracing(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -327,7 +327,7 @@ def test_dgp_decoupled_trajectory_resample_trajectory_provides_new_samples_witho
 
 @random_seed
 def test_dgp_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -424,7 +424,7 @@ def test_dgp_decoupled_layer_raises_for_invalid_inducing_variables() -> None:
 
 
 def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     num_evals = 20
     batch_size = 5
@@ -443,7 +443,7 @@ def test_dgp_decoupled_layer_returns_trajectory_with_correct_shapes(
 
 @random_seed
 def test_dgp_decoupled_layer_returns_deterministic_trajectory(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -459,7 +459,7 @@ def test_dgp_decoupled_layer_returns_deterministic_trajectory(
 
 @random_seed
 def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -481,7 +481,7 @@ def test_dgp_decoupled_layer_samples_are_distinct_for_new_instances(
 
 @random_seed
 def test_dgp_decoupled_layer_resample_provides_new_samples(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 
@@ -498,7 +498,7 @@ def test_dgp_decoupled_layer_resample_provides_new_samples(
 
 @random_seed
 def test_dgp_decoupled_layer_update_updates(
-    two_layer_model: Callable[[TensorType], DeepGP]
+    two_layer_model: Callable[[TensorType], DeepGP],
 ) -> None:
     _, model = _build_dataset_and_train_deep_gp(two_layer_model)
 

@@ -72,8 +72,8 @@ def _create_loss_function_external(
             data.element_spec
             if isinstance(data, DatasetOwnedIterator)
             else (
-                tf.TensorSpec([None, *X.shape[1:]], dtype=X.dtype),
-                tf.TensorSpec([None, *Y.shape[1:]], dtype=Y.dtype),
+                tf.TensorSpec([None, *X.shape[1:]], dtype=X.dtype),  # type: ignore[union-attr]
+                tf.TensorSpec([None, *Y.shape[1:]], dtype=Y.dtype),  # type: ignore[union-attr]
             )
         )
 

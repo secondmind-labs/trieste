@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-""" This module contains logging utilities. """
+"""This module contains logging utilities."""
 from __future__ import annotations
 
 import io
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Any, Callable, Iterator, Optional, TypeVar, Union
 
-import absl
+import absl.logging
 import tensorflow as tf
 from tensorflow.python.eager import context
 

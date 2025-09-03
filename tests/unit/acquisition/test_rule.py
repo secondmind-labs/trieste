@@ -355,7 +355,7 @@ def test_joint_batch_acquisition_rule_acquire(
         # callable output type
         AcquisitionRule[TensorType, Box, ProbabilisticModel]
         | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel],
-    ]
+    ],
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
@@ -427,7 +427,7 @@ def test_greedy_batch_acquisition_rule_acquire(
         # callable output type
         AcquisitionRule[TensorType, Box, ProbabilisticModel]
         | AcquisitionRule[State[TensorType, AsynchronousRuleState], Box, ProbabilisticModel],
-    ]
+    ],
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     num_query_points = 4
@@ -528,7 +528,7 @@ def test_async_greedy_raises_for_incorrect_query_points() -> None:
 def test_async_keeps_track_of_pending_points(
     async_rule: AcquisitionRule[
         State[Optional[AsynchronousRuleState], TensorType], Box, ProbabilisticModel
-    ]
+    ],
 ) -> None:
     search_space = Box(tf.constant([-2.2, -1.0]), tf.constant([1.3, 3.3]))
     dataset = Dataset(tf.zeros([0, 2]), tf.zeros([0, 1]))
@@ -696,7 +696,7 @@ def test_trego_successful_global_to_global_trust_region_unchanged(
     ],
 )
 def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
-    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
 ) -> None:
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
@@ -740,7 +740,7 @@ def test_trego_for_unsuccessful_global_to_local_trust_region_unchanged(
     ],
 )
 def test_trego_for_successful_local_to_global_trust_region_increased(
-    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
 ) -> None:
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.3]]))
     lower_bound = tf.constant([-2.2, -1.0])
@@ -781,7 +781,7 @@ def test_trego_for_successful_local_to_global_trust_region_increased(
     ],
 )
 def test_trego_for_unsuccessful_local_to_global_trust_region_reduced(
-    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel]
+    rule: AcquisitionRule[TensorType, SearchSpace, ProbabilisticModel],
 ) -> None:
     dataset = Dataset(tf.constant([[0.1, 0.2], [-0.1, -0.2]]), tf.constant([[0.4], [0.5]]))
     lower_bound = tf.constant([-2.2, -1.0])
@@ -1344,7 +1344,7 @@ def test_trust_region_with_input_active_dims(
     ],
 )
 def test_trust_region_box_get_dataset_min_raises_if_dataset_is_faulty(
-    datasets: Mapping[Tag, Dataset]
+    datasets: Mapping[Tag, Dataset],
 ) -> None:
     search_space = Box([0.0, 0.0], [1.0, 1.0])
     trb = SingleObjectiveTrustRegionBox(search_space)
