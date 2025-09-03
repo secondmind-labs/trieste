@@ -680,7 +680,7 @@ def convert_figure_to_frame(fig: plt.Figure) -> TensorType:
     """
     fig.canvas.draw()
     size_pix = fig.get_size_inches() * fig.dpi
-    image = np.array(fig.canvas.renderer.buffer_rgba())[...,:3]
+    image = np.array(fig.canvas.renderer.buffer_rgba())[..., :3]
     return image.reshape(list(size_pix[::-1].astype(int)) + [3])
 
 
