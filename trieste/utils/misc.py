@@ -471,7 +471,7 @@ def ensure_positive(x: TensorType) -> TensorType:
     return tf.math.maximum(x, 1e-15 if x.dtype == tf.float32 else 1e-30)
 
 
-def restore_tfp_symbols_to_modules():
+def restore_tfp_symbols_to_modules() -> None:
     """The `remove_undocumented` function in tensorflow-probability removes module symbols
     that are not referenced by a docstring. However, this includes references to submodules
     such as [tensorflow_probability.python.math.psd_kernels].exponentiated_quadratic
