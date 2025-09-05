@@ -71,7 +71,15 @@ from .observer import OBJECTIVE, Observer
 from .space import SearchSpace
 from .types import State, Tag, TensorType
 from .utils import Err, Ok, Result, Timer
-from .utils.misc import LocalizedTag, get_value_for_tag, ignoring_local_tags
+from .utils.misc import (
+    LocalizedTag,
+    get_value_for_tag,
+    ignoring_local_tags,
+    restore_tfp_symbols_to_modules,
+)
+
+# dill 0.3.6+ struggles to deserialize tfp modules that have had their symbols pruned, so undo that
+restore_tfp_symbols_to_modules()
 
 StateType = TypeVar("StateType")
 """ Unbound type variable. """
