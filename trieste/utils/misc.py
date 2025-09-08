@@ -476,8 +476,8 @@ def restore_tfp_symbols_to_modules() -> None:
     that are not referenced by a docstring. However, this includes references to submodules
     such as [tensorflow_probability.python.math.psd_kernels].exponentiated_quadratic
     which as of dill 0.3.6 prevents deserialisation. This function restores all the removed
-    symbols.
-    """
+    symbols."""
+    # related dill issue: https://github.com/uqfoundation/dill/issues/647
     for symbol, (module, value) in _HIDDEN_ATTRIBUTES.items():
         attribute = symbol.split(".")[-1]
         if not hasattr(module, attribute):
