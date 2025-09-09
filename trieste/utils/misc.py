@@ -22,6 +22,7 @@ from typing import Any, Callable, Generic, Mapping, NoReturn, Optional, Tuple, T
 import numpy as np
 import tensorflow as tf
 from tensorflow.python.util import nest
+from tensorflow_probability.python.internal.all_util import _HIDDEN_ATTRIBUTES
 from typing_extensions import Final, final
 
 from ..observer import OBJECTIVE
@@ -468,3 +469,16 @@ def ensure_positive(x: TensorType) -> TensorType:
     """Ensure that all the elements in `x` are strictly positive (using a dtype-dependent
     capping threshold)."""
     return tf.math.maximum(x, 1e-15 if x.dtype == tf.float32 else 1e-30)
+
+
+def restore_tfp_symbols_to_modules() -> None:
+    """The `remove_undocumented` function in tensorflow-probability removes module symbols
+    that are not referenced by a docstring. However, this includes references to submodules
+    such as [tensorflow_probability.python.math.psd_kernels].exponentiated_quadratic
+    which as of dill 0.3.6 prevents deserialisation. This function restores all the removed
+    symbols."""
+    # related dill issue: https://github.com/uqfoundation/dill/issues/647
+    for symbol, (module, value) in _HIDDEN_ATTRIBUTES.items():
+        attribute = symbol.split(".")[-1]
+        if not hasattr(module, attribute):
+            setattr(module, attribute, value)
