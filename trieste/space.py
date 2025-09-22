@@ -664,8 +664,8 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
         def encoder(x: TensorType) -> TensorType:
             flat_x, unflatten = flatten_leading_dims(x)
-            tf.debugging.assert_equal(flat_x.shape[-1], len(self.tags))
-            columns = tf.split(flat_x, flat_x.shape[-1], axis=1)
+            tf.debugging.assert_equal(tf.shape(flat_x)[-1], len(self.tags))
+            columns = tf.split(flat_x, len(self.tags), axis=1)
             encoders = [
                 (
                     binary_encoder
@@ -676,7 +676,7 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
             ]
             encoded = tf.concat(
                 [
-                    tf.cast(encoder(column), dtype=x.dtype)
+                    tf.cast(encoder(tf.reshape(column, [-1, 1])), dtype=x.dtype)
                     for encoder, column in zip(encoders, columns)
                 ],
                 axis=1,
