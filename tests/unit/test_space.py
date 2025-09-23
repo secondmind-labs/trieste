@@ -1850,7 +1850,7 @@ def test_categorical_search_space_one_hot_encoding(
     npt.assert_array_equal(encoded_points, points)
 
 
-def test_one_hot_encoder_supports_compilation_with_variable_shapes():
+def test_one_hot_encoder_supports_compilation_with_variable_shapes() -> None:
     encoder = tf.function(CategoricalSearchSpace(["A", "B", "C"]).one_hot_encoder)
     points = tf.Variable(tf.ones((2, 1)), shape=[None, None])
     encoded_points = encoder(points)
