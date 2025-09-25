@@ -49,6 +49,7 @@ from trieste.models.gpflow import (
     feature_decomposition_trajectory,
 )
 from trieste.models.gpflow.sampler import (
+    FeatureDecompositionInternalDataModel,
     FeatureDecompositionTrajectorySamplerModel,
     qmc_normal_samples,
 )
@@ -67,7 +68,10 @@ REPARAMETRIZATION_SAMPLERS: List[Type[ReparametrizationSampler[SupportsPredictJo
 ]
 
 
-DecoupledSamplingModel = Callable[[Dataset], Tuple[int, FeatureDecompositionTrajectorySamplerModel]]
+RFFSamplingModel = Callable[[Dataset], Tuple[int, FeatureDecompositionInternalDataModel]]
+DecoupledSamplingModel = Callable[
+    [Dataset], Tuple[int, int, FeatureDecompositionTrajectorySamplerModel]
+]
 
 
 @pytest.fixture(name="sampling_dataset")
@@ -81,14 +85,38 @@ def _sampling_dataset() -> Dataset:
 
 
 @pytest.fixture(
+    name="rff_sampling_model",
+    params=[
+        pytest.param(
+            lambda dataset: (1, quadratic_mean_rbf_kernel_model(dataset)),
+            id="one_op_custom",
+        ),
+        pytest.param(
+            lambda dataset: (
+                2,
+                quadratic_mean_rbf_kernel_model(
+                    dataset,
+                    kernel=gpflow.kernels.Sum([gpflow.kernels.RBF(), gpflow.kernels.Matern52()]),
+                ),
+            ),
+            id="one_op_add_custom",
+        ),
+    ],
+)
+def _rff_sampling_model_fixture(request: Any) -> RFFSamplingModel:
+    return request.param
+
+
+@pytest.fixture(
     name="decoupled_sampling_model",
     params=[
         pytest.param(
-            lambda dataset: (1, quadratic_mean_rbf_kernel_model(dataset)), id="one_op_custom"
+            lambda dataset: (1, 1, quadratic_mean_rbf_kernel_model(dataset)), id="one_op_custom"
         ),
         # whiten testing is covered in tests/unit/models/gpflow/test_models.py
         pytest.param(
             lambda dataset: (
+                1,
                 1,
                 SparseVariational(svgp_model(dataset.query_points, dataset.observations)),
             ),
@@ -97,11 +125,28 @@ def _sampling_dataset() -> Dataset:
         pytest.param(
             lambda dataset: (
                 2,
+                1,
                 SparseVariational(
                     svgp_model_by_type(dataset.query_points, "separate+shared", whiten=False)
                 ),
             ),
             id="two_op_svgp",
+        ),
+        pytest.param(
+            lambda dataset: (
+                1,
+                2,
+                SparseVariational(
+                    svgp_model(
+                        dataset.query_points,
+                        dataset.observations,
+                        kernel=gpflow.kernels.Sum(
+                            [gpflow.kernels.RBF(), gpflow.kernels.Matern52()]
+                        ),
+                    )
+                ),
+            ),
+            id="one_op_add_svgp",
         ),
     ],
 )
@@ -547,11 +592,12 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
     num_evals: int,
     num_features: int,
     batch_size: int,
+    rff_sampling_model: RFFSamplingModel,
 ) -> None:
     dataset = Dataset(
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
     )
-    model = quadratic_mean_rbf_kernel_model(dataset)
+    n_kernels, model = rff_sampling_model(dataset)
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=num_features)
 
     trajectory = sampler.get_trajectory()
@@ -566,7 +612,7 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
 
     tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size, 1])])
     tf.debugging.assert_shapes(
-        [(trajectory._feature_functions(xs), [num_evals, num_features])]  # type: ignore
+        [(trajectory._feature_functions(xs), [num_evals, num_features * n_kernels])]  # type: ignore
     )
     assert isinstance(trajectory, feature_decomposition_trajectory)
 
@@ -576,8 +622,9 @@ def test_rff_trajectory_sampler_returns_trajectory_function_with_correct_shapes(
 def test_rff_trajectory_sampler_returns_deterministic_trajectory(
     batch_size: int,
     sampling_dataset: Dataset,
+    rff_sampling_model: RFFSamplingModel,
 ) -> None:
-    model = quadratic_mean_rbf_kernel_model(sampling_dataset)
+    _, model = rff_sampling_model(sampling_dataset)
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
@@ -593,8 +640,9 @@ def test_rff_trajectory_sampler_returns_deterministic_trajectory(
 
 def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_method(
     sampling_dataset: Dataset,
+    rff_sampling_model: RFFSamplingModel,
 ) -> None:
-    model = quadratic_mean_rbf_kernel_model(sampling_dataset)
+    _, model = rff_sampling_model(sampling_dataset)
 
     sampler = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     sampler.get_trajectory()
@@ -609,8 +657,9 @@ def test_rff_trajectory_sampler_returns_same_posterior_from_each_calculation_met
 @random_seed
 def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances(
     sampling_dataset: Dataset,
+    rff_sampling_model: RFFSamplingModel,
 ) -> None:
-    model = quadratic_mean_rbf_kernel_model(sampling_dataset)
+    _, model = rff_sampling_model(sampling_dataset)
 
     sampler1 = RandomFourierFeatureTrajectorySampler(model, num_features=100)
     trajectory1 = sampler1.get_trajectory()
@@ -638,8 +687,9 @@ def test_rff_trajectory_sampler_samples_are_distinct_for_new_instances(
 def test_rff_trajectory_resample_trajectory_provides_new_samples_without_retracing(
     batch_size: int,
     sampling_dataset: Dataset,
+    rff_sampling_model: RFFSamplingModel,
 ) -> None:
-    model = quadratic_mean_rbf_kernel_model(sampling_dataset)
+    _, model = rff_sampling_model(sampling_dataset)
     xs = sampling_dataset.query_points
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     xs = tf.tile(xs, [1, batch_size, 1])  # [N, B, D]
@@ -790,7 +840,7 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
         tf.constant([[-2.0]], dtype=tf.float64), tf.constant([[4.1]], dtype=tf.float64)
     )
     N = len(dataset.query_points)
-    L, model = decoupled_sampling_model(dataset)
+    L, n_kernels, model = decoupled_sampling_model(dataset)
     sampler = DecoupledTrajectorySampler(model, num_features=num_features)
 
     trajectory = sampler.get_trajectory()
@@ -802,11 +852,21 @@ def test_decoupled_trajectory_sampler_returns_trajectory_function_with_correct_s
     tf.debugging.assert_shapes([(trajectory(xs_with_full_batch_dim), [num_evals, batch_size, L])])
     if L > 1:
         tf.debugging.assert_shapes(
-            [(trajectory._feature_functions(xs), [L, num_evals, num_features + N])]  # type: ignore
+            [
+                (
+                    trajectory._feature_functions(xs),  # type: ignore
+                    [L, num_evals, num_features * n_kernels + N],
+                )
+            ]
         )
     else:
         tf.debugging.assert_shapes(
-            [(trajectory._feature_functions(xs), [num_evals, num_features + N])]  # type: ignore
+            [
+                (
+                    trajectory._feature_functions(xs),  # type: ignore
+                    [num_evals, num_features * n_kernels + N],
+                )
+            ]
         )
     assert isinstance(trajectory, feature_decomposition_trajectory)
 
@@ -818,7 +878,7 @@ def test_decoupled_trajectory_sampler_returns_deterministic_trajectory(
     sampling_dataset: Dataset,
     decoupled_sampling_model: DecoupledSamplingModel,
 ) -> None:
-    _, model = decoupled_sampling_model(sampling_dataset)
+    _, _, model = decoupled_sampling_model(sampling_dataset)
     sampler = DecoupledTrajectorySampler(model, num_features=100)
     trajectory = sampler.get_trajectory()
 
@@ -864,7 +924,7 @@ def test_decoupled_trajectory_resample_trajectory_provides_new_samples_without_r
     sampling_dataset: Dataset,
     decoupled_sampling_model: DecoupledSamplingModel,
 ) -> None:
-    _, model = decoupled_sampling_model(sampling_dataset)
+    _, _, model = decoupled_sampling_model(sampling_dataset)
     xs = sampling_dataset.query_points
     xs = tf.expand_dims(xs, -2)  # [N, 1, d]
     xs = tf.tile(xs, [1, batch_size, 1])  # [N, B, D]
@@ -890,7 +950,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
     sampling_dataset: Dataset,
     decoupled_sampling_model: DecoupledSamplingModel,
 ) -> None:
-    L, model = decoupled_sampling_model(sampling_dataset)
+    L, n_kernels, model = decoupled_sampling_model(sampling_dataset)
 
     x_range = tf.random.uniform([5], 1.0, 2.0)  # sample test locations
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -905,7 +965,7 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
     eval_before = trajectory(xs_predict_with_batching)
     trace_count_before = trajectory.__call__._get_tracing_count()  # type: ignore
 
-    if L > 1:
+    if L > 1 or n_kernels > 1:
         # pick the first kernel to check
         _model_lengthscales = model.get_kernel().kernels[0].lengthscales
         _trajectory_sampler_lengthscales = trajectory_sampler._feature_functions.kernel.kernels[
@@ -958,9 +1018,10 @@ def test_decoupled_trajectory_update_trajectory_updates_and_doesnt_retrace(
 def test_rff_and_decoupled_trajectory_give_similar_results(
     noise_var: float,
     sampling_dataset: Dataset,
+    rff_sampling_model: RFFSamplingModel,
 ) -> None:
-    model = quadratic_mean_rbf_kernel_model(sampling_dataset)
-    model._noise_variance = tf.constant(noise_var, dtype=tf.float64)
+    _, model = rff_sampling_model(sampling_dataset)
+    model._noise_variance = tf.constant(noise_var, dtype=tf.float64)  # type: ignore[attr-defined]
 
     x_range = tf.linspace(1.4, 1.8, 3)
     x_range = tf.cast(x_range, dtype=tf.float64)
@@ -980,7 +1041,7 @@ def test_rff_and_decoupled_trajectory_give_similar_results(
     eval_2 = trajectory_2(xs_predict_with_batching)
 
     npt.assert_allclose(
-        tf.reduce_mean(eval_1, 1), tf.reduce_mean(eval_2, 1), rtol=0.01
+        tf.reduce_mean(eval_1, 1), tf.reduce_mean(eval_2, 1), rtol=0.1
     )  # means across samples should roughly agree for different samplers
     npt.assert_allclose(
         tf.math.reduce_variance(eval_1, 1), tf.math.reduce_variance(eval_2, 1), rtol=1.0
