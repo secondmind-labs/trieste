@@ -1404,31 +1404,6 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
         if seed is not None:
             tf.random.set_seed(seed)
 
-        num_subspaces = len(self.subspace_tags)
-        workload_size = num_samples * num_subspaces
-        
-        # GPU-aware thresholds
-        is_gpu = len(tf.config.list_physical_devices('GPU')) > 0 and tf.test.is_gpu_available()
-        
-        if is_gpu:
-            # On GPU: Lower threshold, parallel beneficial even for smaller workloads
-            # GPU memory bandwidth makes parallel operations more efficient
-            min_workload = 50  # Much lower threshold for GPU
-            min_subspaces = 3  # Parallel beneficial with fewer subspaces on GPU
-        else:
-            # On CPU: Higher threshold, overhead dominates for small workloads  
-            min_workload = 1000
-            min_subspaces = 10
-        
-        # Use parallel if:
-        # 1. Workload is large enough, OR
-        # 2. Multiple subspaces (good for repeated sampling patterns like FESBO)
-        use_parallel = (workload_size >= min_workload or 
-                       (num_subspaces >= min_subspaces and num_samples >= 5))
-        
-        if not use_parallel:
-            return self._sample_sequential(num_samples, seed)
-
         # Check if all subspaces have the same dimension for parallel execution
         dimensions = [int(self.get_subspace(tag).dimension) for tag in self.subspace_tags]
 
