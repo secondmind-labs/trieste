@@ -64,14 +64,14 @@ class GPUFesboValidator:
             'mixed_space': TaggedProductSearchSpace([
                 Box([0.0], [1.0]),                    # Continuous
                 Box([0.0], [10.0]),                   # Continuous
-                DiscreteSearchSpace(tf.constant([1, 2, 3, 4, 5], dtype=tf.float64)),  # Discrete
+                DiscreteSearchSpace(tf.constant([[1], [2], [3], [4], [5]], dtype=tf.float64)),  # Discrete
                 Box([0.0], [100.0])                   # Continuous
             ]),
             
             'pure_discrete': TaggedProductSearchSpace([
-                DiscreteSearchSpace(tf.constant([1, 2, 3, 4, 5], dtype=tf.float64)),
-                DiscreteSearchSpace(tf.constant([10, 20, 30, 40], dtype=tf.float64)),
-                DiscreteSearchSpace(tf.constant([100, 200, 300], dtype=tf.float64))
+                DiscreteSearchSpace(tf.constant([[1], [2], [3], [4], [5]], dtype=tf.float64)),
+                DiscreteSearchSpace(tf.constant([[10], [20], [30], [40]], dtype=tf.float64)),
+                DiscreteSearchSpace(tf.constant([[100], [200], [300]], dtype=tf.float64))
             ])
         }
         
