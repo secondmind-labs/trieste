@@ -1386,6 +1386,74 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
         subspace_samples = self.subspace_sample(num_samples, seed)
         return tf.concat(subspace_samples, -1)
 
+    @check_shapes("return: [num_samples, D]")
+    def sample_parallel(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """
+        Smart sampling that automatically chooses between parallel and sequential based on workload.
+        
+        GPU-aware heuristics for optimization use cases like FESBO:
+        - On GPU: Parallel helps even with smaller batches due to memory bandwidth
+        - Multiple subspaces (>5): Parallel can be beneficial 
+        - Batch optimization: Even small batches called repeatedly benefit from parallelization
+        
+        For CPU with very small workloads, sequential is typically faster.
+        """
+        if num_samples == 0:
+            return tf.zeros((0, self.dimension), dtype=DEFAULT_DTYPE)
+
+        if seed is not None:
+            tf.random.set_seed(seed)
+
+        num_subspaces = len(self.subspace_tags)
+        workload_size = num_samples * num_subspaces
+        
+        # GPU-aware thresholds
+        is_gpu = len(tf.config.list_physical_devices('GPU')) > 0 and tf.test.is_gpu_available()
+        
+        if is_gpu:
+            # On GPU: Lower threshold, parallel beneficial even for smaller workloads
+            # GPU memory bandwidth makes parallel operations more efficient
+            min_workload = 50  # Much lower threshold for GPU
+            min_subspaces = 3  # Parallel beneficial with fewer subspaces on GPU
+        else:
+            # On CPU: Higher threshold, overhead dominates for small workloads  
+            min_workload = 1000
+            min_subspaces = 10
+        
+        # Use parallel if:
+        # 1. Workload is large enough, OR
+        # 2. Multiple subspaces (good for repeated sampling patterns like FESBO)
+        use_parallel = (workload_size >= min_workload or 
+                       (num_subspaces >= min_subspaces and num_samples >= 5))
+        
+        if not use_parallel:
+            return self._sample_sequential(num_samples, seed)
+
+        # Check if all subspaces have the same dimension for parallel execution
+        dimensions = [int(self.get_subspace(tag).dimension) for tag in self.subspace_tags]
+
+        if len(set(dimensions)) == 1:  # All dimensions are the same
+            common_dim = dimensions[0]
+            return self._sample_with_map_fn(num_samples, seed, common_dim)
+        else:
+            # Fall back to sequential sampling
+            return self._sample_sequential(num_samples, seed)
+
+    def _sample_with_map_fn(self, num_samples: int, seed: Optional[int],
+                            common_dim: int) -> TensorType:
+        """Simple parallel sampling approach without caching complexities."""
+        
+        subspaces = [self.get_subspace(tag) for tag in self.subspace_tags]
+        seeds = [seed + i if seed is not None else None for i in range(len(subspaces))]
+
+        # Use simple parallel sampling (no compilation overhead)
+        return _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim)
+
+    def _sample_sequential(self, num_samples: int, seed: Optional[int]) -> TensorType:
+        """Sequential fallback."""
+        subspace_samples = self.subspace_sample(num_samples, seed)
+        return tf.concat(subspace_samples, -1)
+
     def product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
@@ -1546,3 +1614,29 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         samples = tf.reshape(samples, [-1, self.dimension])  # Flatten the samples across subspaces.
         samples = tf.random.shuffle(samples)[:num_samples]  # Randomly pick num_samples points.
         return DiscreteSearchSpace(points=samples)
+
+
+
+def _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim):
+    """Simple parallel sampling without complex caching - avoids retracing issues."""
+    
+    def sample_subspace_simple(i):
+        """Sample from i-th subspace - executed in eager mode."""
+        idx = int(i.numpy())
+        subspace = subspaces[idx]
+        seed = seeds[idx]
+        return subspace.sample(num_samples, seed=seed)
+    
+    indices = tf.range(len(subspaces), dtype=tf.int32)
+    
+    # Use tf.map_fn without @tf.function to avoid compilation overhead
+    subspace_samples = tf.map_fn(
+        sample_subspace_simple,
+        indices,
+        dtype=DEFAULT_DTYPE,
+        parallel_iterations=len(subspaces)  # This enables parallelization in eager mode
+    )
+    
+    # Reshape to final form
+    transposed = tf.transpose(subspace_samples, perm=[1, 0, 2])
+    return tf.reshape(transposed, [num_samples, len(subspaces) * common_dim])
