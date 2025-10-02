@@ -1389,14 +1389,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
     @check_shapes("return: [num_samples, D]")
     def sample_parallel(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
-        Smart sampling that automatically chooses between parallel and sequential based on workload.
-        
-        GPU-aware heuristics for optimization use cases like FESBO:
-        - On GPU: Parallel helps even with smaller batches due to memory bandwidth
-        - Multiple subspaces (>5): Parallel can be beneficial 
-        - Batch optimization: Even small batches called repeatedly benefit from parallelization
-        
-        For CPU with very small workloads, sequential is typically faster.
+        Smart sampling that automatically chooses between parallel and sequential sampling.
         """
         if num_samples == 0:
             return tf.zeros((0, self.dimension), dtype=DEFAULT_DTYPE)
@@ -1412,22 +1405,16 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
             return self._sample_with_map_fn(num_samples, seed, common_dim)
         else:
             # Fall back to sequential sampling
-            return self._sample_sequential(num_samples, seed)
+            return self.sample(num_samples, seed)
 
     def _sample_with_map_fn(self, num_samples: int, seed: Optional[int],
                             common_dim: int) -> TensorType:
-        """Simple parallel sampling approach without caching complexities."""
+        """Simple sampling approach using compiled parallel sampling with tf.map_fn."""
         
         subspaces = [self.get_subspace(tag) for tag in self.subspace_tags]
         seeds = [seed + i if seed is not None else None for i in range(len(subspaces))]
 
-        # Use simple parallel sampling (no compilation overhead)
         return _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim)
-
-    def _sample_sequential(self, num_samples: int, seed: Optional[int]) -> TensorType:
-        """Sequential fallback."""
-        subspace_samples = self.subspace_sample(num_samples, seed)
-        return tf.concat(subspace_samples, -1)
 
     def product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace:
         r"""
@@ -1593,12 +1580,14 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
 
 
 # Global cache for compiled parallel sampling functions
-_PARALLEL_SAMPLER_CACHE: Mapping[str, Any] = {}
+_PARALLEL_SAMPLER_CACHE = {}
 
 def _create_subspace_signature(subspace: SearchSpace) -> str:
     """
     Create a detailed signature for a subspace that captures its actual configuration.
     This ensures different subspaces with different parameters get different cache keys.
+
+    NOTE: for the time being, dtype is not taken into account for simplicity
     """
     import hashlib
     
@@ -1631,11 +1620,8 @@ def _create_cache_key(subspaces: Sequence[SearchSpace], common_dim: int) -> str:
     Create a comprehensive cache key based on the actual subspace configurations.
     """
     import hashlib
-    
-    # Create signature for each subspace
+
     subspace_sigs = [_create_subspace_signature(subspace) for subspace in subspaces]
-    
-    # Combine into cache key
     combined_sig = "_".join(subspace_sigs)
     cache_key = f"parallel_{len(subspaces)}_{common_dim}_{combined_sig}"
     
@@ -1649,31 +1635,26 @@ def _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim):
     Uses content-based caching that properly handles different subspace configurations
     (e.g., Box with different bounds, DiscreteSearchSpace with different points).
     """
-    
-    # Create cache key based on actual subspace content
+
     cache_key = _create_cache_key(subspaces, common_dim)
     
     # Get or create compiled function
     if cache_key not in _PARALLEL_SAMPLER_CACHE:
-        
-        # Create the compiled function
+
         @tf.function
         def compiled_parallel_sampler(num_samples_tf, num_subspaces):
             """Compiled function that performs parallel sampling."""
             
             def sample_single_subspace(i):
-                """Sample from i-th subspace using tf.py_function."""
+                """Sample from i-th subspace"""
                 
                 def python_sample_fn(index_tensor, num_samples_tensor):
-                    """Python function that calls subspace.sample()."""
                     idx = int(index_tensor.numpy())
                     n_samples = int(num_samples_tensor.numpy())
-                    
-                    # Get subspace and seed from closure
+
                     subspace = subspaces[idx]
                     seed = seeds[idx]
-                    
-                    # Sample from the subspace
+
                     result = subspace.sample(n_samples, seed=seed)
                     return result.numpy()
                 
@@ -1683,15 +1664,11 @@ def _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim):
                     inp=[i, num_samples_tf],
                     Tout=tf.float64
                 )
-                
-                # Set concrete shape for better performance
+
                 result.set_shape([None, common_dim])
                 return tf.cast(result, DEFAULT_DTYPE)
-            
-            # Create indices for parallel execution  
+
             indices = tf.range(num_subspaces, dtype=tf.int32)
-            
-            # Parallel execution using tf.map_fn within @tf.function
             subspace_samples = tf.map_fn(
                 fn=sample_single_subspace,
                 elems=indices,
@@ -1702,8 +1679,7 @@ def _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim):
             # Reshape from [num_subspaces, num_samples, common_dim] to [num_samples, total_dim]
             transposed = tf.transpose(subspace_samples, perm=[1, 0, 2])
             return tf.reshape(transposed, [num_samples_tf, num_subspaces * common_dim])
-        
-        # Cache the compiled function
+
         _PARALLEL_SAMPLER_CACHE[cache_key] = compiled_parallel_sampler
     
     # Use the cached compiled function
