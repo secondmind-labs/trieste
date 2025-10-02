@@ -1592,26 +1592,123 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
 
 
 
+# Global cache for compiled parallel sampling functions
+_PARALLEL_SAMPLER_CACHE: Mapping[str, Any] = {}
+
+def _create_subspace_signature(subspace: SearchSpace) -> str:
+    """
+    Create a detailed signature for a subspace that captures its actual configuration.
+    This ensures different subspaces with different parameters get different cache keys.
+    """
+    import hashlib
+    
+    if isinstance(subspace, Box):
+        # Include actual bounds in signature
+        lower_hash = hashlib.md5(subspace.lower.numpy().tobytes()).hexdigest()[:8]
+        upper_hash = hashlib.md5(subspace.upper.numpy().tobytes()).hexdigest()[:8]
+        return f"Box_{lower_hash}_{upper_hash}"
+    
+    elif isinstance(subspace, DiscreteSearchSpace):
+        # Include actual discrete points
+        points_hash = hashlib.md5(subspace.points.numpy().tobytes()).hexdigest()[:8]
+        return f"Discrete_{points_hash}"
+    
+    elif isinstance(subspace, CategoricalSearchSpace):
+        # Include actual categories/points
+        try:
+            points_hash = hashlib.md5(subspace.points.numpy().tobytes()).hexdigest()[:8]
+            return f"Categorical_{points_hash}"
+        except:
+            # Fallback for any issues with points access
+            return f"Categorical_{id(subspace)}"
+    
+    else:
+        # Unknown subspace type - use class name + object id
+        return f"{type(subspace).__name__}_{id(subspace)}"
+
+def _create_cache_key(subspaces: Sequence[SearchSpace], common_dim: int) -> str:
+    """
+    Create a comprehensive cache key based on the actual subspace configurations.
+    """
+    import hashlib
+    
+    # Create signature for each subspace
+    subspace_sigs = [_create_subspace_signature(subspace) for subspace in subspaces]
+    
+    # Combine into cache key
+    combined_sig = "_".join(subspace_sigs)
+    cache_key = f"parallel_{len(subspaces)}_{common_dim}_{combined_sig}"
+    
+    # Hash to keep key length reasonable
+    return hashlib.md5(cache_key.encode()).hexdigest()
+
 def _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim):
-    """Simple parallel sampling without complex caching - avoids retracing issues."""
+    """
+    Parallel sampling using cached @tf.function to avoid recompilation.
     
-    def sample_subspace_simple(i):
-        """Sample from i-th subspace - executed in eager mode."""
-        idx = int(i.numpy())
-        subspace = subspaces[idx]
-        seed = seeds[idx]
-        return subspace.sample(num_samples, seed=seed)
+    Uses content-based caching that properly handles different subspace configurations
+    (e.g., Box with different bounds, DiscreteSearchSpace with different points).
+    """
     
-    indices = tf.range(len(subspaces), dtype=tf.int32)
+    # Create cache key based on actual subspace content
+    cache_key = _create_cache_key(subspaces, common_dim)
     
-    # Use tf.map_fn without @tf.function to avoid compilation overhead
-    subspace_samples = tf.map_fn(
-        sample_subspace_simple,
-        indices,
-        dtype=DEFAULT_DTYPE,
-        parallel_iterations=len(subspaces)  # This enables parallelization in eager mode
-    )
+    # Get or create compiled function
+    if cache_key not in _PARALLEL_SAMPLER_CACHE:
+        
+        # Create the compiled function
+        @tf.function
+        def compiled_parallel_sampler(num_samples_tf, num_subspaces):
+            """Compiled function that performs parallel sampling."""
+            
+            def sample_single_subspace(i):
+                """Sample from i-th subspace using tf.py_function."""
+                
+                def python_sample_fn(index_tensor, num_samples_tensor):
+                    """Python function that calls subspace.sample()."""
+                    idx = int(index_tensor.numpy())
+                    n_samples = int(num_samples_tensor.numpy())
+                    
+                    # Get subspace and seed from closure
+                    subspace = subspaces[idx]
+                    seed = seeds[idx]
+                    
+                    # Sample from the subspace
+                    result = subspace.sample(n_samples, seed=seed)
+                    return result.numpy()
+                
+                # Bridge to Python using tf.py_function
+                result = tf.py_function(
+                    func=python_sample_fn,
+                    inp=[i, num_samples_tf],
+                    Tout=tf.float64
+                )
+                
+                # Set concrete shape for better performance
+                result.set_shape([None, common_dim])
+                return tf.cast(result, DEFAULT_DTYPE)
+            
+            # Create indices for parallel execution  
+            indices = tf.range(num_subspaces, dtype=tf.int32)
+            
+            # Parallel execution using tf.map_fn within @tf.function
+            subspace_samples = tf.map_fn(
+                fn=sample_single_subspace,
+                elems=indices,
+                fn_output_signature=tf.TensorSpec([None, common_dim], dtype=DEFAULT_DTYPE),
+                parallel_iterations=num_subspaces
+            )
+            
+            # Reshape from [num_subspaces, num_samples, common_dim] to [num_samples, total_dim]
+            transposed = tf.transpose(subspace_samples, perm=[1, 0, 2])
+            return tf.reshape(transposed, [num_samples_tf, num_subspaces * common_dim])
+        
+        # Cache the compiled function
+        _PARALLEL_SAMPLER_CACHE[cache_key] = compiled_parallel_sampler
     
-    # Reshape to final form
-    transposed = tf.transpose(subspace_samples, perm=[1, 0, 2])
-    return tf.reshape(transposed, [num_samples, len(subspaces) * common_dim])
+    # Use the cached compiled function
+    compiled_fn = _PARALLEL_SAMPLER_CACHE[cache_key]
+    num_samples_tf = tf.constant(num_samples, dtype=tf.int32)
+    num_subspaces = len(subspaces)
+    
+    return compiled_fn(num_samples_tf, num_subspaces)
