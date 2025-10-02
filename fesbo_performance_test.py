@@ -58,6 +58,8 @@ def test_device_performance():
         {"num_samples": 1, "description": "Single sample (typical)"},
         {"num_samples": 10, "description": "Small batch"},
         {"num_samples": 100, "description": "Large batch"},
+        {"num_samples": 500, "description": "Larger batch"},
+        {"num_samples": 1000, "description": "Very large batch"},
     ]
     
     # Reduced scale for testing - use 100 instead of 1000 iterations
@@ -153,3 +155,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
