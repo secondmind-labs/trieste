@@ -1389,7 +1389,9 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
     @check_shapes("return: [num_samples, D]")
     def sample_parallel(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
         """
-        Smart sampling that automatically chooses between parallel and sequential sampling.
+        High-performance parallel sampling using pure TensorFlow operations.
+
+        Automatically falls back to cached parallel or sequential for unsupported cases.
         """
         if num_samples == 0:
             return tf.zeros((0, self.dimension), dtype=DEFAULT_DTYPE)
@@ -1402,10 +1404,113 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
 
         if len(set(dimensions)) == 1:  # All dimensions are the same
             common_dim = dimensions[0]
+            
+            # Try pure TensorFlow parallel sampling for maximum performance
+            pure_tf_result = self._try_pure_tf_parallel(num_samples, seed, common_dim)
+            if pure_tf_result is not None:
+                return pure_tf_result
+                
+            # Fallback to cached parallel sampling
             return self._sample_with_map_fn(num_samples, seed, common_dim)
         else:
             # Fall back to sequential sampling
             return self.sample(num_samples, seed)
+    
+    def _try_pure_tf_parallel(self, num_samples: int, seed: Optional[int], common_dim: int) -> Optional[TensorType]:
+        """
+        Pure TensorFlow parallel sampling - eliminates tf.py_function overhead.
+        
+        Returns None if any subspace types are unsupported, triggering fallback.
+        """
+        
+        subspaces = [self.get_subspace(tag) for tag in self.subspace_tags]
+        
+        # Analyze subspace types and extract parameters
+        box_subspaces = []
+        discrete_subspaces = []
+        subspace_order = []
+        
+        for i, subspace in enumerate(subspaces):
+            if isinstance(subspace, Box):
+                box_subspaces.append({
+                    'lower': subspace.lower,
+                    'upper': subspace.upper,
+                })
+                subspace_order.append(('box', len(box_subspaces) - 1))
+            elif isinstance(subspace, DiscreteSearchSpace):
+                discrete_subspaces.append({
+                    'points': subspace.points,
+                })
+                subspace_order.append(('discrete', len(discrete_subspaces) - 1))
+            else:
+                # Unsupported type - return None for fallback
+                return None
+        
+        # Create the pure TensorFlow sampling function
+        @tf.function
+        def pure_tf_vectorized_sampler(num_samples_tf, base_seed):
+            """Vectorized parallel sampling with pure TensorFlow operations."""
+            
+            result_samples = []
+            
+            # Batch sample all Box subspaces at once (most efficient)
+            if box_subspaces:
+                box_lowers = tf.stack([params['lower'] for params in box_subspaces])
+                box_uppers = tf.stack([params['upper'] for params in box_subspaces])
+                
+                # Vectorized sampling for all boxes
+                box_samples = tf.random.uniform(
+                    (len(box_subspaces), num_samples_tf, common_dim),
+                    minval=tf.expand_dims(box_lowers, 1),
+                    maxval=tf.expand_dims(box_uppers, 1),
+                    dtype=DEFAULT_DTYPE,
+                    seed=base_seed
+                )
+                box_samples = tf.transpose(box_samples, perm=[1, 0, 2])  # [num_samples, num_boxes, common_dim]
+            
+            # Handle discrete subspaces with optimized approach
+            discrete_samples = None
+            if discrete_subspaces:
+                discrete_samples_list = []
+                for i, params in enumerate(discrete_subspaces):
+                    num_points = tf.shape(params['points'])[0]
+                    discrete_seed = base_seed + i + len(box_subspaces) if base_seed is not None else None
+                    
+                    # Optimized discrete sampling: use tf.random.uniform for indices
+                    # This is much faster than tf.random.categorical + tf.gather
+                    random_indices = tf.random.uniform(
+                        (num_samples_tf,),
+                        minval=0,
+                        maxval=num_points,
+                        dtype=tf.int32,
+                        seed=discrete_seed
+                    )
+                    sample = tf.gather(params['points'], random_indices)
+                    discrete_samples_list.append(sample)
+                
+                if discrete_samples_list:
+                    discrete_samples = tf.stack(discrete_samples_list, axis=1)
+            
+            # Reconstruct samples in original subspace order
+            box_idx = 0
+            discrete_idx = 0
+            
+            for subspace_type, type_idx in subspace_order:
+                if subspace_type == 'box':
+                    result_samples.append(box_samples[:, box_idx, :])
+                    box_idx += 1
+                else:  # discrete
+                    result_samples.append(discrete_samples[:, discrete_idx, :])
+                    discrete_idx += 1
+            
+            # Final concatenation
+            return tf.concat(result_samples, axis=-1)
+        
+        # Execute the pure TensorFlow sampling
+        num_samples_tf = tf.constant(num_samples, dtype=tf.int32)
+        base_seed = seed if seed is not None else None
+        
+        return pure_tf_vectorized_sampler(num_samples_tf, base_seed)
 
     def _sample_with_map_fn(self, num_samples: int, seed: Optional[int],
                             common_dim: int) -> TensorType:
