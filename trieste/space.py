@@ -1402,15 +1402,16 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
         # Check if all subspaces have the same dimension for parallel execution
         dimensions = [int(self.get_subspace(tag).dimension) for tag in self.subspace_tags]
 
-        if len(set(dimensions)) == 1:  # All dimensions are the same
+        if len(set(dimensions)) == 1:
             common_dim = dimensions[0]
             
-            # Try pure TensorFlow parallel sampling for maximum performance
+            # Pure TensorFlow parallel sampling for maximum performance
             pure_tf_result = self._try_pure_tf_parallel(num_samples, seed, common_dim)
             if pure_tf_result is not None:
                 return pure_tf_result
                 
             # Fallback to cached parallel sampling
+            # TODO: remove as benchmarks reveal it's always slower than sequential due to overhead
             return self._sample_with_map_fn(num_samples, seed, common_dim)
         else:
             # Fall back to sequential sampling
@@ -1445,12 +1446,10 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
             else:
                 # Unsupported type - return None for fallback
                 return None
-        
-        # Create the pure TensorFlow sampling function
+
         @tf.function
         def pure_tf_vectorized_sampler(num_samples_tf, base_seed):
             """Vectorized parallel sampling with pure TensorFlow operations."""
-            
             result_samples = []
             
             # Batch sample all Box subspaces at once (most efficient)
@@ -1476,8 +1475,7 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
                     num_points = tf.shape(params['points'])[0]
                     discrete_seed = base_seed + i + len(box_subspaces) if base_seed is not None else None
                     
-                    # Optimized discrete sampling: use tf.random.uniform for indices
-                    # This is much faster than tf.random.categorical + tf.gather
+                    # Optimized discrete sampling: sample indices instead
                     random_indices = tf.random.uniform(
                         (num_samples_tf,),
                         minval=0,
@@ -1503,10 +1501,8 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
                     result_samples.append(discrete_samples[:, discrete_idx, :])
                     discrete_idx += 1
             
-            # Final concatenation
             return tf.concat(result_samples, axis=-1)
         
-        # Execute the pure TensorFlow sampling
         num_samples_tf = tf.constant(num_samples, dtype=tf.int32)
         base_seed = seed if seed is not None else None
         
