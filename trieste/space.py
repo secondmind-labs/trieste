@@ -1431,14 +1431,33 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
         discrete_subspaces = []
         subspace_order = []
         
+        # Track dtypes to ensure consistency
+        box_dtype = None
+        discrete_dtype = None
+        
         for i, subspace in enumerate(subspaces):
             if isinstance(subspace, Box):
+                # Check dtype consistency for Box subspaces
+                if box_dtype is None:
+                    box_dtype = subspace.lower.dtype
+                elif box_dtype != subspace.lower.dtype:
+                    # Dtype mismatch - return None for fallback
+                    return None
+                
                 box_subspaces.append({
                     'lower': subspace.lower,
                     'upper': subspace.upper,
                 })
                 subspace_order.append(('box', len(box_subspaces) - 1))
+                
             elif isinstance(subspace, DiscreteSearchSpace):
+                # Check dtype consistency for Discrete subspaces
+                if discrete_dtype is None:
+                    discrete_dtype = subspace.points.dtype
+                elif discrete_dtype != subspace.points.dtype:
+                    # Dtype mismatch - return None for fallback
+                    return None
+                
                 discrete_subspaces.append({
                     'points': subspace.points,
                 })
@@ -1446,6 +1465,16 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
             else:
                 # Unsupported type - return None for fallback
                 return None
+        
+        # Ensure Box and Discrete dtypes are compatible if both exist
+        if box_dtype is not None and discrete_dtype is not None and box_dtype != discrete_dtype:
+            # Mixed dtypes between Box and Discrete - return None for fallback
+            return None
+        
+        # Determine the common dtype
+        common_dtype = box_dtype if box_dtype is not None else discrete_dtype
+        if common_dtype is None:
+            common_dtype = DEFAULT_DTYPE
 
         @tf.function
         def pure_tf_vectorized_sampler(num_samples_tf, base_seed):
@@ -1457,12 +1486,12 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
                 box_lowers = tf.stack([params['lower'] for params in box_subspaces])
                 box_uppers = tf.stack([params['upper'] for params in box_subspaces])
                 
-                # Vectorized sampling for all boxes
+                # Vectorized sampling for all boxes using correct dtype
                 box_samples = tf.random.uniform(
                     (len(box_subspaces), num_samples_tf, common_dim),
                     minval=tf.expand_dims(box_lowers, 1),
                     maxval=tf.expand_dims(box_uppers, 1),
-                    dtype=DEFAULT_DTYPE,
+                    dtype=common_dtype,
                     seed=base_seed
                 )
                 box_samples = tf.transpose(box_samples, perm=[1, 0, 2])  # [num_samples, num_boxes, common_dim]
@@ -1484,6 +1513,9 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
                         seed=discrete_seed
                     )
                     sample = tf.gather(params['points'], random_indices)
+                    # Ensure discrete samples match common dtype
+                    if sample.dtype != common_dtype:
+                        sample = tf.cast(sample, common_dtype)
                     discrete_samples_list.append(sample)
                 
                 if discrete_samples_list:
