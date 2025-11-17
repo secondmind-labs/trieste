@@ -399,7 +399,7 @@ def rosenbrock(x: TensorType, d: int) -> TensorType:
 
     y: TensorType = x * 15.0 - 5
     unscaled_function = tf.reduce_sum(
-        (100.0 * (y[..., 1:] - y[..., :-1]) ** 2 + (1 - y[..., :-1]) ** 2), axis=-1, keepdims=True
+        (100.0 * (y[..., 1:] - y[..., :-1] ** 2) ** 2 + (1 - y[..., :-1]) ** 2), axis=-1, keepdims=True
     )
     return unscaled_function
 
