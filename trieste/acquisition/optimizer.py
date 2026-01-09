@@ -238,7 +238,10 @@ def sample_from_space(
 
         for offset in range(0, num_samples, batch_size_int):
             num_batch_samples = min(num_samples - offset, batch_size_int)
-            candidates = space.sample(num_batch_samples * multiple)
+            with Timer() as t:
+                candidates = space.sample(num_batch_samples * multiple)
+            print(f"Sampling {num_batch_samples * multiple} points time = {t.time}")
+
             candidates = tf.reshape(candidates, [num_batch_samples, vectorization, -1])
             yield candidates
 
