@@ -42,6 +42,7 @@ from ..space import (
 )
 from ..types import TensorType
 from .interface import AcquisitionFunction
+from ..utils import Timer
 
 NUM_SAMPLES_MIN: int = 5000
 """
@@ -431,9 +432,11 @@ def generate_continuous_optimizer(
             else num_initial_samples
         )
 
-        initial_points = generate_initial_points(
-            num_optimization_runs, initial_sampler, space, target_func, V
-        )  # [num_optimization_runs,V,D]
+        with Timer() as initial_point_generation_timer:
+            initial_points = generate_initial_points(
+                num_optimization_runs, initial_sampler, space, target_func, V
+            )  # [num_optimization_runs,V,D]
+        print(f"Initial point generation time = {initial_point_generation_timer.time}")
 
         if len(initial_points) < num_optimization_runs:
             raise ValueError(
