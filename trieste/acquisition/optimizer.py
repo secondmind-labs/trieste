@@ -269,7 +269,7 @@ def generate_initial_points(
 
     with Timer() as t:
         samples = initial_sampler(space)
-    print(f"Getting samples {tf.shape(sample)} (line 271) took {t.time}")
+    print(f"Getting samples {tf.shape(samples)} (line 271) took {t.time}")
     for candidates in samples:
         if tf.rank(candidates) == 3:
             # If samples is a tensor of rank 3, then it is a batch of samples. In this case
