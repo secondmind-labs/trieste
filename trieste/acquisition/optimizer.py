@@ -267,7 +267,10 @@ def generate_initial_points(
     top_fun_values: Optional[TensorType] = None  # [V, num_optimization_runs]
     top_candidates: Optional[TensorType] = None  # [V, num_optimization_runs, D]
 
-    for candidates in initial_sampler(space):
+    with Timer() as t:
+        samples = initial_sampler(space)
+    print(f"Getting samples {tf.shape(sample)} (line 271) took {t.time}")
+    for candidates in samples:
         if tf.rank(candidates) == 3:
             # If samples is a tensor of rank 3, then it is a batch of samples. In this case
             # the vectorization of the target function must be a multiple of the length of the
@@ -300,7 +303,10 @@ def generate_initial_points(
                 candidates[:, None, :], [1, vectorization, 1]
             )  # [samples, V, D]
 
-        target_func_values = target_func(tiled_candidates)  # [samples, V]
+        with Timer() as t:
+            target_func_values = target_func(tiled_candidates)  # [samples, V]
+        print(f"Evaluating target func {tf.shape(tiled_candidates)} took {t.time}")
+
         tf.debugging.assert_shapes(
             [(target_func_values, ("_", vectorization))],
             message=(
