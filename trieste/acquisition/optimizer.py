@@ -338,6 +338,11 @@ def generate_initial_points(
         raise ValueError("No initial point generated!")
 
     initial_points = tf.transpose(top_candidates, [1, 0, 2])  # [num_initial_points,V,D]
+
+    input_binary_col = initial_points[..., -1]
+    tf.debugging.Assert(tf.reduce_all((input_binary_col == 0) | (input_binary_col == 1)),
+                        [tf.constant([])])
+
     return initial_points
 
 
