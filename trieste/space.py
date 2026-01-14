@@ -659,7 +659,7 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
 
         def binary_encoder(x: TensorType) -> TensorType:
             # no need to one-hot encode binary categories (but we should still validate)
-            tf.print(f"x = {tf.unique(x)}")
+            tf.print(f"x = {tf.unique(x[..., 0])}")
             tf.debugging.Assert(tf.reduce_all((x == 0) | (x == 1)), [tf.constant([])])
             return x
 
