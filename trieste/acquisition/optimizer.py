@@ -264,6 +264,9 @@ def generate_initial_points(
     top_candidates: Optional[TensorType] = None  # [V, num_optimization_runs, D]
 
     for candidates in initial_sampler(space):
+
+        _check_binary(candidates)
+        
         if tf.rank(candidates) == 3:
             # If samples is a tensor of rank 3, then it is a batch of samples. In this case
             # the vectorization of the target function must be a multiple of the length of the
@@ -339,11 +342,15 @@ def generate_initial_points(
 
     initial_points = tf.transpose(top_candidates, [1, 0, 2])  # [num_initial_points,V,D]
 
-    input_binary_col = initial_points[..., -1]
-    tf.debugging.Assert(tf.reduce_all((input_binary_col == 0) | (input_binary_col == 1)),
-                        [tf.constant([])])
+    _check_binary(initial_points)
 
     return initial_points
+
+
+def _check_binary(x):
+    input_binary_col = x[..., -1]
+    tf.debugging.Assert(tf.reduce_all((input_binary_col == 0) | (input_binary_col == 1)),
+                        [tf.constant([])])
 
 
 def generate_continuous_optimizer(
