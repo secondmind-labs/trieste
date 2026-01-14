@@ -266,7 +266,7 @@ def generate_initial_points(
     for candidates in initial_sampler(space):
 
         _check_binary(candidates)
-        
+
         if tf.rank(candidates) == 3:
             # If samples is a tensor of rank 3, then it is a batch of samples. In this case
             # the vectorization of the target function must be a multiple of the length of the
@@ -299,6 +299,7 @@ def generate_initial_points(
                 candidates[:, None, :], [1, vectorization, 1]
             )  # [samples, V, D]
 
+        _check_binary(tiled_candidates)
         target_func_values = target_func(tiled_candidates)  # [samples, V]
         tf.debugging.assert_shapes(
             [(target_func_values, ("_", vectorization))],
