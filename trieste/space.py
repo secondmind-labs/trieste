@@ -665,14 +665,10 @@ class CategoricalSearchSpace(GeneralDiscreteSearchSpace, HasOneHotEncoder):
             )
             return x
 
-        n_tags = len(self.tags)
-
         def encoder(x: TensorType) -> TensorType:
             flat_x, unflatten = flatten_leading_dims(x)
-            tf.print(f"flat_x shape = ", tf.shape(flat_x))
-            tf.print(f"n_tags = ", n_tags)
-            tf.debugging.assert_equal(tf.shape(flat_x)[-1], n_tags)
-            columns = tf.split(flat_x, n_tags, axis=1)
+            tf.debugging.assert_equal(tf.shape(flat_x)[-1], len(self.tags))
+            columns = tf.split(flat_x, len(self.tags), axis=1)
             encoders = [
                 (
                     binary_encoder
