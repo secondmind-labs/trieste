@@ -1881,11 +1881,11 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         :param points: Points in flat-vector representation, shape ``[N, D]``.
         :return: Boolean tensor of shape ``[N]``.
         """
-        has_gradient_constraints = bool(
+        has_constraints_on_disjunctions_or_globally = bool(
             self._global_constraints or self._conditional_constraints
         )
 
-        if has_gradient_constraints:
+        if has_constraints_on_disjunctions_or_globally:
             feasible = tf.math.reduce_all(
                 self.constraints_residuals(points) >= -self._ctol, axis=-1
             )
