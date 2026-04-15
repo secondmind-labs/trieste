@@ -205,6 +205,96 @@ class LinearConstraint(spo.LinearConstraint):  # type: ignore[misc]
 Constraint = Union[LinearConstraint, NonlinearConstraint]
 """ Type alias for constraints. """
 
+INACTIVE_CONSTRAINT_RESIDUAL = 1e10
+"""Large positive residual returned for inactive conditional constraints."""
+
+
+@dataclass
+class ConditionalConstraint:
+    """
+    A disjunctive constraint :math:`h_{ik}(x) \\leq 0` that is enforced only when a set of
+    Boolean indicator variables take specified values.
+
+    When the ``indicator_conditions`` are satisfied, the underlying ``constraint`` is evaluated
+    on the subspace slice identified by ``active_subspace_tags``. When inactive, the residual
+    is set to a large positive value (:data:`INACTIVE_CONSTRAINT_RESIDUAL`), making the point
+    unconstrainedly feasible with respect to this constraint.
+
+    :param constraint: The underlying :class:`LinearConstraint` or :class:`NonlinearConstraint`.
+    :param indicator_conditions: ``{indicator_tag: required_value}`` specifying which indicators
+        must match for this constraint to be enforced.
+    :param active_subspace_tags: The non-indicator subspace tags on which the constraint operates.
+        The subspace components are concatenated in tag order and passed to the constraint.
+    """
+
+    constraint: Constraint
+    indicator_conditions: Mapping[str, bool]
+    active_subspace_tags: Sequence[str]
+
+    def residual(self, points: TensorType, space: HierarchicalSearchSpace) -> TensorType:
+        """
+        Compute constraint residuals, returning large positive values where inactive.
+
+        :param points: Points in the flat-vector representation of the space, shape ``[N, D]``.
+        :param space: The :class:`HierarchicalSearchSpace` providing tag-to-index mapping.
+        :return: Residuals with shape ``[N, C]`` where ``C`` is the number of residual columns
+            produced by the underlying constraint.
+        """
+        # Build per-point activity mask: [N]
+        active_mask = tf.ones([tf.shape(points)[0]], dtype=tf.bool)
+        for ind_tag, required in self.indicator_conditions.items():
+            ind_vals = space.get_subspace_component(ind_tag, points)  # [N, 1]
+            target = tf.constant(1.0 if required else 0.0, dtype=points.dtype)
+            match = tf.abs(ind_vals[:, 0] - target) < 0.5
+            active_mask = active_mask & match
+
+        # Extract the subspace slice the constraint operates on
+        sub_components = [
+            space.get_subspace_component(tag, points) for tag in self.active_subspace_tags
+        ]
+        sub_points = tf.concat(sub_components, axis=-1)  # [N, D_sub]
+
+        # Compute underlying constraint residual
+        real_residual = self.constraint.residual(sub_points)  # [N, C]
+        n_residual_cols = tf.shape(real_residual)[-1]
+
+        # Where inactive, return large positive
+        inactive_residual = tf.fill(
+            tf.shape(real_residual), tf.constant(INACTIVE_CONSTRAINT_RESIDUAL, dtype=points.dtype)
+        )
+        mask_expanded = tf.broadcast_to(
+            active_mask[:, tf.newaxis], tf.shape(real_residual)
+        )
+        return tf.where(mask_expanded, real_residual, inactive_residual)
+
+
+@dataclass
+class LogicalProposition:
+    """
+    A constraint on the Boolean indicator variables only, :math:`\\Omega(Y) = \\text{True}`.
+
+    The function receives a dictionary ``{indicator_tag: values_tensor}`` where each tensor
+    has shape ``[N, 1]`` containing 0.0/1.0 values, and must return a boolean tensor of shape
+    ``[N]`` indicating feasibility.
+
+    Logical propositions are checked during ``is_feasible()`` and sampling, but are **not**
+    included in ``constraints_residuals()`` since they have no useful gradient for continuous
+    optimizers.
+
+    Example -- "if y2 is active, y1 must also be active"::
+
+        LogicalProposition(
+            fun=lambda ind: tf.logical_or(
+                tf.equal(ind["y2"], 0),
+                tf.equal(ind["y1"], 1),
+            )[:, 0],
+            name="y2_implies_y1",
+        )
+    """
+
+    fun: Callable[[Mapping[str, TensorType]], TensorType]
+    name: str = ""
+
 
 class SearchSpace(ABC):
     """
@@ -1508,6 +1598,10 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         tags: Sequence[str],
         hierarchy: Sequence[HierarchyNode],
         indicator_tags: Sequence[str],
+        global_constraints: Sequence[Constraint] = (),
+        conditional_constraints: Sequence[ConditionalConstraint] = (),
+        logical_propositions: Sequence[LogicalProposition] = (),
+        ctol: float | TensorType = 1e-7,
     ) -> None:
         """
         :param spaces: A sequence of :class:`SearchSpace` objects, one per variable.
@@ -1515,11 +1609,19 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         :param hierarchy: A sequence of :class:`HierarchyNode` objects defining the conditional
             structure. Every non-indicator tag must appear in at least one node.
         :param indicator_tags: Which tags correspond to :class:`BooleanSearchSpace` indicators.
+        :param global_constraints: Constraints always enforced on the full flat vector.
+        :param conditional_constraints: Disjunctive constraints gated by indicator conditions.
+        :param logical_propositions: Indicator-only consistency constraints.
+        :param ctol: Tolerance for checking constraint satisfaction.
         :raises ValueError: If any validation rule is violated.
         """
         super().__init__(spaces, tags)
         self._hierarchy = tuple(hierarchy)
         self._indicator_tags = tuple(indicator_tags)
+        self._global_constraints = tuple(global_constraints)
+        self._conditional_constraints = tuple(conditional_constraints)
+        self._logical_propositions = tuple(logical_propositions)
+        self._ctol = ctol
 
         self._validate()
 
@@ -1722,10 +1824,89 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         """
         return [node for node in self._hierarchy if tag in node.subspace_tags]
 
+    @property
+    def global_constraints(self) -> tuple[Constraint, ...]:
+        """Global constraints always enforced on the full flat vector."""
+        return self._global_constraints
+
+    @property
+    def conditional_constraints(self) -> tuple[ConditionalConstraint, ...]:
+        """Disjunctive constraints gated by indicator conditions."""
+        return self._conditional_constraints
+
+    @property
+    def logical_propositions(self) -> tuple[LogicalProposition, ...]:
+        """Indicator-only consistency constraints."""
+        return self._logical_propositions
+
+    @property
+    def has_constraints(self) -> bool:
+        """True if any global, conditional, or logical constraints are present."""
+        return bool(
+            self._global_constraints
+            or self._conditional_constraints
+            or self._logical_propositions
+        )
+
+    def constraints_residuals(self, points: TensorType) -> TensorType:
+        """
+        Compute constraint residuals from global and conditional constraints.
+
+        Logical propositions are **not** included because they have no gradient-compatible
+        residual for continuous optimizers.
+
+        :param points: Points in flat-vector representation, shape ``[N, D]``.
+        :return: Concatenated residuals, shape ``[N, C]``.
+        :raises NotImplementedError: If no gradient-compatible constraints exist.
+        """
+        residuals: List[TensorType] = []
+
+        for gc in self._global_constraints:
+            residuals.append(gc.residual(points))
+
+        for cc in self._conditional_constraints:
+            residuals.append(cc.residual(points, self))
+
+        if not residuals:
+            raise NotImplementedError(
+                "No gradient-compatible constraints to compute residuals for."
+            )
+
+        return tf.concat(residuals, axis=-1)
+
+    def is_feasible(self, points: TensorType) -> TensorType:
+        """
+        Check whether points satisfy all constraints, including logical propositions.
+
+        :param points: Points in flat-vector representation, shape ``[N, D]``.
+        :return: Boolean tensor of shape ``[N]``.
+        """
+        has_gradient_constraints = bool(
+            self._global_constraints or self._conditional_constraints
+        )
+
+        if has_gradient_constraints:
+            feasible = tf.math.reduce_all(
+                self.constraints_residuals(points) >= -self._ctol, axis=-1
+            )
+        else:
+            feasible = tf.ones([tf.shape(points)[0]], dtype=tf.bool)
+
+        if self._logical_propositions:
+            ind_values: Dict[str, TensorType] = {
+                tag: self.get_subspace_component(tag, points)
+                for tag in self._indicator_tags
+            }
+            for prop in self._logical_propositions:
+                feasible = feasible & prop.fun(ind_values)
+
+        return feasible
+
     def product(self, other: HierarchicalSearchSpace) -> HierarchicalSearchSpace:
         """
         Return a new :class:`HierarchicalSearchSpace` that is the combination of this space and
-        ``other``. Tags in the two spaces must be disjoint. The hierarchy nodes are concatenated.
+        ``other``. Tags in the two spaces must be disjoint. The hierarchy nodes and constraints
+        are concatenated.
 
         :param other: Another :class:`HierarchicalSearchSpace`.
         :return: The combined hierarchical space.
@@ -1738,7 +1919,19 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         tags = list(self.subspace_tags) + list(other.subspace_tags)
         hierarchy = list(self._hierarchy) + list(other._hierarchy)
         indicator_tags = list(self._indicator_tags) + list(other._indicator_tags)
-        return HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags)
+        global_constraints = list(self._global_constraints) + list(other._global_constraints)
+        conditional_constraints = list(self._conditional_constraints) + list(
+            other._conditional_constraints
+        )
+        logical_propositions = list(self._logical_propositions) + list(
+            other._logical_propositions
+        )
+        return HierarchicalSearchSpace(
+            spaces, tags, hierarchy, indicator_tags,
+            global_constraints=global_constraints,
+            conditional_constraints=conditional_constraints,
+            logical_propositions=logical_propositions,
+        )
 
     @staticmethod
     def _node_is_active(

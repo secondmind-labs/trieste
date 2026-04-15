@@ -31,12 +31,15 @@ from trieste.space import (
     Box,
     CategoricalSearchSpace,
     CollectionSearchSpace,
+    ConditionalConstraint,
     Constraint,
     DiscreteSearchSpace,
     GeneralDiscreteSearchSpace,
     HierarchicalSearchSpace,
     HierarchyNode,
+    INACTIVE_CONSTRAINT_RESIDUAL,
     LinearConstraint,
+    LogicalProposition,
     NonlinearConstraint,
     SearchSpace,
     TaggedMultiSearchSpace,
@@ -2244,3 +2247,349 @@ def test_hss_with_mixed_subspace_types() -> None:
     assert samples.shape == (5, 4)
     for s in samples:
         assert s in space
+
+
+# ===== ConditionalConstraint tests =====
+
+
+def _make_constrained_hss() -> HierarchicalSearchSpace:
+    """Helper: hierarchy with a linear constraint on x2 when y1=True."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),       # x1: unconditional
+        BooleanSearchSpace(),     # y1: indicator
+        Box([0.0], [5.0]),       # x2: conditional on y1=True
+        Box([-1.0], [1.0]),      # x3: conditional on y1=False
+    ]
+    tags = ["x1", "y1", "x2", "x3"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+        HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+    ]
+    # x2 <= 3.0 when y1=True
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(
+            A=tf.constant([[1.0]], dtype=tf.float64),
+            lb=tf.constant([-1e10], dtype=tf.float64),
+            ub=tf.constant([3.0], dtype=tf.float64),
+        ),
+        indicator_conditions={"y1": True},
+        active_subspace_tags=["x2"],
+    )
+    return HierarchicalSearchSpace(
+        spaces, tags, hierarchy, indicator_tags=["y1"],
+        conditional_constraints=[cc],
+    )
+
+
+def test_conditional_constraint_active_residual() -> None:
+    space = _make_constrained_hss()
+    # y1=1 (active), x2=2.0 -> within bound (3.0), residual should be positive
+    point = tf.constant([[0.5, 1.0, 2.0, 0.0]], dtype=tf.float64)
+    residuals = space.constraints_residuals(point)
+    assert tf.reduce_all(residuals >= 0).numpy()
+
+
+def test_conditional_constraint_active_infeasible() -> None:
+    space = _make_constrained_hss()
+    # y1=1 (active), x2=4.0 -> exceeds bound (3.0), should be infeasible
+    point = tf.constant([[0.5, 1.0, 4.0, 0.0]], dtype=tf.float64)
+    assert not space.is_feasible(point).numpy()
+
+
+def test_conditional_constraint_inactive_returns_large_positive() -> None:
+    space = _make_constrained_hss()
+    # y1=0 (inactive), x2=4.0 -> constraint should not fire
+    point = tf.constant([[0.5, 0.0, 4.0, 0.0]], dtype=tf.float64)
+    residuals = space.constraints_residuals(point)
+    assert tf.reduce_all(residuals >= INACTIVE_CONSTRAINT_RESIDUAL - 1.0).numpy()
+    assert space.is_feasible(point).numpy()
+
+
+def test_conditional_constraint_mixed_batch() -> None:
+    space = _make_constrained_hss()
+    points = tf.constant([
+        [0.5, 1.0, 2.0, 0.0],  # active, feasible (x2=2 <= 3)
+        [0.5, 0.0, 4.0, 0.0],  # inactive, should be feasible
+        [0.5, 1.0, 4.0, 0.0],  # active, infeasible (x2=4 > 3)
+    ], dtype=tf.float64)
+    feasible = space.is_feasible(points)
+    npt.assert_array_equal(feasible.numpy(), [True, True, False])
+
+
+def test_conditional_constraint_with_nonlinear() -> None:
+    """ConditionalConstraint wrapping a NonlinearConstraint."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [5.0]),
+        BooleanSearchSpace(),
+        Box([0.0], [5.0]),
+    ]
+    tags = ["x1", "y1", "x2"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("cond", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+    ]
+    # x2^2 <= 9  (i.e. x2 <= 3 when positive)
+    cc = ConditionalConstraint(
+        constraint=NonlinearConstraint(
+            fun=lambda x: tf.reduce_sum(x ** 2, axis=-1, keepdims=True),
+            lb=tf.constant([0.0], dtype=tf.float64),
+            ub=tf.constant([9.0], dtype=tf.float64),
+        ),
+        indicator_conditions={"y1": True},
+        active_subspace_tags=["x2"],
+    )
+    space = HierarchicalSearchSpace(
+        spaces, tags, hierarchy, indicator_tags=["y1"],
+        conditional_constraints=[cc],
+    )
+    # y1=1, x2=2 -> feasible (4 <= 9)
+    p1 = tf.constant([[1.0, 1.0, 2.0]], dtype=tf.float64)
+    assert space.is_feasible(p1).numpy()
+    # y1=1, x2=4 -> infeasible (16 > 9)
+    p2 = tf.constant([[1.0, 1.0, 4.0]], dtype=tf.float64)
+    assert not space.is_feasible(p2).numpy()
+    # y1=0, x2=4 -> feasible (inactive)
+    p3 = tf.constant([[1.0, 0.0, 4.0]], dtype=tf.float64)
+    assert space.is_feasible(p3).numpy()
+
+
+# ===== LogicalProposition tests =====
+
+
+def _make_logical_hss() -> HierarchicalSearchSpace:
+    """Helper: two indicators y1, y2 with a proposition y2 => y1."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        BooleanSearchSpace(),
+        Box([0.0], [5.0]),
+        Box([0.0], [5.0]),
+    ]
+    tags = ["x1", "y1", "y2", "x2", "x3"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("a", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+        HierarchyNode("b", subspace_tags=["x3"], indicator_conditions={"y2": True}),
+    ]
+    # y2 => y1: if y2 is active, y1 must also be active
+    prop = LogicalProposition(
+        fun=lambda ind: tf.logical_or(
+            tf.equal(ind["y2"], 0),
+            tf.equal(ind["y1"], 1),
+        )[:, 0],
+        name="y2_implies_y1",
+    )
+    return HierarchicalSearchSpace(
+        spaces, tags, hierarchy, indicator_tags=["y1", "y2"],
+        logical_propositions=[prop],
+    )
+
+
+def test_logical_proposition_all_feasible() -> None:
+    space = _make_logical_hss()
+    # y1=1, y2=1 -> satisfies y2 => y1
+    point = tf.constant([[0.5, 1.0, 1.0, 2.0, 3.0]], dtype=tf.float64)
+    assert space.is_feasible(point).numpy()
+
+
+def test_logical_proposition_violation() -> None:
+    space = _make_logical_hss()
+    # y1=0, y2=1 -> violates y2 => y1
+    point = tf.constant([[0.5, 0.0, 1.0, 2.0, 3.0]], dtype=tf.float64)
+    assert not space.is_feasible(point).numpy()
+
+
+def test_logical_proposition_inactive_y2_always_ok() -> None:
+    space = _make_logical_hss()
+    # y2=0 -> y2 => y1 is vacuously True regardless of y1
+    p1 = tf.constant([[0.5, 0.0, 0.0, 2.0, 3.0]], dtype=tf.float64)
+    p2 = tf.constant([[0.5, 1.0, 0.0, 2.0, 3.0]], dtype=tf.float64)
+    assert space.is_feasible(p1).numpy()
+    assert space.is_feasible(p2).numpy()
+
+
+def test_logical_proposition_batch_mixed() -> None:
+    space = _make_logical_hss()
+    points = tf.constant([
+        [0.5, 1.0, 1.0, 2.0, 3.0],  # y1=1, y2=1 -> OK
+        [0.5, 0.0, 1.0, 2.0, 3.0],  # y1=0, y2=1 -> FAIL
+        [0.5, 0.0, 0.0, 2.0, 3.0],  # y1=0, y2=0 -> OK
+        [0.5, 1.0, 0.0, 2.0, 3.0],  # y1=1, y2=0 -> OK
+    ], dtype=tf.float64)
+    feasible = space.is_feasible(points)
+    npt.assert_array_equal(feasible.numpy(), [True, False, True, True])
+
+
+def test_logical_proposition_not_in_constraints_residuals() -> None:
+    space = _make_logical_hss()
+    # Space with only logical propositions should raise on constraints_residuals
+    point = tf.constant([[0.5, 1.0, 1.0, 2.0, 3.0]], dtype=tf.float64)
+    with pytest.raises(NotImplementedError, match="No gradient-compatible"):
+        space.constraints_residuals(point)
+
+
+# ===== HierarchicalSearchSpace constraint integration tests =====
+
+
+def test_hss_has_constraints_false_by_default() -> None:
+    space = _make_simple_hss()
+    assert not space.has_constraints
+
+
+def test_hss_has_constraints_with_global() -> None:
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), BooleanSearchSpace(), Box([0.0], [5.0])]
+    tags = ["x1", "y1", "x2"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("cond", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+    ]
+    gc = LinearConstraint(
+        A=tf.constant([[1.0, 0.0, 0.0]], dtype=tf.float64),
+        lb=tf.constant([-1e10], dtype=tf.float64),
+        ub=tf.constant([0.8], dtype=tf.float64),
+    )
+    space = HierarchicalSearchSpace(
+        spaces, tags, hierarchy, indicator_tags=["y1"],
+        global_constraints=[gc],
+    )
+    assert space.has_constraints
+
+
+def test_hss_global_constraint_residuals() -> None:
+    """Global constraint x1 <= 0.8 on the full 3-D vector."""
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), BooleanSearchSpace(), Box([0.0], [5.0])]
+    tags = ["x1", "y1", "x2"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("cond", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+    ]
+    gc = LinearConstraint(
+        A=tf.constant([[1.0, 0.0, 0.0]], dtype=tf.float64),
+        lb=tf.constant([-1e10], dtype=tf.float64),
+        ub=tf.constant([0.8], dtype=tf.float64),
+    )
+    space = HierarchicalSearchSpace(
+        spaces, tags, hierarchy, indicator_tags=["y1"],
+        global_constraints=[gc],
+    )
+    # x1=0.5 -> feasible (0.5 <= 0.8)
+    p1 = tf.constant([[0.5, 1.0, 2.0]], dtype=tf.float64)
+    assert space.is_feasible(p1).numpy()
+    # x1=0.9 -> infeasible (0.9 > 0.8)
+    p2 = tf.constant([[0.9, 1.0, 2.0]], dtype=tf.float64)
+    assert not space.is_feasible(p2).numpy()
+
+
+def test_hss_combined_global_and_conditional() -> None:
+    """Both global and conditional constraints present."""
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), BooleanSearchSpace(), Box([0.0], [5.0])]
+    tags = ["x1", "y1", "x2"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("cond", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+    ]
+    gc = LinearConstraint(
+        A=tf.constant([[1.0, 0.0, 0.0]], dtype=tf.float64),
+        lb=tf.constant([-1e10], dtype=tf.float64),
+        ub=tf.constant([0.8], dtype=tf.float64),
+    )
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(
+            A=tf.constant([[1.0]], dtype=tf.float64),
+            lb=tf.constant([-1e10], dtype=tf.float64),
+            ub=tf.constant([3.0], dtype=tf.float64),
+        ),
+        indicator_conditions={"y1": True},
+        active_subspace_tags=["x2"],
+    )
+    space = HierarchicalSearchSpace(
+        spaces, tags, hierarchy, indicator_tags=["y1"],
+        global_constraints=[gc],
+        conditional_constraints=[cc],
+    )
+    residuals = space.constraints_residuals(
+        tf.constant([[0.5, 1.0, 2.0]], dtype=tf.float64)
+    )
+    # Should have residuals from both global (2 cols) and conditional (2 cols)
+    assert residuals.shape[-1] == 4
+
+    # x1=0.5, y1=1, x2=2 -> both feasible
+    assert space.is_feasible(tf.constant([[0.5, 1.0, 2.0]], dtype=tf.float64)).numpy()
+    # x1=0.9, y1=1, x2=2 -> global infeasible
+    assert not space.is_feasible(tf.constant([[0.9, 1.0, 2.0]], dtype=tf.float64)).numpy()
+    # x1=0.5, y1=1, x2=4 -> conditional infeasible
+    assert not space.is_feasible(tf.constant([[0.5, 1.0, 4.0]], dtype=tf.float64)).numpy()
+    # x1=0.5, y1=0, x2=4 -> conditional inactive, global OK
+    assert space.is_feasible(tf.constant([[0.5, 0.0, 4.0]], dtype=tf.float64)).numpy()
+
+
+def test_hss_all_three_constraint_types() -> None:
+    """Global + conditional + logical all present."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        BooleanSearchSpace(),
+        Box([0.0], [5.0]),
+        Box([0.0], [5.0]),
+    ]
+    tags = ["x1", "y1", "y2", "x2", "x3"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("a", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+        HierarchyNode("b", subspace_tags=["x3"], indicator_conditions={"y2": True}),
+    ]
+    gc = LinearConstraint(
+        A=tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64),
+        lb=tf.constant([-1e10], dtype=tf.float64),
+        ub=tf.constant([0.8], dtype=tf.float64),
+    )
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(
+            A=tf.constant([[1.0]], dtype=tf.float64),
+            lb=tf.constant([-1e10], dtype=tf.float64),
+            ub=tf.constant([3.0], dtype=tf.float64),
+        ),
+        indicator_conditions={"y1": True},
+        active_subspace_tags=["x2"],
+    )
+    prop = LogicalProposition(
+        fun=lambda ind: tf.logical_or(
+            tf.equal(ind["y2"], 0),
+            tf.equal(ind["y1"], 1),
+        )[:, 0],
+        name="y2_implies_y1",
+    )
+    space = HierarchicalSearchSpace(
+        spaces, tags, hierarchy, indicator_tags=["y1", "y2"],
+        global_constraints=[gc],
+        conditional_constraints=[cc],
+        logical_propositions=[prop],
+    )
+    assert space.has_constraints
+
+    # All feasible: x1=0.5, y1=1, y2=1, x2=2, x3=1
+    p_ok = tf.constant([[0.5, 1.0, 1.0, 2.0, 1.0]], dtype=tf.float64)
+    assert space.is_feasible(p_ok).numpy()
+
+    # Logical violation: y1=0, y2=1
+    p_logic_fail = tf.constant([[0.5, 0.0, 1.0, 2.0, 1.0]], dtype=tf.float64)
+    assert not space.is_feasible(p_logic_fail).numpy()
+
+    # Global violation: x1=0.9
+    p_global_fail = tf.constant([[0.9, 1.0, 1.0, 2.0, 1.0]], dtype=tf.float64)
+    assert not space.is_feasible(p_global_fail).numpy()
+
+    # Conditional violation: y1=1, x2=4
+    p_cond_fail = tf.constant([[0.5, 1.0, 1.0, 4.0, 1.0]], dtype=tf.float64)
+    assert not space.is_feasible(p_cond_fail).numpy()
+
+
+def test_hss_is_feasible_no_constraints_returns_all_true() -> None:
+    space = _make_simple_hss()
+    points = tf.constant([
+        [0.5, 1.0, 2.0, 0.0],
+        [0.2, 0.0, 1.0, -0.5],
+    ], dtype=tf.float64)
+    feasible = space.is_feasible(points)
+    npt.assert_array_equal(feasible.numpy(), [True, True])
