@@ -35,7 +35,7 @@ from .inducing_point_selectors import (
     UniformInducingPointSelector,
 )
 from .interface import GPflowPredictor
-from .kernels import TreeEnsembleKernel
+from .kernels import ArcKernel, TreeEnsembleKernel, WedgeKernel
 from .models import (
     GaussianProcessRegression,
     MultifidelityAutoregressive,
