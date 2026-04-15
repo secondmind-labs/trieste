@@ -258,7 +258,7 @@ class ConditionalConstraint:
         real_residual = self.constraint.residual(sub_points)  # [N, C]
         n_residual_cols = tf.shape(real_residual)[-1]
 
-        # Where inactive, return large positive
+        # Where inactive, return large positive value (akin to BigM in MI(N)LP reformulations of GDP)
         inactive_residual = tf.fill(
             tf.shape(real_residual), tf.constant(INACTIVE_CONSTRAINT_RESIDUAL, dtype=points.dtype)
         )
