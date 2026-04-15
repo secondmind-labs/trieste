@@ -16,9 +16,10 @@ from __future__ import annotations
 
 import operator
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from functools import reduce
-from itertools import chain
-from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
+from itertools import chain, product as itertools_product
+from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, overload
 
 import numpy as np
 import scipy.optimize as spo
@@ -504,6 +505,39 @@ class DiscreteSearchSpace(GeneralDiscreteSearchSpace):
         if not isinstance(other, DiscreteSearchSpace):
             return NotImplemented
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
+
+
+class BooleanSearchSpace(DiscreteSearchSpace):
+    r"""
+    A 1-D :class:`DiscreteSearchSpace` restricted to :math:`\{0, 1\}`, representing a single
+    Boolean indicator variable from the GDP formulation. Provides a distinct type for
+    dispatch in validation and downstream consumers (e.g. GA bitflip mutation, kernel
+    active/inactive checks).
+
+    Example:
+
+        >>> space = BooleanSearchSpace()
+        >>> assert space.dimension == 1
+        >>> assert tf.constant([0.0]) in space
+        >>> assert tf.constant([1.0]) in space
+        >>> assert tf.constant([2.0]) not in space
+
+    """
+
+    def __init__(self, dtype: tf.DType = DEFAULT_DTYPE) -> None:
+        """
+        :param dtype: The dtype of the points. Defaults to :data:`DEFAULT_DTYPE`.
+        """
+        super().__init__(points=tf.constant([[0], [1]], dtype=dtype))
+
+    def __repr__(self) -> str:
+        """"""
+        return "BooleanSearchSpace()"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BooleanSearchSpace):
+            return NotImplemented
+        return self.points.dtype == other.points.dtype
 
 
 @runtime_checkable
@@ -1412,6 +1446,312 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
             return tf.concat(components, axis=-1)
 
         return encoder
+
+
+@dataclass(frozen=True)
+class HierarchyNode:
+    """
+    A node in the hierarchy graph of a :class:`HierarchicalSearchSpace`. Each node is the
+    computational counterpart of a single disjunction in a Generalized Disjunctive Program (GDP).
+
+    :param name: A human-readable label that also serves as the node identifier for kernel
+        association (e.g. in the Conditional kernel, each node is paired with a sub-kernel).
+    :param subspace_tags: Tags of non-indicator subspaces that are active when this node's
+        conditions are satisfied. These are the dimensions an associated sub-kernel operates on.
+    :param indicator_conditions: A mapping ``{indicator_tag: required_value}`` specifying which
+        Boolean indicators must take which values for this node to be active. An empty mapping
+        means the node is unconditionally active.
+    """
+
+    name: str
+    subspace_tags: Sequence[str]
+    indicator_conditions: Mapping[str, bool]
+
+
+class HierarchicalSearchSpace(CollectionSearchSpace):
+    r"""
+    A :class:`SearchSpace` that extends :class:`CollectionSearchSpace` with a hierarchy
+    specification describing conditional activation of subspaces.
+
+    Every variable is its own subspace, identified by a unique tag. Variables fall into three roles:
+
+    - **Boolean indicators** (:class:`BooleanSearchSpace`), declared via ``indicator_tags``.
+      These are the :math:`Y_{ik}` from the GDP formulation. They are always unconditional.
+    - **Unconditional variables** appearing in a :class:`HierarchyNode` with empty
+      ``indicator_conditions``. Always active regardless of indicator values.
+    - **Conditional variables** appearing in a :class:`HierarchyNode` with non-empty
+      ``indicator_conditions``. Active only when the referenced indicators match.
+
+    Points are represented as flat vectors concatenated in tag order, following the same
+    convention as :class:`TaggedProductSearchSpace`.
+
+    Example::
+
+        spaces = [
+            Box([0.0], [1.0]),
+            BooleanSearchSpace(),
+            Box([0.0], [5.0]),
+            Box([-1.0], [1.0]),
+        ]
+        tags = ["x1", "y1", "x2", "x3"]
+        hierarchy = [
+            HierarchyNode("shared",   subspace_tags=["x1"], indicator_conditions={}),
+            HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+            HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+        ]
+        space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+    """
+
+    def __init__(
+        self,
+        spaces: Sequence[SearchSpace],
+        tags: Sequence[str],
+        hierarchy: Sequence[HierarchyNode],
+        indicator_tags: Sequence[str],
+    ) -> None:
+        """
+        :param spaces: A sequence of :class:`SearchSpace` objects, one per variable.
+        :param tags: Unique string identifiers for each subspace.
+        :param hierarchy: A sequence of :class:`HierarchyNode` objects defining the conditional
+            structure. Every non-indicator tag must appear in at least one node.
+        :param indicator_tags: Which tags correspond to :class:`BooleanSearchSpace` indicators.
+        :raises ValueError: If any validation rule is violated.
+        """
+        super().__init__(spaces, tags)
+        self._hierarchy = tuple(hierarchy)
+        self._indicator_tags = tuple(indicator_tags)
+
+        self._validate()
+
+        subspace_sizes = self.subspace_dimension
+        self._subspace_sizes_by_tag: Dict[str, TensorType] = dict(
+            zip(self._tags, subspace_sizes)
+        )
+        self._subspace_starting_indices: Dict[str, TensorType] = dict(
+            zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
+        )
+        self._dimension = tf.cast(tf.reduce_sum(subspace_sizes), dtype=tf.int32)
+
+    def _validate(self) -> None:
+        all_tags = set(self.subspace_tags)
+
+        # indicator_tags must exist and reference BooleanSearchSpace
+        for itag in self._indicator_tags:
+            if itag not in all_tags:
+                raise ValueError(
+                    f"Indicator tag '{itag}' not found in subspace tags {all_tags}."
+                )
+            if not isinstance(self.get_subspace(itag), BooleanSearchSpace):
+                raise ValueError(
+                    f"Indicator tag '{itag}' must reference a BooleanSearchSpace, "
+                    f"got {type(self.get_subspace(itag)).__name__}."
+                )
+
+        indicator_set = set(self._indicator_tags)
+        non_indicator_set = all_tags - indicator_set
+
+        # Collect all condition keys and all subspace_tags from nodes
+        all_condition_keys: set[str] = set()
+        covered_non_indicator_tags: set[str] = set()
+
+        for node in self._hierarchy:
+            # subspace_tags must not reference indicators
+            for stag in node.subspace_tags:
+                if stag not in all_tags:
+                    raise ValueError(
+                        f"HierarchyNode '{node.name}' references subspace tag '{stag}' "
+                        f"which does not exist in the space."
+                    )
+                if stag in indicator_set:
+                    raise ValueError(
+                        f"HierarchyNode '{node.name}' references indicator tag '{stag}' "
+                        f"in subspace_tags. Indicators must not appear in subspace_tags."
+                    )
+                covered_non_indicator_tags.add(stag)
+
+            # indicator_conditions keys must be in indicator_tags
+            for ckey, cval in node.indicator_conditions.items():
+                if ckey not in indicator_set:
+                    raise ValueError(
+                        f"HierarchyNode '{node.name}' has indicator_conditions key '{ckey}' "
+                        f"which is not in indicator_tags {list(self._indicator_tags)}."
+                    )
+                if not isinstance(cval, (bool, int)) or (isinstance(cval, int) and cval not in (0, 1)):
+                    raise ValueError(
+                        f"HierarchyNode '{node.name}' has indicator_conditions value "
+                        f"{cval!r} for key '{ckey}'. Must be bool or int in {{0, 1}}."
+                    )
+                all_condition_keys.add(ckey)
+
+        # Every non-indicator tag must appear in at least one node
+        orphans = non_indicator_set - covered_non_indicator_tags
+        if orphans:
+            raise ValueError(
+                f"Non-indicator subspace tags {orphans} do not appear in any "
+                f"HierarchyNode.subspace_tags."
+            )
+
+        # Every indicator_tag must appear as a key in at least one indicator_conditions
+        unused_indicators = indicator_set - all_condition_keys
+        if unused_indicators:
+            raise ValueError(
+                f"Indicator tags {unused_indicators} do not appear as a key in any "
+                f"HierarchyNode.indicator_conditions."
+            )
+
+    @property
+    def hierarchy(self) -> tuple[HierarchyNode, ...]:
+        """The hierarchy specification."""
+        return self._hierarchy
+
+    @property
+    def indicator_tags(self) -> tuple[str, ...]:
+        """The declared Boolean indicator tags."""
+        return self._indicator_tags
+
+    @property
+    def non_indicator_tags(self) -> tuple[str, ...]:
+        """All subspace tags that are not indicators, in tag order."""
+        indicator_set = set(self._indicator_tags)
+        return tuple(t for t in self.subspace_tags if t not in indicator_set)
+
+    @property
+    @check_shapes("return: []")
+    def dimension(self) -> TensorType:
+        """The total number of dimensions across all subspaces."""
+        return self._dimension
+
+    @property
+    @check_shapes("return: [D]")
+    def lower(self) -> TensorType:
+        """The lowest values taken by each dimension, concatenated across subspaces."""
+        lower_for_each = self.subspace_lower
+        return (
+            tf.concat(lower_for_each, axis=-1)
+            if lower_for_each
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
+
+    @property
+    @check_shapes("return: [D]")
+    def upper(self) -> TensorType:
+        """The highest values taken by each dimension, concatenated across subspaces."""
+        upper_for_each = self.subspace_upper
+        return (
+            tf.concat(upper_for_each, axis=-1)
+            if upper_for_each
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
+
+    @check_shapes("return: [num_samples, D]")
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """Sample from the space by sampling each subspace and concatenating."""
+        subspace_samples = self.subspace_sample(num_samples, seed)
+        return tf.concat(subspace_samples, -1)
+
+    def _contains(self, value: TensorType) -> TensorType:
+        in_each_subspace = [
+            self._spaces[tag].contains(self.get_subspace_component(tag, value))
+            for tag in self._tags
+        ]
+        return tf.reduce_all(in_each_subspace, axis=0)
+
+    def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
+        """
+        Extract the columns of ``values`` corresponding to a particular subspace.
+
+        :param tag: The subspace tag.
+        :param values: Points from this space, shape ``[N, D]``.
+        :return: The sub-components, shape ``[N, D_sub]``.
+        """
+        start = self._subspace_starting_indices[tag]
+        end = start + self._subspace_sizes_by_tag[tag]
+        return values[..., start:end]
+
+    def active_subspace_tags(
+        self, indicator_config: Mapping[str, bool]
+    ) -> List[str]:
+        """
+        Return the non-indicator subspace tags that are active for a given indicator
+        configuration.
+
+        :param indicator_config: A mapping ``{indicator_tag: value}`` for each indicator.
+        :return: List of active non-indicator subspace tags.
+        """
+        active: List[str] = []
+        for node in self._hierarchy:
+            if self._node_is_active(node, indicator_config):
+                for stag in node.subspace_tags:
+                    if stag not in active:
+                        active.append(stag)
+        return active
+
+    def enumerate_tasks(self) -> List[Dict[str, bool]]:
+        """
+        Return all :math:`2^K` Boolean indicator configurations as a list of dictionaries.
+
+        :return: A list of ``{indicator_tag: bool}`` dictionaries, one per task.
+        """
+        if not self._indicator_tags:
+            return [{}]
+        bool_values = [False, True]
+        return [
+            dict(zip(self._indicator_tags, combo))
+            for combo in itertools_product(bool_values, repeat=len(self._indicator_tags))
+        ]
+
+    def is_active(self, tag: str, indicator_config: Mapping[str, bool]) -> bool:
+        """
+        Check whether a non-indicator subspace is active for a given indicator configuration.
+
+        :param tag: A non-indicator subspace tag.
+        :param indicator_config: A mapping ``{indicator_tag: value}`` for each indicator.
+        :return: True if the subspace is active.
+        """
+        for node in self._hierarchy:
+            if tag in node.subspace_tags and self._node_is_active(node, indicator_config):
+                return True
+        return False
+
+    def node_for_subspace(self, tag: str) -> List[HierarchyNode]:
+        """
+        Return the :class:`HierarchyNode` objects that contain the given subspace tag.
+
+        :param tag: A non-indicator subspace tag.
+        :return: List of nodes containing this tag.
+        """
+        return [node for node in self._hierarchy if tag in node.subspace_tags]
+
+    def product(self, other: HierarchicalSearchSpace) -> HierarchicalSearchSpace:
+        """
+        Return a new :class:`HierarchicalSearchSpace` that is the combination of this space and
+        ``other``. Tags in the two spaces must be disjoint. The hierarchy nodes are concatenated.
+
+        :param other: Another :class:`HierarchicalSearchSpace`.
+        :return: The combined hierarchical space.
+        :raises ValueError: If the two spaces share any tags.
+        """
+        overlap = set(self.subspace_tags) & set(other.subspace_tags)
+        if overlap:
+            raise ValueError(f"Cannot combine spaces with overlapping tags: {overlap}")
+        spaces = list(self._spaces.values()) + list(other._spaces.values())
+        tags = list(self.subspace_tags) + list(other.subspace_tags)
+        hierarchy = list(self._hierarchy) + list(other._hierarchy)
+        indicator_tags = list(self._indicator_tags) + list(other._indicator_tags)
+        return HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags)
+
+    @staticmethod
+    def _node_is_active(
+        node: HierarchyNode, indicator_config: Mapping[str, bool]
+    ) -> bool:
+        """Check whether a node's indicator_conditions are all satisfied."""
+        for ind_tag, required in node.indicator_conditions.items():
+            actual = indicator_config.get(ind_tag)
+            if actual is None:
+                return False
+            if bool(actual) != bool(required):
+                return False
+        return True
 
 
 class TaggedMultiSearchSpace(CollectionSearchSpace):

@@ -27,12 +27,15 @@ from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import (
+    BooleanSearchSpace,
     Box,
     CategoricalSearchSpace,
     CollectionSearchSpace,
     Constraint,
     DiscreteSearchSpace,
     GeneralDiscreteSearchSpace,
+    HierarchicalSearchSpace,
+    HierarchyNode,
     LinearConstraint,
     NonlinearConstraint,
     SearchSpace,
@@ -1926,3 +1929,318 @@ def test_cast_encoder(input_dtype: Optional[tf.DType], output_dtype: Optional[tf
     points = encoder(query_points)
     assert points.dtype is (output_dtype or input_dtype or tf.int32)
     npt.assert_array_equal(tf.cast(query_points + 1, points.dtype), points)
+
+
+# ===== BooleanSearchSpace tests =====
+
+
+def test_boolean_search_space_has_dimension_one() -> None:
+    space = BooleanSearchSpace()
+    assert space.dimension == 1
+
+
+def test_boolean_search_space_contains_zero_and_one() -> None:
+    space = BooleanSearchSpace()
+    assert tf.constant([0.0], dtype=tf.float64) in space
+    assert tf.constant([1.0], dtype=tf.float64) in space
+
+
+def test_boolean_search_space_does_not_contain_other_values() -> None:
+    space = BooleanSearchSpace()
+    assert tf.constant([2.0], dtype=tf.float64) not in space
+    assert tf.constant([-1.0], dtype=tf.float64) not in space
+    assert tf.constant([0.5], dtype=tf.float64) not in space
+
+
+def test_boolean_search_space_sample_returns_valid_points() -> None:
+    space = BooleanSearchSpace()
+    samples = space.sample(10)
+    assert samples.shape == (10, 1)
+    for s in samples:
+        assert s in space
+
+
+def test_boolean_search_space_bounds() -> None:
+    space = BooleanSearchSpace()
+    npt.assert_array_equal(space.lower, [0.0])
+    npt.assert_array_equal(space.upper, [1.0])
+
+
+def test_boolean_search_space_repr() -> None:
+    assert repr(BooleanSearchSpace()) == "BooleanSearchSpace()"
+
+
+def test_boolean_search_space_equality() -> None:
+    assert BooleanSearchSpace() == BooleanSearchSpace()
+    assert BooleanSearchSpace(tf.float64) == BooleanSearchSpace(tf.float64)
+
+
+def test_boolean_search_space_dtype() -> None:
+    space32 = BooleanSearchSpace(tf.float32)
+    assert space32.points.dtype == tf.float32
+
+
+# ===== HierarchyNode tests =====
+
+
+def test_hierarchy_node_is_frozen() -> None:
+    node = HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={})
+    with pytest.raises(AttributeError):
+        node.name = "other"  # type: ignore[misc]
+
+
+# ===== HierarchicalSearchSpace construction tests =====
+
+
+def _make_simple_hss() -> HierarchicalSearchSpace:
+    """Helper: 1 unconditional continuous, 1 indicator, 2 conditional continuous."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        Box([0.0], [5.0]),
+        Box([-1.0], [1.0]),
+    ]
+    tags = ["x1", "y1", "x2", "x3"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+        HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+    ]
+    return HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_construction_valid() -> None:
+    space = _make_simple_hss()
+    assert space.dimension == 4
+    assert space.indicator_tags == ("y1",)
+    assert space.non_indicator_tags == ("x1", "x2", "x3")
+    assert len(space.hierarchy) == 3
+
+
+def test_hss_raises_if_indicator_tag_not_in_tags() -> None:
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), BooleanSearchSpace()]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": True})]
+    with pytest.raises(ValueError, match="not found in subspace tags"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y_missing"])
+
+
+def test_hss_raises_if_indicator_tag_not_boolean_space() -> None:
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), DiscreteSearchSpace(tf.constant([[0], [1], [2]]))]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": True})]
+    with pytest.raises(ValueError, match="must reference a BooleanSearchSpace"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_raises_if_condition_key_not_in_indicator_tags() -> None:
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), BooleanSearchSpace()]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y_bad": True})]
+    with pytest.raises(ValueError, match="not in indicator_tags"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_raises_if_indicator_in_subspace_tags() -> None:
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), BooleanSearchSpace()]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1", "y1"], indicator_conditions={"y1": True})]
+    with pytest.raises(ValueError, match="Indicators must not appear in subspace_tags"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_raises_if_orphan_non_indicator_tag() -> None:
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+    ]
+    tags = ["x1", "x2", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": True})]
+    with pytest.raises(ValueError, match="do not appear in any"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_raises_if_unused_indicator() -> None:
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        BooleanSearchSpace(),
+    ]
+    tags = ["x1", "y1", "y2"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": True})]
+    with pytest.raises(ValueError, match="do not appear as a key"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1", "y2"])
+
+
+def test_hss_raises_if_subspace_tag_not_in_space() -> None:
+    spaces: list[SearchSpace] = [Box([0.0], [1.0]), BooleanSearchSpace()]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x_missing"], indicator_conditions={"y1": True})]
+    with pytest.raises(ValueError, match="does not exist"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+# ===== HierarchicalSearchSpace property and method tests =====
+
+
+def test_hss_lower_upper() -> None:
+    space = _make_simple_hss()
+    npt.assert_array_equal(space.lower, [0.0, 0.0, 0.0, -1.0])
+    npt.assert_array_equal(space.upper, [1.0, 1.0, 5.0, 1.0])
+
+
+def test_hss_sample_shape() -> None:
+    space = _make_simple_hss()
+    samples = space.sample(5)
+    assert samples.shape == (5, 4)
+
+
+def test_hss_sample_within_bounds() -> None:
+    space = _make_simple_hss()
+    samples = space.sample(20)
+    for s in samples:
+        assert s in space
+
+
+def test_hss_contains() -> None:
+    space = _make_simple_hss()
+    valid_point = tf.constant([0.5, 1.0, 2.0, 0.0], dtype=tf.float64)
+    assert valid_point in space
+    out_of_bounds = tf.constant([0.5, 1.0, 6.0, 0.0], dtype=tf.float64)
+    assert out_of_bounds not in space
+
+
+def test_hss_get_subspace_component() -> None:
+    space = _make_simple_hss()
+    point = tf.constant([[0.1, 1.0, 2.5, -0.5]])
+    npt.assert_array_almost_equal(space.get_subspace_component("x1", point), [[0.1]])
+    npt.assert_array_almost_equal(space.get_subspace_component("y1", point), [[1.0]])
+    npt.assert_array_almost_equal(space.get_subspace_component("x2", point), [[2.5]])
+    npt.assert_array_almost_equal(space.get_subspace_component("x3", point), [[-0.5]])
+
+
+# ===== Hierarchy query tests =====
+
+
+def test_hss_active_subspace_tags_y1_true() -> None:
+    space = _make_simple_hss()
+    active = space.active_subspace_tags({"y1": True})
+    assert "x1" in active
+    assert "x2" in active
+    assert "x3" not in active
+
+
+def test_hss_active_subspace_tags_y1_false() -> None:
+    space = _make_simple_hss()
+    active = space.active_subspace_tags({"y1": False})
+    assert "x1" in active
+    assert "x2" not in active
+    assert "x3" in active
+
+
+def test_hss_enumerate_tasks() -> None:
+    space = _make_simple_hss()
+    tasks = space.enumerate_tasks()
+    assert len(tasks) == 2
+    assert {"y1": False} in tasks
+    assert {"y1": True} in tasks
+
+
+def test_hss_enumerate_tasks_two_indicators() -> None:
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        BooleanSearchSpace(),
+        Box([0.0], [1.0]),
+        Box([0.0], [1.0]),
+    ]
+    tags = ["x1", "y1", "y2", "x2", "x3"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("a", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+        HierarchyNode("b", subspace_tags=["x3"], indicator_conditions={"y2": True}),
+    ]
+    space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1", "y2"])
+    tasks = space.enumerate_tasks()
+    assert len(tasks) == 4
+
+
+def test_hss_is_active() -> None:
+    space = _make_simple_hss()
+    assert space.is_active("x1", {"y1": True})
+    assert space.is_active("x1", {"y1": False})
+    assert space.is_active("x2", {"y1": True})
+    assert not space.is_active("x2", {"y1": False})
+    assert not space.is_active("x3", {"y1": True})
+    assert space.is_active("x3", {"y1": False})
+
+
+def test_hss_node_for_subspace() -> None:
+    space = _make_simple_hss()
+    nodes_x1 = space.node_for_subspace("x1")
+    assert len(nodes_x1) == 1
+    assert nodes_x1[0].name == "shared"
+
+    nodes_x2 = space.node_for_subspace("x2")
+    assert len(nodes_x2) == 1
+    assert nodes_x2[0].name == "branch_A"
+
+
+def test_hss_nested_hierarchy() -> None:
+    """Depth-2: y2 is only meaningful when y1=True."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        BooleanSearchSpace(),
+        Box([0.0], [1.0]),
+        Box([0.0], [1.0]),
+    ]
+    tags = ["x1", "y1", "y2", "x2", "x3"]
+    hierarchy = [
+        HierarchyNode("root", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("level_1", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+        HierarchyNode(
+            "level_2",
+            subspace_tags=["x3"],
+            indicator_conditions={"y1": True, "y2": True},
+        ),
+    ]
+    space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1", "y2"])
+
+    assert space.is_active("x3", {"y1": True, "y2": True})
+    assert not space.is_active("x3", {"y1": True, "y2": False})
+    assert not space.is_active("x3", {"y1": False, "y2": True})
+    assert not space.is_active("x3", {"y1": False, "y2": False})
+
+    active = space.active_subspace_tags({"y1": True, "y2": True})
+    assert set(active) == {"x1", "x2", "x3"}
+
+    active = space.active_subspace_tags({"y1": True, "y2": False})
+    assert set(active) == {"x1", "x2"}
+
+    active = space.active_subspace_tags({"y1": False, "y2": False})
+    assert set(active) == {"x1"}
+
+
+def test_hss_with_mixed_subspace_types() -> None:
+    """Non-indicator discrete (CategoricalSearchSpace) as an unconditional variable."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        CategoricalSearchSpace([3]),
+        Box([0.0], [5.0]),
+    ]
+    tags = ["x1", "y1", "cat1", "x2"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1", "cat1"], indicator_conditions={}),
+        HierarchyNode("branch", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+    ]
+    space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+    assert space.dimension == 4
+    assert space.non_indicator_tags == ("x1", "cat1", "x2")
+
+    samples = space.sample(5)
+    assert samples.shape == (5, 4)
+    for s in samples:
+        assert s in space
