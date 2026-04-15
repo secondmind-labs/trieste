@@ -532,6 +532,98 @@ class GaussianProcessRegression(
         return self.model.likelihood.predict_mean_and_var(query_points, f_mean, f_var)
 
 
+class TreeEnsembleGaussianProcess(GaussianProcessRegression):
+    """A Gaussian process model that uses a :class:`TreeEnsembleKernel`.
+
+    The ExtraTrees forest inside the kernel is refitted from scratch on each call to
+    :meth:`optimize_encoded`, after which the surrounding output-scale and noise parameters
+    are optimized via maximum likelihood.
+
+    The underlying GPflow model's kernel should contain a :class:`TreeEnsembleKernel`,
+    possibly wrapped in a ``Product`` kernel for a trainable output scale (e.g.
+    ``gpflow.kernels.Constant() * TreeEnsembleKernel()``).
+    """
+
+    def __init__(
+        self,
+        model: GPR,
+        optimizer: "Optimizer | None" = None,
+        num_kernel_samples: int = 10,
+        encoder: "EncoderFunction | None" = None,
+    ):
+        import numpy as np
+        from ..optimizer import Optimizer as TriesteOptimizer
+
+        tree_kernel = self._find_tree_kernel(model.kernel)
+        if tree_kernel is None:
+            raise ValueError(
+                "TreeEnsembleGaussianProcess requires a TreeEnsembleKernel in the model's "
+                "kernel. Got: " + repr(model.kernel)
+            )
+        self._tree_kernel = tree_kernel
+
+        # Fit the forest from the initial data so K() is available during construction.
+        X_init = np.asarray(model.data[0])
+        y_init = np.asarray(model.data[1]).squeeze()
+        self._tree_kernel.fit_forest(X_init, y_init)
+
+        # The tree kernel uses numpy internally, so disable tf.function compilation.
+        if optimizer is None:
+            optimizer = TriesteOptimizer(gpflow.optimizers.Scipy(), compile=False)
+
+        super().__init__(
+            model,
+            optimizer=optimizer,
+            num_kernel_samples=num_kernel_samples,
+            num_rff_features=1000,
+            use_decoupled_sampler=False,
+            encoder=encoder,
+            posterior=None,
+        )
+
+    def create_posterior_cache(self) -> None:
+        """No-op: the tree kernel cannot be traced through GPflow's posterior cache."""
+        pass
+
+    def update_posterior_cache(self) -> None:
+        """No-op: the tree kernel does not use a posterior cache."""
+        pass
+
+    def trajectory_sampler(self) -> "TrajectorySampler[TreeEnsembleGaussianProcess]":
+        """Not supported for tree-ensemble kernels (no RFF decomposition)."""
+        raise NotImplementedError(
+            "Trajectory sampling is not supported for TreeEnsembleGaussianProcess."
+        )
+
+    @staticmethod
+    def _find_tree_kernel(
+        kernel: gpflow.kernels.Kernel,
+    ) -> "TreeEnsembleKernel | None":
+        """Recursively search a kernel tree for a TreeEnsembleKernel."""
+        from .kernels import TreeEnsembleKernel
+
+        if isinstance(kernel, TreeEnsembleKernel):
+            return kernel
+        if isinstance(kernel, gpflow.kernels.Combination):
+            for k in kernel.kernels:
+                found = TreeEnsembleGaussianProcess._find_tree_kernel(k)
+                if found is not None:
+                    return found
+        return None
+
+    def optimize_encoded(self, dataset: Dataset) -> OptimizeResult:
+        """Refit the ExtraTrees forest, then optimize output-scale and noise.
+
+        :param dataset: The data with which to optimize the model.
+        """
+        import numpy as np
+
+        X = np.asarray(dataset.query_points)
+        y = np.asarray(dataset.observations).squeeze()
+        self._tree_kernel.fit_forest(X, y)
+        return super().optimize_encoded(dataset)
+
+
 class SparseGaussianProcessRegression(
     GPflowPredictor,
     EncodedSupportsCovarianceBetweenPoints,

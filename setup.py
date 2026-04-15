@@ -47,6 +47,7 @@ setup(
         "tensorflow-macos>=2.5,<2.17; platform_system=='Darwin' and platform_machine=='arm64'",
         "tensorflow-probability>=0.13,<0.25",
         "greenlet>=1.1.0",
+        "scikit-learn",
     ],
     extras_require={
         "plotting": ["seaborn", "plotly", "imageio"],
