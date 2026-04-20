@@ -14,9 +14,12 @@
 """Pure-gpflow tests for :class:`ArcKernel`, :class:`WedgeKernel`, and the
 compact-mask helpers they use. No ``trieste.space`` symbols are imported here:
 everything is driven by integer feature/indicator indices and an explicit
-activity-condition list, mirroring the eventual stand-alone GPflow API.
+list of :class:`ActivityCondition` objects, mirroring the eventual
+stand-alone GPflow API.
 """
 from __future__ import annotations
+
+from typing import List, Sequence
 
 import gpflow
 import numpy as np
@@ -25,6 +28,8 @@ import pytest
 import tensorflow as tf
 
 from trieste.models.gpflow.kernels.hierarchical import (
+    _IGNORE,
+    ActivityCondition,
     ArcKernel,
     WedgeKernel,
     _classify_conditional,
@@ -43,7 +48,10 @@ def _simple_primitives() -> dict:
         feature_dims=[0, 2],
         feature_bounds=tf.constant([[0.0, 1.0], [0.0, 5.0]], dtype=tf.float64),
         indicator_dims=[1],
-        activity_conditions=[[], [(0, True)]],
+        activity_conditions=[
+            ActivityCondition(feature_dim=0),
+            ActivityCondition(feature_dim=2, requirements={0: True}),
+        ],
     )
 
 
@@ -55,7 +63,11 @@ def _two_indicator_primitives() -> dict:
             [[0.0, 1.0], [0.0, 5.0], [-1.0, 1.0]], dtype=tf.float64
         ),
         indicator_dims=[1, 2],
-        activity_conditions=[[], [(0, True)], [(1, True)]],
+        activity_conditions=[
+            ActivityCondition(feature_dim=0),
+            ActivityCondition(feature_dim=3, requirements={0: True}),
+            ActivityCondition(feature_dim=4, requirements={1: True}),
+        ],
     )
 
 
@@ -67,7 +79,12 @@ def _multi_dim_primitives() -> dict:
             [[0.0, 1.0], [0.0, 1.0], [0.0, 5.0], [0.0, 5.0]], dtype=tf.float64
         ),
         indicator_dims=[2],
-        activity_conditions=[[], [], [(0, True)], [(0, True)]],
+        activity_conditions=[
+            ActivityCondition(feature_dim=0),
+            ActivityCondition(feature_dim=1),
+            ActivityCondition(feature_dim=3, requirements={0: True}),
+            ActivityCondition(feature_dim=4, requirements={0: True}),
+        ],
     )
 
 
@@ -77,8 +94,38 @@ def _and_primitives() -> dict:
         feature_dims=[0, 3],
         feature_bounds=tf.constant([[0.0, 1.0], [0.0, 5.0]], dtype=tf.float64),
         indicator_dims=[1, 2],
-        activity_conditions=[[], [(0, True), (1, False)]],
+        activity_conditions=[
+            ActivityCondition(feature_dim=0),
+            ActivityCondition(feature_dim=3, requirements={0: True, 1: False}),
+        ],
     )
+
+
+# ---------------------------------------------------------------------------
+# ActivityCondition dataclass behaviour
+# ---------------------------------------------------------------------------
+
+
+class TestActivityCondition:
+    def test_unconditional_constructor(self) -> None:
+        c = ActivityCondition.unconditional(feature_dim=3)
+        assert c.feature_dim == 3
+        assert dict(c.requirements) == {}
+        assert c.is_unconditional
+        assert not bool(c)
+
+    def test_with_requirements(self) -> None:
+        c = ActivityCondition(feature_dim=1, requirements={0: True, 1: False})
+        assert c.feature_dim == 1
+        assert not c.is_unconditional
+        assert bool(c)
+        assert sorted(c.items()) == [(0, True), (1, False)]
+        assert sorted(iter(c)) == [0, 1]
+
+    def test_frozen(self) -> None:
+        c = ActivityCondition(feature_dim=0, requirements={0: True})
+        with pytest.raises(Exception):
+            c.feature_dim = 1  # type: ignore[misc]
 
 
 # ---------------------------------------------------------------------------
@@ -88,56 +135,167 @@ def _and_primitives() -> dict:
 
 class TestCompileActivityConditions:
     def test_empty_conditions_all_ignore(self) -> None:
-        required, is_ignore = _compile_activity_conditions([[], []], 2, 3)
+        required, is_ignore = _compile_activity_conditions([], [0, 5], 3)
         assert required.shape == (2, 3)
         assert tf.reduce_all(is_ignore).numpy()
         npt.assert_array_equal(required.numpy(), -np.ones((2, 3), dtype=np.int32))
 
     def test_single_and_condition(self) -> None:
-        required, is_ignore = _compile_activity_conditions([[(0, True)]], 1, 2)
+        required, is_ignore = _compile_activity_conditions(
+            [ActivityCondition(feature_dim=0, requirements={0: True})], [0], 2
+        )
         assert required.numpy().tolist() == [[1, -1]]
         assert is_ignore.numpy().tolist() == [[False, True]]
 
     def test_multi_indicator_and(self) -> None:
         required, _ = _compile_activity_conditions(
-            [[(0, True), (1, False)]], 1, 2
+            [ActivityCondition(feature_dim=7, requirements={0: True, 1: False})],
+            [7],
+            2,
         )
         assert required.numpy().tolist() == [[1, 0]]
 
-    def test_mismatched_length_raises(self) -> None:
-        with pytest.raises(ValueError, match="activity_conditions has length"):
-            _compile_activity_conditions([[], []], n_features=3, n_indicators=1)
+    def test_omitted_feature_defaults_unconditional(self) -> None:
+        required, is_ignore = _compile_activity_conditions(
+            [ActivityCondition(feature_dim=2, requirements={0: True})],
+            feature_dims=[0, 2],
+            n_indicators=1,
+        )
+        assert required.numpy().tolist() == [[-1], [1]]
+        assert is_ignore.numpy().tolist() == [[True], [False]]
+
+    def test_unknown_feature_dim_raises(self) -> None:
+        with pytest.raises(ValueError, match="not in feature_dims"):
+            _compile_activity_conditions(
+                [ActivityCondition(feature_dim=99, requirements={0: True})],
+                feature_dims=[0, 2],
+                n_indicators=1,
+            )
+
+    def test_duplicate_feature_dim_raises(self) -> None:
+        with pytest.raises(ValueError, match="Duplicate ActivityCondition"):
+            _compile_activity_conditions(
+                [
+                    ActivityCondition(feature_dim=0, requirements={0: True}),
+                    ActivityCondition(feature_dim=0, requirements={0: False}),
+                ],
+                feature_dims=[0, 2],
+                n_indicators=1,
+            )
+
+    def test_duplicate_feature_dims_input_raises(self) -> None:
+        with pytest.raises(ValueError, match="duplicate column indices"):
+            _compile_activity_conditions([], feature_dims=[0, 0], n_indicators=1)
+
+    def test_non_condition_entry_raises(self) -> None:
+        with pytest.raises(TypeError, match="ActivityCondition"):
+            _compile_activity_conditions(
+                [(0, True)],  # type: ignore[list-item]
+                feature_dims=[0],
+                n_indicators=1,
+            )
 
     def test_out_of_range_indicator_raises(self) -> None:
         with pytest.raises(ValueError, match="references indicator index"):
-            _compile_activity_conditions([[(5, True)]], 1, 2)
-
-    def test_contradictory_requirements_raise(self) -> None:
-        with pytest.raises(ValueError, match="contradictory requirements"):
             _compile_activity_conditions(
-                [[(0, True), (0, False)]], n_features=1, n_indicators=1
+                [ActivityCondition(feature_dim=0, requirements={5: True})],
+                feature_dims=[0],
+                n_indicators=2,
             )
 
-    def test_bad_pair_shape_raises(self) -> None:
-        with pytest.raises(ValueError, match="must be a "):
-            _compile_activity_conditions([[(0,)]], 1, 1)  # type: ignore[list-item]
+    def test_contradictory_requirements_raise(self) -> None:
+        # Built directly because dict literals will dedupe duplicate keys.
+        contradictory = ActivityCondition.__new__(ActivityCondition)
+        # Use object.__setattr__ on the frozen dataclass for this test only.
+        object.__setattr__(contradictory, "feature_dim", 0)
+
+        class _Requirements(dict):
+            def items(self):  # type: ignore[override]
+                return [(0, True), (0, False)]
+
+        object.__setattr__(contradictory, "requirements", _Requirements())
+        with pytest.raises(ValueError, match="contradictory requirements"):
+            _compile_activity_conditions(
+                [contradictory], feature_dims=[0], n_indicators=1
+            )
 
 
 class TestClassifyConditional:
     def test_all_unconditional(self) -> None:
-        uncond, cond = _classify_conditional([[], []])
+        uncond, cond = _classify_conditional([], [0, 2])
         assert uncond == [0, 1]
         assert cond == []
 
     def test_all_conditional(self) -> None:
-        uncond, cond = _classify_conditional([[(0, True)], [(0, False)]])
+        uncond, cond = _classify_conditional(
+            [
+                ActivityCondition(feature_dim=0, requirements={0: True}),
+                ActivityCondition(feature_dim=2, requirements={0: False}),
+            ],
+            [0, 2],
+        )
         assert uncond == []
         assert cond == [0, 1]
 
     def test_mixed(self) -> None:
-        uncond, cond = _classify_conditional([[], [(0, True)], [], [(1, True)]])
+        uncond, cond = _classify_conditional(
+            [
+                ActivityCondition(feature_dim=3, requirements={0: True}),
+                ActivityCondition(feature_dim=7, requirements={1: True}),
+            ],
+            [0, 3, 5, 7],
+        )
         assert uncond == [0, 2]
         assert cond == [1, 3]
+
+    def test_unconditional_condition_is_unconditional(self) -> None:
+        uncond, cond = _classify_conditional(
+            [ActivityCondition(feature_dim=0)], [0, 1]
+        )
+        assert uncond == [0, 1]
+        assert cond == []
+
+
+# ---------------------------------------------------------------------------
+# Round-trip: rebuild ActivityCondition list from compiled _required tensor
+# ---------------------------------------------------------------------------
+
+
+def _decode_required(
+    required: tf.Tensor, feature_dims: Sequence[int]
+) -> List[ActivityCondition]:
+    req = required.numpy()
+    out: List[ActivityCondition] = []
+    for j, dim in enumerate(feature_dims):
+        row = req[j]
+        reqs = {int(k): bool(v) for k, v in enumerate(row) if int(v) != _IGNORE}
+        out.append(ActivityCondition(feature_dim=int(dim), requirements=reqs))
+    return out
+
+
+class TestRoundTripFromCompiledTensor:
+    def test_round_trip_preserves_conditions(self) -> None:
+        feature_dims = [0, 3, 4]
+        n_ind = 2
+        conditions = [
+            ActivityCondition(feature_dim=0),
+            ActivityCondition(feature_dim=3, requirements={0: True}),
+            ActivityCondition(feature_dim=4, requirements={1: False, 0: True}),
+        ]
+        required, _ = _compile_activity_conditions(conditions, feature_dims, n_ind)
+        decoded = _decode_required(required, feature_dims)
+
+        expected = {c.feature_dim: dict(c.requirements) for c in conditions}
+        got = {c.feature_dim: dict(c.requirements) for c in decoded}
+        assert got == expected
+
+    def test_round_trip_from_kernel_attrs(self) -> None:
+        k = ArcKernel(**_simple_primitives())
+        decoded = _decode_required(k._required, [0, 2])
+        assert decoded[0].feature_dim == 0
+        assert dict(decoded[0].requirements) == {}
+        assert decoded[1].feature_dim == 2
+        assert dict(decoded[1].requirements) == {0: True}
 
 
 # ---------------------------------------------------------------------------
@@ -228,11 +386,50 @@ class TestBuildActivityMask:
             feature_dims=[0, 1],
             feature_bounds=tf.constant([[0.0, 1.0], [0.0, 1.0]], dtype=tf.float64),
             indicator_dims=[],
-            activity_conditions=[[], []],
+            activity_conditions=[
+                ActivityCondition(feature_dim=0),
+                ActivityCondition(feature_dim=1),
+            ],
         )
         pts = tf.constant([[0.1, 0.2], [0.3, 0.4]], dtype=tf.float64)
         mask = _mask(kernel_cls, prim, pts)
         tf.debugging.assert_equal(mask, tf.constant([[True, True], [True, True]]))
+
+
+# ---------------------------------------------------------------------------
+# Omission + order invariance
+# ---------------------------------------------------------------------------
+
+
+class TestOmissionAndOrderSemantics:
+    @pytest.mark.parametrize("kernel_cls", [ArcKernel, WedgeKernel])
+    def test_omitting_unconditional_features_works(self, kernel_cls) -> None:
+        full = kernel_cls(**_simple_primitives())
+        sparse = kernel_cls(
+            feature_dims=[0, 2],
+            feature_bounds=tf.constant([[0.0, 1.0], [0.0, 5.0]], dtype=tf.float64),
+            indicator_dims=[1],
+            activity_conditions=[
+                ActivityCondition(feature_dim=2, requirements={0: True}),
+            ],
+        )
+        npt.assert_array_equal(full._required.numpy(), sparse._required.numpy())
+        assert full._uncond_local_idx == sparse._uncond_local_idx
+        assert full._cond_local_idx == sparse._cond_local_idx
+
+    @pytest.mark.parametrize("kernel_cls", [ArcKernel, WedgeKernel])
+    def test_condition_order_does_not_matter(self, kernel_cls) -> None:
+        prim = _simple_primitives()
+        reversed_conditions = list(reversed(prim["activity_conditions"]))
+        reversed_prim = {**prim, "activity_conditions": reversed_conditions}
+
+        k1 = kernel_cls(**prim)
+        k2 = kernel_cls(**reversed_prim)
+
+        X = tf.constant(
+            [[0.5, 1.0, 2.5], [0.3, 0.0, 1.0], [0.7, 1.0, 4.0]], dtype=tf.float64
+        )
+        npt.assert_allclose(k1.K(X).numpy(), k2.K(X).numpy(), atol=1e-10)
 
 
 # ---------------------------------------------------------------------------
@@ -247,7 +444,10 @@ class TestConstructorValidation:
                 feature_dims=[0, 1],
                 feature_bounds=tf.constant([[0.0, 1.0]], dtype=tf.float64),
                 indicator_dims=[],
-                activity_conditions=[[], []],
+                activity_conditions=[
+                    ActivityCondition(feature_dim=0),
+                    ActivityCondition(feature_dim=1),
+                ],
             )
 
     def test_bounds_wrong_inner_dim_raises(self) -> None:
@@ -256,7 +456,7 @@ class TestConstructorValidation:
                 feature_dims=[0],
                 feature_bounds=tf.constant([[0.0, 1.0, 2.0]], dtype=tf.float64),
                 indicator_dims=[],
-                activity_conditions=[[]],
+                activity_conditions=[ActivityCondition(feature_dim=0)],
             )
 
     def test_default_activity_conditions_are_unconditional(self) -> None:
@@ -266,6 +466,42 @@ class TestConstructorValidation:
         )
         assert k._n_cond == 0
         assert k._n_uncond == 2
+
+    def test_unknown_feature_dim_raises(self) -> None:
+        with pytest.raises(ValueError, match="not in feature_dims"):
+            ArcKernel(
+                feature_dims=[0, 2],
+                feature_bounds=tf.constant([[0.0, 1.0], [0.0, 1.0]], dtype=tf.float64),
+                indicator_dims=[1],
+                activity_conditions=[
+                    ActivityCondition(feature_dim=99, requirements={0: True}),
+                ],
+            )
+
+    def test_duplicate_feature_dim_raises(self) -> None:
+        with pytest.raises(ValueError, match="Duplicate ActivityCondition"):
+            ArcKernel(
+                feature_dims=[0, 2],
+                feature_bounds=tf.constant([[0.0, 1.0], [0.0, 1.0]], dtype=tf.float64),
+                indicator_dims=[1],
+                activity_conditions=[
+                    ActivityCondition(feature_dim=0, requirements={0: True}),
+                    ActivityCondition(feature_dim=0, requirements={0: False}),
+                ],
+            )
+
+    @pytest.mark.parametrize("kernel_cls_", [ArcKernel, WedgeKernel])
+    @pytest.mark.parametrize(
+        "non_stationary_factory",
+        [gpflow.kernels.Linear, gpflow.kernels.Polynomial, gpflow.kernels.Constant],
+    )
+    def test_non_stationary_base_kernel_is_rejected(
+        self, kernel_cls_, non_stationary_factory
+    ) -> None:
+        with pytest.raises(ValueError, match="Stationary"):
+            kernel_cls_(
+                **_simple_primitives(), base_kernel=non_stationary_factory()
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -386,7 +622,10 @@ class TestNoConditionalDegenerate:
             feature_dims=[0, 1],
             feature_bounds=bounds,
             indicator_dims=[],
-            activity_conditions=[[], []],
+            activity_conditions=[
+                ActivityCondition(feature_dim=0),
+                ActivityCondition(feature_dim=1),
+            ],
             base_kernel=base,
         )
         X = tf.constant([[0.2, 1.0], [0.8, 3.0]], dtype=tf.float64)

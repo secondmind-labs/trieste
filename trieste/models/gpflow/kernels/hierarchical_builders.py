@@ -29,12 +29,12 @@ import tensorflow as tf
 import tensorflow_probability as tfp
 
 from ....space import HierarchicalSearchSpace
-from .hierarchical import ArcKernel, WedgeKernel
+from .hierarchical import ActivityCondition, ArcKernel, WedgeKernel
 
 
 def primitives_from_space(
     space: HierarchicalSearchSpace,
-) -> Tuple[List[int], tf.Tensor, List[int], List[List[Tuple[int, bool]]]]:
+) -> Tuple[List[int], tf.Tensor, List[int], List[ActivityCondition]]:
     """Extract the pure-gpflow kernel primitives from a hierarchical search space.
 
     :param space: The hierarchical search space describing indicator tags,
@@ -49,10 +49,13 @@ def primitives_from_space(
           ``(lower, upper)`` pairs for each feature;
         - ``indicator_dims`` lists the flat-vector column indices of the
           indicator subspaces in ``space.indicator_tags`` order;
-        - ``activity_conditions[j]`` is the list of
-          ``(indicator_local_index, required_bool)`` pairs that must all
-          hold for feature ``j`` to be active, with
-          ``indicator_local_index`` referencing ``indicator_dims``.
+        - ``activity_conditions`` contains one :class:`ActivityCondition`
+          per feature column (in ``feature_dims`` order), with
+          ``feature_dim`` set to that column and ``requirements`` populated
+          from the owning :class:`HierarchyNode`'s ``indicator_conditions``
+          (translating indicator tags into local indices into
+          ``indicator_dims``). Unconditional features produce an
+          :class:`ActivityCondition` with empty requirements.
     """
     indicator_tags = list(space.indicator_tags)
     indicator_local_by_tag = {tag: k for k, tag in enumerate(indicator_tags)}
@@ -70,7 +73,7 @@ def primitives_from_space(
     feature_dims: List[int] = []
     lowers: List[tf.Tensor] = []
     uppers: List[tf.Tensor] = []
-    activity_conditions: List[List[Tuple[int, bool]]] = []
+    activity_conditions: List[ActivityCondition] = []
 
     for tag in space.non_indicator_tags:
         sub = space.get_subspace(tag)
@@ -82,14 +85,17 @@ def primitives_from_space(
 
         nodes = space.node_for_subspace(tag)
         if nodes and nodes[0].indicator_conditions:
-            conds = [
-                (indicator_local_by_tag[ind_tag], bool(required))
+            requirements = {
+                indicator_local_by_tag[ind_tag]: bool(required)
                 for ind_tag, required in nodes[0].indicator_conditions.items()
-            ]
+            }
         else:
-            conds = []
-        for _ in range(sub_dim):
-            activity_conditions.append(list(conds))
+            requirements = {}
+
+        for c in range(start, start + sub_dim):
+            activity_conditions.append(
+                ActivityCondition(feature_dim=c, requirements=dict(requirements))
+            )
 
     if lowers:
         lo = tf.concat(lowers, axis=0)

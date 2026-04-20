@@ -21,8 +21,9 @@ unchanged. A user-supplied base kernel evaluates covariance in the embedded spac
 The module is deliberately self-contained: it imports only from ``gpflow``,
 ``tensorflow``, ``tensorflow_probability``, and ``numpy``. The hierarchy is
 described by pure primitives (integer column indices, a bounds tensor, and a
-list of AND-conjunction activity conditions over indicator columns), so the
-kernels can be migrated wholesale into GPflow in a later change.
+list of :class:`ActivityCondition` objects that each bind an indicator-logic
+conjunction to a specific feature column), so the kernels can be migrated
+wholesale into GPflow in a later change.
 
 References:
     - Swersky et al. (2014) -- Arc (cylindrical) kernel
@@ -30,7 +31,8 @@ References:
 """
 from __future__ import annotations
 
-from typing import Optional, Sequence, Tuple
+from dataclasses import dataclass, field
+from typing import Mapping, Optional, Sequence, Tuple
 
 import gpflow
 import numpy as np
@@ -48,57 +50,117 @@ _IGNORE = -1
 
 
 # ---------------------------------------------------------------------------
+# ActivityCondition: formal type binding a feature column to its AND-conjunction
+# ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class ActivityCondition:
+    """AND-conjunction of indicator requirements for a single feature column.
+
+    :param feature_dim: The column index into the flat input vector ``X``
+        that this condition applies to. Must appear in the kernel's
+        ``feature_dims`` argument.
+    :param requirements: Mapping ``{indicator_local_index: required_bool}``.
+        All listed indicators must take their required value for the feature
+        to be active. An empty mapping means the feature is unconditional.
+    """
+
+    feature_dim: int
+    requirements: Mapping[int, bool] = field(default_factory=dict)
+
+    @classmethod
+    def unconditional(cls, feature_dim: int) -> "ActivityCondition":
+        """Return an unconditional activity condition for ``feature_dim``."""
+        return cls(feature_dim=feature_dim, requirements={})
+
+    @property
+    def is_unconditional(self) -> bool:
+        """True when no indicator requirements are attached."""
+        return not self.requirements
+
+    def items(self):
+        """Iterate over ``(indicator_local_index, required_bool)`` pairs."""
+        return self.requirements.items()
+
+    def __iter__(self):
+        return iter(self.requirements)
+
+    def __bool__(self) -> bool:
+        return bool(self.requirements)
+
+
+# ---------------------------------------------------------------------------
 # Shared primitive helpers
 # ---------------------------------------------------------------------------
 
 
 def _compile_activity_conditions(
-    activity_conditions: Sequence[Sequence[Tuple[int, bool]]],
-    n_features: int,
+    activity_conditions: Sequence[ActivityCondition],
+    feature_dims: Sequence[int],
     n_indicators: int,
 ) -> Tuple[tf.Tensor, tf.Tensor]:
-    """Compile the per-feature AND-conjunction conditions into dense tensors.
+    """Compile per-feature :class:`ActivityCondition` objects into dense tensors.
 
-    :param activity_conditions: For each feature ``j``, a sequence of
-        ``(k, required_bool)`` pairs. ``k`` indexes into the indicator columns
-        (``0 <= k < n_indicators``); ``required_bool`` is the value the
-        indicator must take for feature ``j`` to be active. An empty sequence
-        means the feature is unconditional (always active).
-    :param n_features: Number of feature (non-indicator) dimensions ``D_f``.
+    Each :class:`ActivityCondition` binds its requirements to a specific
+    ``feature_dim`` (column in ``X``). Features in ``feature_dims`` that are
+    not referenced by any condition are treated as unconditional.
+
+    :param activity_conditions: Sequence of :class:`ActivityCondition`
+        objects. Each ``c.feature_dim`` must appear in ``feature_dims``, and
+        no two objects may share the same ``feature_dim``.
+    :param feature_dims: Column indices of real-valued features in ``X``, in
+        the order that determines the local feature-position within the
+        compiled tensors.
     :param n_indicators: Number of indicator dimensions ``D_i``.
-    :return: A tuple ``(required, is_ignore)`` where ``required`` is an
+    :return: Tuple ``(required, is_ignore)`` where ``required`` is an
         ``int32`` tensor of shape ``[D_f, D_i]`` with entries in
         ``{-1, 0, 1}`` and ``is_ignore`` is a ``bool`` tensor of the same
         shape, True where ``required == -1``.
     """
-    if len(activity_conditions) != n_features:
+    n_features = len(feature_dims)
+    feat_to_local = {int(dim): j for j, dim in enumerate(feature_dims)}
+    if len(feat_to_local) != n_features:
         raise ValueError(
-            f"activity_conditions has length {len(activity_conditions)}, expected "
-            f"{n_features} (one entry per feature dimension)."
+            f"feature_dims contains duplicate column indices: {list(feature_dims)}."
         )
 
     required = np.full((n_features, n_indicators), _IGNORE, dtype=np.int32)
-    for j, conds in enumerate(activity_conditions):
-        for pair in conds:
-            if len(pair) != 2:
+    seen: set[int] = set()
+
+    for c in activity_conditions:
+        if not isinstance(c, ActivityCondition):
+            raise TypeError(
+                f"activity_conditions entries must be ActivityCondition instances; "
+                f"got {type(c).__name__}."
+            )
+        if c.feature_dim not in feat_to_local:
+            raise ValueError(
+                f"ActivityCondition.feature_dim={c.feature_dim} is not in "
+                f"feature_dims {list(feature_dims)}."
+            )
+        if c.feature_dim in seen:
+            raise ValueError(
+                f"Duplicate ActivityCondition for feature_dim={c.feature_dim}."
+            )
+        seen.add(c.feature_dim)
+
+        j = feat_to_local[c.feature_dim]
+        for k, required_bool in c.items():
+            if not (0 <= int(k) < n_indicators):
                 raise ValueError(
-                    f"activity_conditions[{j}] entry {pair!r} must be a "
-                    f"(indicator_index, required_bool) pair."
-                )
-            k, required_bool = pair
-            if not (0 <= k < n_indicators):
-                raise ValueError(
-                    f"activity_conditions[{j}] references indicator index {k}; "
-                    f"must be in [0, {n_indicators})."
+                    f"ActivityCondition(feature_dim={c.feature_dim}) references "
+                    f"indicator index {k}; must be in [0, {n_indicators})."
                 )
             val = 1 if bool(required_bool) else 0
-            existing = required[j, k]
+            existing = required[j, int(k)]
             if existing != _IGNORE and existing != val:
                 raise ValueError(
-                    f"activity_conditions[{j}] contains contradictory requirements "
-                    f"for indicator {k}: both {bool(existing)} and {bool(required_bool)}."
+                    f"ActivityCondition(feature_dim={c.feature_dim}) contains "
+                    f"contradictory requirements for indicator {k}: both "
+                    f"{bool(existing)} and {bool(required_bool)}."
                 )
-            required[j, k] = val
+            required[j, int(k)] = val
 
     required_t = tf.constant(required, dtype=tf.int32)
     is_ignore_t = tf.equal(required_t, _IGNORE)
@@ -106,21 +168,31 @@ def _compile_activity_conditions(
 
 
 def _classify_conditional(
-    activity_conditions: Sequence[Sequence[Tuple[int, bool]]],
+    activity_conditions: Sequence[ActivityCondition],
+    feature_dims: Sequence[int],
 ) -> Tuple[list[int], list[int]]:
-    """Split feature dimensions into unconditional and conditional local indices.
+    """Split feature columns into unconditional and conditional local indices.
 
-    A feature dimension is *conditional* iff its entry in ``activity_conditions``
-    is non-empty; otherwise it is unconditional.
+    A feature column is *conditional* iff an :class:`ActivityCondition` with a
+    matching ``feature_dim`` and non-empty ``requirements`` appears in
+    ``activity_conditions``. Otherwise the feature is unconditional (either
+    absent from the sequence or listed with empty requirements).
 
-    :param activity_conditions: Per-feature AND-conjunction conditions.
-    :return: A tuple ``(unconditional_local_idx, conditional_local_idx)``
+    :param activity_conditions: Sequence of :class:`ActivityCondition`
+        objects with distinct ``feature_dim`` values drawn from
+        ``feature_dims``.
+    :param feature_dims: Column indices of real-valued features in ``X``, in
+        the order defining local positions.
+    :return: Tuple ``(unconditional_local_idx, conditional_local_idx)``
         listing positions within the feature-vector.
     """
+    conditional_dims = {
+        int(c.feature_dim) for c in activity_conditions if not c.is_unconditional
+    }
     uncond: list[int] = []
     cond: list[int] = []
-    for j, conds in enumerate(activity_conditions):
-        if conds:
+    for j, dim in enumerate(feature_dims):
+        if int(dim) in conditional_dims:
             cond.append(j)
         else:
             uncond.append(j)
@@ -146,13 +218,14 @@ class _HierarchicalEmbeddingKernel(gpflow.kernels.Kernel):
         feature_dims: Sequence[int],
         feature_bounds: TensorType,
         indicator_dims: Sequence[int] = (),
-        activity_conditions: Sequence[Sequence[Tuple[int, bool]]] = (),
+        activity_conditions: Sequence[ActivityCondition] = (),
         base_kernel: Optional[gpflow.kernels.Kernel] = None,
     ) -> None:
         super().__init__()
 
         feature_dims = list(feature_dims)
         indicator_dims = list(indicator_dims)
+        activity_conditions = list(activity_conditions)
         n_feat = len(feature_dims)
         n_ind = len(indicator_dims)
 
@@ -167,9 +240,6 @@ class _HierarchicalEmbeddingKernel(gpflow.kernels.Kernel):
                 f"feature_dims has {n_feat} entries."
             )
 
-        if not activity_conditions and n_feat > 0:
-            activity_conditions = [() for _ in range(n_feat)]
-
         self._feature_dims = tf.constant(feature_dims, dtype=tf.int32)
         self._indicator_dims = tf.constant(indicator_dims, dtype=tf.int32)
         self._bounds = bounds_tensor
@@ -177,10 +247,12 @@ class _HierarchicalEmbeddingKernel(gpflow.kernels.Kernel):
         self._n_ind = n_ind
 
         self._required, self._required_is_ignore = _compile_activity_conditions(
-            activity_conditions, n_feat, n_ind
+            activity_conditions, feature_dims, n_ind
         )
 
-        uncond_local, cond_local = _classify_conditional(activity_conditions)
+        uncond_local, cond_local = _classify_conditional(
+            activity_conditions, feature_dims
+        )
         self._uncond_local_idx = uncond_local
         self._cond_local_idx = cond_local
         self._n_uncond = len(uncond_local)
@@ -188,9 +260,16 @@ class _HierarchicalEmbeddingKernel(gpflow.kernels.Kernel):
 
         if base_kernel is None:
             base_kernel = gpflow.kernels.Matern52()
-        if hasattr(base_kernel, "lengthscales"):
-            base_kernel.lengthscales.assign(tf.ones_like(base_kernel.lengthscales))
-            gpflow.utilities.set_trainable(base_kernel.lengthscales, False)
+        if not isinstance(base_kernel, gpflow.kernels.Stationary):
+            raise ValueError(
+                f"base_kernel must be a gpflow.kernels.Stationary instance; "
+                f"got {type(base_kernel).__name__}. The embedding geometry "
+                f"relies on k(x, x') depending only on x - x': non-stationary "
+                f"kernels break the both-inactive / both-active / incomparable "
+                f"distance axioms."
+            )
+        base_kernel.lengthscales.assign(tf.ones_like(base_kernel.lengthscales))
+        gpflow.utilities.set_trainable(base_kernel.lengthscales, False)
         self.base_kernel = base_kernel
 
     # -- mask / embedding --------------------------------------------------
@@ -212,6 +291,12 @@ class _HierarchicalEmbeddingKernel(gpflow.kernels.Kernel):
         ind_vals = tf.cast(ind_vals, gpflow.default_float())
         ind_int = tf.cast(ind_vals > to_default_float(0.5), tf.int32)  # [N, D_i]
 
+        # Evaluate the per-feature AND-conjunction over all indicators by
+        # broadcasting the batch of indicator values ``ind_int`` ([N, 1, D_i])
+        # against the compiled requirements ``_required`` ([1, D_f, D_i]).
+        # An indicator slot matches when either it is ignored for this feature
+        # (``_required_is_ignore`` true) or the observed 0/1 value equals the
+        # required value. A feature is active iff every indicator matches.
         match = tf.logical_or(
             self._required_is_ignore[None, :, :],
             tf.equal(ind_int[:, None, :], self._required[None, :, :]),
@@ -289,16 +374,26 @@ class ArcKernel(_HierarchicalEmbeddingKernel):
 
     :param feature_dims: Indices into the flat input ``X`` giving the
         real-valued (non-indicator) feature columns, in the order matching
-        ``feature_bounds`` and ``activity_conditions``.
+        ``feature_bounds``. This order determines the local feature position
+        used when building the embedded vector.
     :param feature_bounds: ``[D_f, 2]`` tensor of ``(lower, upper)`` pairs
         for each feature dimension.
     :param indicator_dims: Indices into ``X`` of the 0/1 indicator columns
-        used by ``activity_conditions``.
-    :param activity_conditions: One entry per feature dimension giving a
-        sequence of ``(indicator_local_index, required_bool)`` pairs that
-        must all hold for the feature to be active. An empty sequence means
-        the feature is unconditional.
-    :param base_kernel: GPflow kernel applied in the embedded space.
+        referenced by :class:`ActivityCondition.requirements` via their
+        local position (``0 <= k < len(indicator_dims)``).
+    :param activity_conditions: Sequence of :class:`ActivityCondition`
+        objects. Each binds an AND-conjunction of indicator requirements to
+        its target ``feature_dim``. Feature columns not referenced by any
+        condition are treated as unconditional.
+    :param base_kernel: GPflow stationary kernel applied in the embedded
+        space. Must be a :class:`gpflow.kernels.Stationary` subclass (e.g.
+        :class:`~gpflow.kernels.Matern52`,
+        :class:`~gpflow.kernels.SquaredExponential`,
+        :class:`~gpflow.kernels.RationalQuadratic`); its ``lengthscales`` are
+        frozen at 1.0 so distance scaling stays with the embedding parameters.
+        Non-stationary kernels (e.g. ``Linear``, ``Polynomial``, ``Constant``)
+        are rejected because the embedding axioms rely on ``k(x, x')``
+        depending only on ``x - x'``.
     :param angle_prior: Optional prior on the ``angle`` parameter.
     :param radius_prior: Optional prior on the ``radius`` parameter.
     """
@@ -308,7 +403,7 @@ class ArcKernel(_HierarchicalEmbeddingKernel):
         feature_dims: Sequence[int],
         feature_bounds: TensorType,
         indicator_dims: Sequence[int] = (),
-        activity_conditions: Sequence[Sequence[Tuple[int, bool]]] = (),
+        activity_conditions: Sequence[ActivityCondition] = (),
         base_kernel: Optional[gpflow.kernels.Kernel] = None,
         angle_prior: Optional[tfp.distributions.Distribution] = None,
         radius_prior: Optional[tfp.distributions.Distribution] = None,
@@ -365,15 +460,23 @@ class WedgeKernel(_HierarchicalEmbeddingKernel):
 
     :param feature_dims: Indices into the flat input ``X`` giving the
         real-valued (non-indicator) feature columns, in the order matching
-        ``feature_bounds`` and ``activity_conditions``.
+        ``feature_bounds``.
     :param feature_bounds: ``[D_f, 2]`` tensor of ``(lower, upper)`` pairs
         for each feature dimension.
     :param indicator_dims: Indices into ``X`` of the 0/1 indicator columns
-        used by ``activity_conditions``.
-    :param activity_conditions: One entry per feature dimension giving a
-        sequence of ``(indicator_local_index, required_bool)`` pairs that
-        must all hold for the feature to be active.
-    :param base_kernel: GPflow kernel applied in the embedded space.
+        referenced by :class:`ActivityCondition.requirements` via their
+        local position.
+    :param activity_conditions: Sequence of :class:`ActivityCondition`
+        objects; see :class:`ArcKernel` for detailed semantics.
+    :param base_kernel: GPflow stationary kernel applied in the embedded
+        space. Must be a :class:`gpflow.kernels.Stationary` subclass (e.g.
+        :class:`~gpflow.kernels.Matern52`,
+        :class:`~gpflow.kernels.SquaredExponential`,
+        :class:`~gpflow.kernels.RationalQuadratic`); its ``lengthscales`` are
+        frozen at 1.0 so distance scaling stays with the embedding parameters.
+        Non-stationary kernels (e.g. ``Linear``, ``Polynomial``, ``Constant``)
+        are rejected because the embedding axioms rely on ``k(x, x')``
+        depending only on ``x - x'``.
     :param theta1_prior: Optional prior on the ``theta1`` parameter.
     :param theta2_prior: Optional prior on the ``theta2`` parameter.
     :param rho_prior: Optional prior on the ``rho`` parameter.
@@ -384,7 +487,7 @@ class WedgeKernel(_HierarchicalEmbeddingKernel):
         feature_dims: Sequence[int],
         feature_bounds: TensorType,
         indicator_dims: Sequence[int] = (),
-        activity_conditions: Sequence[Sequence[Tuple[int, bool]]] = (),
+        activity_conditions: Sequence[ActivityCondition] = (),
         base_kernel: Optional[gpflow.kernels.Kernel] = None,
         theta1_prior: Optional[tfp.distributions.Distribution] = None,
         theta2_prior: Optional[tfp.distributions.Distribution] = None,

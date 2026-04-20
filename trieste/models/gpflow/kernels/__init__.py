@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .hierarchical import ArcKernel, WedgeKernel
+from .hierarchical import ActivityCondition, ArcKernel, WedgeKernel
 from .hierarchical_builders import (
     arc_kernel_from_space,
     primitives_from_space,
@@ -20,6 +20,7 @@ from .hierarchical_builders import (
 from .tree_ensemble import TreeEnsembleKernel
 
 __all__ = [
+    "ActivityCondition",
     "ArcKernel",
     "TreeEnsembleKernel",
     "WedgeKernel",

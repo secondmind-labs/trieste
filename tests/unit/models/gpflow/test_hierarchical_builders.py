@@ -21,7 +21,11 @@ import numpy.testing as npt
 import pytest
 import tensorflow as tf
 
-from trieste.models.gpflow.kernels.hierarchical import ArcKernel, WedgeKernel
+from trieste.models.gpflow.kernels.hierarchical import (
+    ActivityCondition,
+    ArcKernel,
+    WedgeKernel,
+)
 from trieste.models.gpflow.kernels.hierarchical_builders import (
     arc_kernel_from_space,
     primitives_from_space,
@@ -107,7 +111,9 @@ class TestPrimitivesFromSpace:
         assert feat_dims == [0, 2]
         assert ind_dims == [1]
         npt.assert_allclose(bounds.numpy(), [[0.0, 1.0], [0.0, 5.0]])
-        assert conds == [[], [(0, True)]]
+        assert all(isinstance(c, ActivityCondition) for c in conds)
+        assert [c.feature_dim for c in conds] == [0, 2]
+        assert [dict(c.requirements) for c in conds] == [{}, {0: True}]
 
     def test_two_indicators(self) -> None:
         space = _two_indicator_space()
@@ -115,7 +121,9 @@ class TestPrimitivesFromSpace:
         assert feat_dims == [0, 3, 4]
         assert ind_dims == [1, 2]
         npt.assert_allclose(bounds.numpy(), [[0.0, 1.0], [0.0, 5.0], [-1.0, 1.0]])
-        assert conds == [[], [(0, True)], [(1, True)]]
+        assert all(isinstance(c, ActivityCondition) for c in conds)
+        assert [c.feature_dim for c in conds] == [0, 3, 4]
+        assert [dict(c.requirements) for c in conds] == [{}, {0: True}, {1: True}]
 
     def test_multi_dim_broadcasts_conditions(self) -> None:
         space = _multi_dim_space()
@@ -126,7 +134,14 @@ class TestPrimitivesFromSpace:
             bounds.numpy(),
             [[0.0, 1.0], [0.0, 1.0], [0.0, 5.0], [0.0, 5.0]],
         )
-        assert conds == [[], [], [(0, True)], [(0, True)]]
+        assert all(isinstance(c, ActivityCondition) for c in conds)
+        assert [c.feature_dim for c in conds] == [0, 1, 3, 4]
+        assert [dict(c.requirements) for c in conds] == [
+            {},
+            {},
+            {0: True},
+            {0: True},
+        ]
 
 
 # ---------------------------------------------------------------------------
