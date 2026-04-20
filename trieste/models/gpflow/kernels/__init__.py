@@ -12,6 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .hierarchical import ArcKernel, WedgeKernel
+from .hierarchical_builders import (
+    arc_kernel_from_space,
+    primitives_from_space,
+    wedge_kernel_from_space,
+)
 from .tree_ensemble import TreeEnsembleKernel
 
-__all__ = ["ArcKernel", "TreeEnsembleKernel", "WedgeKernel"]
+__all__ = [
+    "ArcKernel",
+    "TreeEnsembleKernel",
+    "WedgeKernel",
+    "arc_kernel_from_space",
+    "primitives_from_space",
+    "wedge_kernel_from_space",
+]

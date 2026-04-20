@@ -18,131 +18,255 @@ into R^2, so that the three axiomatic distance cases (both-inactive, both-active
 incomparable) are captured geometrically. Unconditional dimensions pass through
 unchanged. A user-supplied base kernel evaluates covariance in the embedded space.
 
+The module is deliberately self-contained: it imports only from ``gpflow``,
+``tensorflow``, ``tensorflow_probability``, and ``numpy``. The hierarchy is
+described by pure primitives (integer column indices, a bounds tensor, and a
+list of AND-conjunction activity conditions over indicator columns), so the
+kernels can be migrated wholesale into GPflow in a later change.
+
 References:
-    - Swersky et al. (2014) — Arc (cylindrical) kernel
-    - Horn et al. (2019)    — Wedge (triangular) kernel
+    - Swersky et al. (2014) -- Arc (cylindrical) kernel
+    - Horn et al. (2019)    -- Wedge (triangular) kernel
 """
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Sequence, Tuple
 
 import gpflow
 import numpy as np
 import tensorflow as tf
 import tensorflow_probability as tfp
-from gpflow.base import TensorLike
+from gpflow.base import TensorType
 from gpflow.utilities import positive, to_default_float
-
-from ....space import HierarchicalSearchSpace
-from ....types import TensorType
 
 
 _PI = tf.constant(np.pi, dtype=gpflow.default_float())
 
+# Sentinel used in the compact ``required`` tensor to mark an indicator column
+# that is irrelevant (ignored) for a particular feature's activity condition.
+_IGNORE = -1
+
 
 # ---------------------------------------------------------------------------
-# Shared helpers
+# Shared primitive helpers
 # ---------------------------------------------------------------------------
 
 
-def _build_activity_mask(
-    points: TensorType, space: HierarchicalSearchSpace
-) -> TensorType:
-    """Per-dimension boolean mask over non-indicator dimensions.
+def _compile_activity_conditions(
+    activity_conditions: Sequence[Sequence[Tuple[int, bool]]],
+    n_features: int,
+    n_indicators: int,
+) -> Tuple[tf.Tensor, tf.Tensor]:
+    """Compile the per-feature AND-conjunction conditions into dense tensors.
 
-    For each non-indicator subspace, the corresponding columns are ``True``
-    when the `HierarchyNode` that owns that subspace has its
-    ``indicator_conditions`` satisfied by the indicator values in *points*.
-    Unconditional nodes (empty ``indicator_conditions``) always return True.
-
-    :param points: Flat input tensor of shape ``[N, D]``.
-    :param space: The hierarchical search space.
-    :return: Boolean mask of shape ``[N, n_non_indicator_dims]``.
+    :param activity_conditions: For each feature ``j``, a sequence of
+        ``(k, required_bool)`` pairs. ``k`` indexes into the indicator columns
+        (``0 <= k < n_indicators``); ``required_bool`` is the value the
+        indicator must take for feature ``j`` to be active. An empty sequence
+        means the feature is unconditional (always active).
+    :param n_features: Number of feature (non-indicator) dimensions ``D_f``.
+    :param n_indicators: Number of indicator dimensions ``D_i``.
+    :return: A tuple ``(required, is_ignore)`` where ``required`` is an
+        ``int32`` tensor of shape ``[D_f, D_i]`` with entries in
+        ``{-1, 0, 1}`` and ``is_ignore`` is a ``bool`` tensor of the same
+        shape, True where ``required == -1``.
     """
-    masks = []
-    for tag in space.non_indicator_tags:
-        sub_dim = int(space.get_subspace(tag).dimension)
-        nodes = space.node_for_subspace(tag)
-        if not nodes:
-            masks.append(tf.ones([tf.shape(points)[0], sub_dim], dtype=tf.bool))
-            continue
+    if len(activity_conditions) != n_features:
+        raise ValueError(
+            f"activity_conditions has length {len(activity_conditions)}, expected "
+            f"{n_features} (one entry per feature dimension)."
+        )
 
-        node = nodes[0]
-        if not node.indicator_conditions:
-            masks.append(tf.ones([tf.shape(points)[0], sub_dim], dtype=tf.bool))
-            continue
+    required = np.full((n_features, n_indicators), _IGNORE, dtype=np.int32)
+    for j, conds in enumerate(activity_conditions):
+        for pair in conds:
+            if len(pair) != 2:
+                raise ValueError(
+                    f"activity_conditions[{j}] entry {pair!r} must be a "
+                    f"(indicator_index, required_bool) pair."
+                )
+            k, required_bool = pair
+            if not (0 <= k < n_indicators):
+                raise ValueError(
+                    f"activity_conditions[{j}] references indicator index {k}; "
+                    f"must be in [0, {n_indicators})."
+                )
+            val = 1 if bool(required_bool) else 0
+            existing = required[j, k]
+            if existing != _IGNORE and existing != val:
+                raise ValueError(
+                    f"activity_conditions[{j}] contains contradictory requirements "
+                    f"for indicator {k}: both {bool(existing)} and {bool(required_bool)}."
+                )
+            required[j, k] = val
 
-        active = tf.ones([tf.shape(points)[0]], dtype=tf.bool)
-        for ind_tag, required in node.indicator_conditions.items():
-            ind_vals = space.get_subspace_component(ind_tag, points)
-            ind_vals = tf.squeeze(ind_vals, axis=-1)
-            if required:
-                cond = tf.greater(ind_vals, 0.5)
-            else:
-                cond = tf.less_equal(ind_vals, 0.5)
-            active = tf.logical_and(active, cond)
-
-        active_col = tf.expand_dims(active, -1)
-        masks.append(tf.repeat(active_col, sub_dim, axis=-1))
-
-    return tf.concat(masks, axis=-1)
-
-
-def _build_bounds_tensor(space: HierarchicalSearchSpace) -> TensorType:
-    """Lower/upper bounds for every non-indicator dimension, in tag order.
-
-    :param space: The hierarchical search space.
-    :return: Tensor of shape ``[n_non_indicator_dims, 2]`` with ``(lower, upper)`` pairs.
-    """
-    lowers, uppers = [], []
-    for tag in space.non_indicator_tags:
-        sub = space.get_subspace(tag)
-        lowers.append(tf.cast(sub.lower, gpflow.default_float()))
-        uppers.append(tf.cast(sub.upper, gpflow.default_float()))
-    lo = tf.concat(lowers, axis=0)
-    hi = tf.concat(uppers, axis=0)
-    return tf.stack([lo, hi], axis=-1)
+    required_t = tf.constant(required, dtype=tf.int32)
+    is_ignore_t = tf.equal(required_t, _IGNORE)
+    return required_t, is_ignore_t
 
 
-def _extract_non_indicator_dims(
-    points: TensorType, space: HierarchicalSearchSpace
-) -> TensorType:
-    """Extract and concatenate all non-indicator subspace columns.
+def _classify_conditional(
+    activity_conditions: Sequence[Sequence[Tuple[int, bool]]],
+) -> Tuple[list[int], list[int]]:
+    """Split feature dimensions into unconditional and conditional local indices.
 
-    :param points: Flat input tensor of shape ``[N, D]``.
-    :param space: The hierarchical search space.
-    :return: Tensor of shape ``[N, n_non_indicator_dims]``.
-    """
-    parts = [space.get_subspace_component(tag, points) for tag in space.non_indicator_tags]
-    return tf.concat(parts, axis=-1)
+    A feature dimension is *conditional* iff its entry in ``activity_conditions``
+    is non-empty; otherwise it is unconditional.
 
-
-def _classify_dims(
-    space: HierarchicalSearchSpace,
-) -> tuple[list[int], list[int]]:
-    """Classify non-indicator dimensions as unconditional or conditional.
-
-    A dimension is *conditional* if its subspace's ``HierarchyNode`` has
-    non-empty ``indicator_conditions``.
-
-    :param space: The hierarchical search space.
-    :return: ``(unconditional_indices, conditional_indices)`` as flat lists
-        of integer positions relative to the non-indicator vector.
+    :param activity_conditions: Per-feature AND-conjunction conditions.
+    :return: A tuple ``(unconditional_local_idx, conditional_local_idx)``
+        listing positions within the feature-vector.
     """
     uncond: list[int] = []
     cond: list[int] = []
-    offset = 0
-    for tag in space.non_indicator_tags:
-        sub_dim = int(space.get_subspace(tag).dimension)
-        nodes = space.node_for_subspace(tag)
-        is_conditional = any(bool(n.indicator_conditions) for n in nodes)
-        indices = list(range(offset, offset + sub_dim))
-        if is_conditional:
-            cond.extend(indices)
+    for j, conds in enumerate(activity_conditions):
+        if conds:
+            cond.append(j)
         else:
-            uncond.extend(indices)
-        offset += sub_dim
+            uncond.append(j)
     return uncond, cond
+
+
+# ---------------------------------------------------------------------------
+# Base class: shared embedding-then-base-kernel infrastructure
+# ---------------------------------------------------------------------------
+
+
+class _HierarchicalEmbeddingKernel(gpflow.kernels.Kernel):
+    """Shared machinery for embedding-based hierarchical kernels.
+
+    Subclasses override :meth:`_embed_conditional` to supply the per-dimension
+    R^2 embedding for conditional features; the base class handles mask
+    construction, unconditional pass-through, and delegation to the user's
+    base kernel.
+    """
+
+    def __init__(
+        self,
+        feature_dims: Sequence[int],
+        feature_bounds: TensorType,
+        indicator_dims: Sequence[int] = (),
+        activity_conditions: Sequence[Sequence[Tuple[int, bool]]] = (),
+        base_kernel: Optional[gpflow.kernels.Kernel] = None,
+    ) -> None:
+        super().__init__()
+
+        feature_dims = list(feature_dims)
+        indicator_dims = list(indicator_dims)
+        n_feat = len(feature_dims)
+        n_ind = len(indicator_dims)
+
+        bounds_tensor = tf.convert_to_tensor(feature_bounds, dtype=gpflow.default_float())
+        if bounds_tensor.shape.rank != 2 or bounds_tensor.shape[-1] != 2:
+            raise ValueError(
+                f"feature_bounds must have shape [D_f, 2], got {bounds_tensor.shape}."
+            )
+        if int(bounds_tensor.shape[0]) != n_feat:
+            raise ValueError(
+                f"feature_bounds has {int(bounds_tensor.shape[0])} rows but "
+                f"feature_dims has {n_feat} entries."
+            )
+
+        if not activity_conditions and n_feat > 0:
+            activity_conditions = [() for _ in range(n_feat)]
+
+        self._feature_dims = tf.constant(feature_dims, dtype=tf.int32)
+        self._indicator_dims = tf.constant(indicator_dims, dtype=tf.int32)
+        self._bounds = bounds_tensor
+        self._n_feat = n_feat
+        self._n_ind = n_ind
+
+        self._required, self._required_is_ignore = _compile_activity_conditions(
+            activity_conditions, n_feat, n_ind
+        )
+
+        uncond_local, cond_local = _classify_conditional(activity_conditions)
+        self._uncond_local_idx = uncond_local
+        self._cond_local_idx = cond_local
+        self._n_uncond = len(uncond_local)
+        self._n_cond = len(cond_local)
+
+        if base_kernel is None:
+            base_kernel = gpflow.kernels.Matern52()
+        if hasattr(base_kernel, "lengthscales"):
+            base_kernel.lengthscales.assign(tf.ones_like(base_kernel.lengthscales))
+            gpflow.utilities.set_trainable(base_kernel.lengthscales, False)
+        self.base_kernel = base_kernel
+
+    # -- mask / embedding --------------------------------------------------
+
+    def _build_activity_mask(self, X: TensorType) -> tf.Tensor:
+        """Compute the per-feature boolean activity mask for a batch of points.
+
+        :param X: Flat input tensor of shape ``[N, D]``.
+        :return: Boolean tensor of shape ``[N, D_f]``; True means the
+            corresponding feature dimension is active for that point.
+        """
+        if self._n_feat == 0:
+            return tf.zeros([tf.shape(X)[0], 0], dtype=tf.bool)
+
+        if self._n_ind == 0:
+            return tf.ones([tf.shape(X)[0], self._n_feat], dtype=tf.bool)
+
+        ind_vals = tf.gather(X, self._indicator_dims, axis=-1)
+        ind_vals = tf.cast(ind_vals, gpflow.default_float())
+        ind_int = tf.cast(ind_vals > to_default_float(0.5), tf.int32)  # [N, D_i]
+
+        match = tf.logical_or(
+            self._required_is_ignore[None, :, :],
+            tf.equal(ind_int[:, None, :], self._required[None, :, :]),
+        )  # [N, D_f, D_i]
+        return tf.reduce_all(match, axis=-1)  # [N, D_f]
+
+    def _embed(self, X: TensorType) -> tf.Tensor:
+        """Map flat inputs into the embedded covariance space.
+
+        :param X: Flat input tensor of shape ``[N, D]``.
+        :return: Embedded tensor of shape ``[N, n_uncond + 2 * n_cond]``.
+        """
+        X = tf.cast(X, gpflow.default_float())
+        X_feat = tf.gather(X, self._feature_dims, axis=-1)  # [N, D_f]
+        mask_f = tf.cast(self._build_activity_mask(X), gpflow.default_float())
+
+        lo = self._bounds[:, 0]
+        hi = self._bounds[:, 1]
+        ranges = hi - lo
+        ranges = tf.where(tf.abs(ranges) < 1e-12, tf.ones_like(ranges), ranges)
+        v = (X_feat - lo) / ranges  # [N, D_f]
+
+        parts: list[tf.Tensor] = []
+
+        if self._n_uncond > 0:
+            parts.append(tf.gather(v, self._uncond_local_idx, axis=-1))
+
+        if self._n_cond > 0:
+            cond_v = tf.gather(v, self._cond_local_idx, axis=-1)
+            cond_mask = tf.gather(mask_f, self._cond_local_idx, axis=-1)
+            parts.extend(self._embed_conditional(cond_v, cond_mask))
+
+        if not parts:
+            return tf.zeros([tf.shape(X)[0], 0], dtype=gpflow.default_float())
+        return tf.concat(parts, axis=-1)
+
+    def _embed_conditional(
+        self, cond_v: tf.Tensor, cond_mask: tf.Tensor
+    ) -> list[tf.Tensor]:
+        """Return the two ``[N, n_cond]`` tensors making up the R^2 embedding.
+
+        Subclasses override this. The returned list is concatenated onto the
+        unconditional features to form the embedded vector.
+        """
+        raise NotImplementedError
+
+    # -- kernel interface --------------------------------------------------
+
+    def K(self, X: TensorType, X2: Optional[TensorType] = None) -> tf.Tensor:
+        Z1 = self._embed(X)
+        Z2 = self._embed(X2) if X2 is not None else Z1
+        return self.base_kernel.K(Z1, Z2)
+
+    def K_diag(self, X: TensorType) -> tf.Tensor:
+        return self.base_kernel.K_diag(self._embed(X))
 
 
 # ---------------------------------------------------------------------------
@@ -150,20 +274,30 @@ def _classify_dims(
 # ---------------------------------------------------------------------------
 
 
-class ArcKernel(gpflow.kernels.Kernel):
+class ArcKernel(_HierarchicalEmbeddingKernel):
     """Cylindrical arc kernel for hierarchical search spaces (Swersky et al., 2014).
 
-    Each conditional dimension is mapped to R^2 via::
+    Each conditional feature dimension is mapped to R^2 via::
 
         active:   [radius * sin(pi * angle * v),  radius * cos(pi * angle * v)]
         inactive: [0, 0]
 
     where ``v = (x - lower) / (upper - lower)`` is the normalised value.
     Unconditional dimensions are normalised and passed through unchanged.
-    A user-supplied ``base_kernel`` evaluates covariance in the embedded space
-    (its lengthscale is frozen at 1.0).
+    A user-supplied ``base_kernel`` evaluates covariance in the embedded
+    space (its lengthscale is frozen at 1.0).
 
-    :param space: A :class:`HierarchicalSearchSpace` defining the hierarchy.
+    :param feature_dims: Indices into the flat input ``X`` giving the
+        real-valued (non-indicator) feature columns, in the order matching
+        ``feature_bounds`` and ``activity_conditions``.
+    :param feature_bounds: ``[D_f, 2]`` tensor of ``(lower, upper)`` pairs
+        for each feature dimension.
+    :param indicator_dims: Indices into ``X`` of the 0/1 indicator columns
+        used by ``activity_conditions``.
+    :param activity_conditions: One entry per feature dimension giving a
+        sequence of ``(indicator_local_index, required_bool)`` pairs that
+        must all hold for the feature to be active. An empty sequence means
+        the feature is unconditional.
     :param base_kernel: GPflow kernel applied in the embedded space.
     :param angle_prior: Optional prior on the ``angle`` parameter.
     :param radius_prior: Optional prior on the ``radius`` parameter.
@@ -171,25 +305,21 @@ class ArcKernel(gpflow.kernels.Kernel):
 
     def __init__(
         self,
-        space: HierarchicalSearchSpace,
+        feature_dims: Sequence[int],
+        feature_bounds: TensorType,
+        indicator_dims: Sequence[int] = (),
+        activity_conditions: Sequence[Sequence[Tuple[int, bool]]] = (),
         base_kernel: Optional[gpflow.kernels.Kernel] = None,
-        angle_prior: Optional[TensorLike] = None,
-        radius_prior: Optional[TensorLike] = None,
+        angle_prior: Optional[tfp.distributions.Distribution] = None,
+        radius_prior: Optional[tfp.distributions.Distribution] = None,
     ) -> None:
-        super().__init__()
-        self.space = space
-        self._bounds = _build_bounds_tensor(space)
-        self._uncond_idx, self._cond_idx = _classify_dims(space)
-        self._n_cond = len(self._cond_idx)
-
-        if base_kernel is None:
-            base_kernel = gpflow.kernels.Matern52()
-        if hasattr(base_kernel, "lengthscales"):
-            base_kernel.lengthscales.assign(
-                tf.ones_like(base_kernel.lengthscales)
-            )
-            gpflow.utilities.set_trainable(base_kernel.lengthscales, False)
-        self.base_kernel = base_kernel
+        super().__init__(
+            feature_dims=feature_dims,
+            feature_bounds=feature_bounds,
+            indicator_dims=indicator_dims,
+            activity_conditions=activity_conditions,
+            base_kernel=base_kernel,
+        )
 
         if self._n_cond > 0:
             angle_init = 0.5 * tf.ones(self._n_cond, dtype=gpflow.default_float())
@@ -206,47 +336,13 @@ class ArcKernel(gpflow.kernels.Kernel):
                 radius_init, transform=positive(), prior=radius_prior, name="radius"
             )
 
-    def _embed(self, X: TensorType) -> TensorType:
-        """Map flat inputs into the arc-embedded space.
-
-        :param X: Input tensor of shape ``[N, D]``.
-        :return: Embedded tensor of shape ``[N, n_uncond + 2 * n_cond]``.
-        """
-        X_ni = _extract_non_indicator_dims(X, self.space)
-        X_ni = tf.cast(X_ni, gpflow.default_float())
-        mask = _build_activity_mask(X, self.space)
-        mask_f = tf.cast(mask, gpflow.default_float())
-
-        lo = self._bounds[:, 0]
-        hi = self._bounds[:, 1]
-        ranges = hi - lo
-        ranges = tf.where(tf.abs(ranges) < 1e-12, tf.ones_like(ranges), ranges)
-        v = (X_ni - lo) / ranges
-
-        parts = []
-
-        if self._uncond_idx:
-            uncond_v = tf.gather(v, self._uncond_idx, axis=-1)
-            parts.append(uncond_v)
-
-        if self._n_cond > 0:
-            cond_v = tf.gather(v, self._cond_idx, axis=-1)
-            cond_mask = tf.gather(mask_f, self._cond_idx, axis=-1)
-
-            theta = _PI * self.angle * cond_v
-            sin_part = self.radius * tf.sin(theta) * cond_mask
-            cos_part = self.radius * tf.cos(theta) * cond_mask
-            parts.extend([sin_part, cos_part])
-
-        return tf.concat(parts, axis=-1)
-
-    def K(self, X: TensorType, X2: Optional[TensorType] = None) -> TensorType:
-        Z1 = self._embed(X)
-        Z2 = self._embed(X2) if X2 is not None else Z1
-        return self.base_kernel.K(Z1, Z2)
-
-    def K_diag(self, X: TensorType) -> TensorType:
-        return self.base_kernel.K_diag(self._embed(X))
+    def _embed_conditional(
+        self, cond_v: tf.Tensor, cond_mask: tf.Tensor
+    ) -> list[tf.Tensor]:
+        theta = _PI * self.angle * cond_v
+        sin_part = self.radius * tf.sin(theta) * cond_mask
+        cos_part = self.radius * tf.cos(theta) * cond_mask
+        return [sin_part, cos_part]
 
 
 # ---------------------------------------------------------------------------
@@ -254,20 +350,29 @@ class ArcKernel(gpflow.kernels.Kernel):
 # ---------------------------------------------------------------------------
 
 
-class WedgeKernel(gpflow.kernels.Kernel):
+class WedgeKernel(_HierarchicalEmbeddingKernel):
     """Triangular wedge kernel for hierarchical search spaces (Horn et al., 2019).
 
-    Each conditional dimension is mapped to R^2 via::
+    Each conditional feature dimension is mapped to R^2 via::
 
         active:   [theta1 * v + theta2 * v * cos(rho),  theta2 * v * sin(rho)]
         inactive: [0, 0]
 
     where ``v = (x - lower) / (upper - lower)`` is the normalised value.
-    Unlike the arc kernel, the incomparable distance (one active, one inactive)
-    depends on the active-side value, which is strictly more informative near
-    disjunction boundaries.
+    Unlike the arc kernel, the incomparable distance (one active, one
+    inactive) depends on the active-side value, which is strictly more
+    informative near disjunction boundaries.
 
-    :param space: A :class:`HierarchicalSearchSpace` defining the hierarchy.
+    :param feature_dims: Indices into the flat input ``X`` giving the
+        real-valued (non-indicator) feature columns, in the order matching
+        ``feature_bounds`` and ``activity_conditions``.
+    :param feature_bounds: ``[D_f, 2]`` tensor of ``(lower, upper)`` pairs
+        for each feature dimension.
+    :param indicator_dims: Indices into ``X`` of the 0/1 indicator columns
+        used by ``activity_conditions``.
+    :param activity_conditions: One entry per feature dimension giving a
+        sequence of ``(indicator_local_index, required_bool)`` pairs that
+        must all hold for the feature to be active.
     :param base_kernel: GPflow kernel applied in the embedded space.
     :param theta1_prior: Optional prior on the ``theta1`` parameter.
     :param theta2_prior: Optional prior on the ``theta2`` parameter.
@@ -276,26 +381,22 @@ class WedgeKernel(gpflow.kernels.Kernel):
 
     def __init__(
         self,
-        space: HierarchicalSearchSpace,
+        feature_dims: Sequence[int],
+        feature_bounds: TensorType,
+        indicator_dims: Sequence[int] = (),
+        activity_conditions: Sequence[Sequence[Tuple[int, bool]]] = (),
         base_kernel: Optional[gpflow.kernels.Kernel] = None,
-        theta1_prior: Optional[TensorLike] = None,
-        theta2_prior: Optional[TensorLike] = None,
-        rho_prior: Optional[TensorLike] = None,
+        theta1_prior: Optional[tfp.distributions.Distribution] = None,
+        theta2_prior: Optional[tfp.distributions.Distribution] = None,
+        rho_prior: Optional[tfp.distributions.Distribution] = None,
     ) -> None:
-        super().__init__()
-        self.space = space
-        self._bounds = _build_bounds_tensor(space)
-        self._uncond_idx, self._cond_idx = _classify_dims(space)
-        self._n_cond = len(self._cond_idx)
-
-        if base_kernel is None:
-            base_kernel = gpflow.kernels.Matern52()
-        if hasattr(base_kernel, "lengthscales"):
-            base_kernel.lengthscales.assign(
-                tf.ones_like(base_kernel.lengthscales)
-            )
-            gpflow.utilities.set_trainable(base_kernel.lengthscales, False)
-        self.base_kernel = base_kernel
+        super().__init__(
+            feature_dims=feature_dims,
+            feature_bounds=feature_bounds,
+            indicator_dims=indicator_dims,
+            activity_conditions=activity_conditions,
+            base_kernel=base_kernel,
+        )
 
         if self._n_cond > 0:
             theta1_init = tf.ones(self._n_cond, dtype=gpflow.default_float())
@@ -318,43 +419,9 @@ class WedgeKernel(gpflow.kernels.Kernel):
                 name="rho",
             )
 
-    def _embed(self, X: TensorType) -> TensorType:
-        """Map flat inputs into the wedge-embedded space.
-
-        :param X: Input tensor of shape ``[N, D]``.
-        :return: Embedded tensor of shape ``[N, n_uncond + 2 * n_cond]``.
-        """
-        X_ni = _extract_non_indicator_dims(X, self.space)
-        X_ni = tf.cast(X_ni, gpflow.default_float())
-        mask = _build_activity_mask(X, self.space)
-        mask_f = tf.cast(mask, gpflow.default_float())
-
-        lo = self._bounds[:, 0]
-        hi = self._bounds[:, 1]
-        ranges = hi - lo
-        ranges = tf.where(tf.abs(ranges) < 1e-12, tf.ones_like(ranges), ranges)
-        v = (X_ni - lo) / ranges
-
-        parts = []
-
-        if self._uncond_idx:
-            uncond_v = tf.gather(v, self._uncond_idx, axis=-1)
-            parts.append(uncond_v)
-
-        if self._n_cond > 0:
-            cond_v = tf.gather(v, self._cond_idx, axis=-1)
-            cond_mask = tf.gather(mask_f, self._cond_idx, axis=-1)
-
-            comp1 = (self.theta1 * cond_v + self.theta2 * cond_v * tf.cos(self.rho)) * cond_mask
-            comp2 = (self.theta2 * cond_v * tf.sin(self.rho)) * cond_mask
-            parts.extend([comp1, comp2])
-
-        return tf.concat(parts, axis=-1)
-
-    def K(self, X: TensorType, X2: Optional[TensorType] = None) -> TensorType:
-        Z1 = self._embed(X)
-        Z2 = self._embed(X2) if X2 is not None else Z1
-        return self.base_kernel.K(Z1, Z2)
-
-    def K_diag(self, X: TensorType) -> TensorType:
-        return self.base_kernel.K_diag(self._embed(X))
+    def _embed_conditional(
+        self, cond_v: tf.Tensor, cond_mask: tf.Tensor
+    ) -> list[tf.Tensor]:
+        comp1 = (self.theta1 * cond_v + self.theta2 * cond_v * tf.cos(self.rho)) * cond_mask
+        comp2 = (self.theta2 * cond_v * tf.sin(self.rho)) * cond_mask
+        return [comp1, comp2]
