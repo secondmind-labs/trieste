@@ -1549,13 +1549,16 @@ class HierarchyNode:
     :param subspace_tags: Tags of non-indicator subspaces that are active when this node's
         conditions are satisfied. These are the dimensions an associated sub-kernel operates on.
     :param indicator_conditions: A mapping ``{indicator_tag: required_value}`` specifying which
-        Boolean indicators must take which values for this node to be active. An empty mapping
-        means the node is unconditionally active.
+        indicators must take which values for this node to be active. ``required_value`` is a
+        ``bool`` (or ``{0, 1}`` ``int``) for a :class:`BooleanSearchSpace` indicator, and an
+        integer category index in ``{0, ..., K-1}`` for a ``K``-ary
+        :class:`CategoricalSearchSpace` indicator. An empty mapping means the node is
+        unconditionally active.
     """
 
     name: str
     subspace_tags: Sequence[str]
-    indicator_conditions: Mapping[str, bool]
+    indicator_conditions: Mapping[str, Union[bool, int]]
 
 
 class HierarchicalSearchSpace(CollectionSearchSpace):
@@ -1565,8 +1568,11 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
 
     Every variable is its own subspace, identified by a unique tag. Variables fall into three roles:
 
-    - **Boolean indicators** (:class:`BooleanSearchSpace`), declared via ``indicator_tags``.
-      These are the :math:`Y_{ik}` from the GDP formulation. They are always unconditional.
+    - **Indicators** (:class:`BooleanSearchSpace` or dimension-1
+      :class:`CategoricalSearchSpace`), declared via ``indicator_tags``. These are the
+      :math:`Y_{ik}` from the GDP formulation: Boolean indicators take values in
+      :math:`\{0, 1\}`, and ``K``-ary categorical indicators take values in
+      :math:`\{0, \ldots, K-1\}`. Indicators are always unconditional.
     - **Unconditional variables** appearing in a :class:`HierarchyNode` with empty
       ``indicator_conditions``. Always active regardless of indicator values.
     - **Conditional variables** appearing in a :class:`HierarchyNode` with non-empty
@@ -1608,7 +1614,9 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         :param tags: Unique string identifiers for each subspace.
         :param hierarchy: A sequence of :class:`HierarchyNode` objects defining the conditional
             structure. Every non-indicator tag must appear in at least one node.
-        :param indicator_tags: Which tags correspond to :class:`BooleanSearchSpace` indicators.
+        :param indicator_tags: Which tags correspond to indicator subspaces. Each tag must
+            reference either a :class:`BooleanSearchSpace` or a dimension-1
+            :class:`CategoricalSearchSpace`.
         :param global_constraints: Constraints always enforced on the full flat vector.
         :param conditional_constraints: Disjunctive constraints gated by indicator conditions.
         :param logical_propositions: Indicator-only consistency constraints.
@@ -1618,6 +1626,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         super().__init__(spaces, tags)
         self._hierarchy = tuple(hierarchy)
         self._indicator_tags = tuple(indicator_tags)
+        self._indicator_value_sets: Dict[str, Tuple[int, ...]] = {}
         self._global_constraints = tuple(global_constraints)
         self._conditional_constraints = tuple(conditional_constraints)
         self._logical_propositions = tuple(logical_propositions)
@@ -1637,16 +1646,28 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
     def _validate(self) -> None:
         all_tags = set(self.subspace_tags)
 
-        # indicator_tags must exist and reference BooleanSearchSpace
+        # indicator_tags must exist and reference a BooleanSearchSpace or a 1-D
+        # CategoricalSearchSpace; record each indicator's permitted value set.
         for itag in self._indicator_tags:
             if itag not in all_tags:
                 raise ValueError(
                     f"Indicator tag '{itag}' not found in subspace tags {all_tags}."
                 )
-            if not isinstance(self.get_subspace(itag), BooleanSearchSpace):
+            sub = self.get_subspace(itag)
+            if isinstance(sub, BooleanSearchSpace):
+                self._indicator_value_sets[itag] = (0, 1)
+            elif isinstance(sub, CategoricalSearchSpace):
+                if len(sub.tags) != 1:
+                    raise ValueError(
+                        f"Indicator tag '{itag}' must reference a dimension-1 "
+                        f"CategoricalSearchSpace, got a categorical of dimension "
+                        f"{len(sub.tags)}."
+                    )
+                self._indicator_value_sets[itag] = tuple(range(len(sub.tags[0])))
+            else:
                 raise ValueError(
-                    f"Indicator tag '{itag}' must reference a BooleanSearchSpace, "
-                    f"got {type(self.get_subspace(itag)).__name__}."
+                    f"Indicator tag '{itag}' must reference a BooleanSearchSpace or a "
+                    f"dimension-1 CategoricalSearchSpace, got {type(sub).__name__}."
                 )
 
         indicator_set = set(self._indicator_tags)
@@ -1678,10 +1699,17 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                         f"HierarchyNode '{node.name}' has indicator_conditions key '{ckey}' "
                         f"which is not in indicator_tags {list(self._indicator_tags)}."
                     )
-                if not isinstance(cval, (bool, int)) or (isinstance(cval, int) and cval not in (0, 1)):
+                if not isinstance(cval, (bool, int)):
                     raise ValueError(
                         f"HierarchyNode '{node.name}' has indicator_conditions value "
-                        f"{cval!r} for key '{ckey}'. Must be bool or int in {{0, 1}}."
+                        f"{cval!r} for key '{ckey}'. Must be a bool or int."
+                    )
+                permitted = self._indicator_value_sets[ckey]
+                if int(cval) not in permitted:
+                    raise ValueError(
+                        f"HierarchyNode '{node.name}' has indicator_conditions value "
+                        f"{cval!r} for key '{ckey}', which is not in the indicator's "
+                        f"permitted set {list(permitted)}."
                     )
                 all_condition_keys.add(ckey)
 
@@ -1708,8 +1736,15 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
 
     @property
     def indicator_tags(self) -> tuple[str, ...]:
-        """The declared Boolean indicator tags."""
+        """The declared indicator tags (Boolean or categorical)."""
         return self._indicator_tags
+
+    @property
+    def indicator_value_sets(self) -> Dict[str, Tuple[int, ...]]:
+        """The permitted integer-valued set for each indicator tag, as built during
+        validation. ``(0, 1)`` for a :class:`BooleanSearchSpace` indicator and
+        ``(0, ..., K-1)`` for a ``K``-ary :class:`CategoricalSearchSpace` indicator."""
+        return dict(self._indicator_value_sets)
 
     @property
     def non_indicator_tags(self) -> tuple[str, ...]:
@@ -1771,7 +1806,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         return values[..., start:end]
 
     def active_subspace_tags(
-        self, indicator_config: Mapping[str, bool]
+        self, indicator_config: Mapping[str, Union[bool, int]]
     ) -> List[str]:
         """
         Return the non-indicator subspace tags that are active for a given indicator
@@ -1788,21 +1823,33 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                         active.append(stag)
         return active
 
-    def enumerate_tasks(self) -> List[Dict[str, bool]]:
+    def enumerate_tasks(self) -> List[Dict[str, Union[bool, int]]]:
         """
-        Return all :math:`2^K` Boolean indicator configurations as a list of dictionaries.
+        Return every indicator configuration as the Cartesian product of each indicator's
+        permitted value set.
 
-        :return: A list of ``{indicator_tag: bool}`` dictionaries, one per task.
+        Boolean indicators contribute the values ``[False, True]``; ``K``-ary categorical
+        indicators contribute ``[0, 1, ..., K-1]``. The total number of configurations
+        therefore equals :math:`2^K` when all indicators are Boolean, and
+        :math:`\\prod_k |\\mathcal{C}_k|` when categorical indicators are involved.
+
+        :return: A list of ``{indicator_tag: value}`` dictionaries, one per task.
         """
         if not self._indicator_tags:
             return [{}]
-        bool_values = [False, True]
+        per_indicator_values: List[Sequence[Union[bool, int]]] = []
+        for itag in self._indicator_tags:
+            sub = self.get_subspace(itag)
+            if isinstance(sub, BooleanSearchSpace):
+                per_indicator_values.append([False, True])
+            else:  # CategoricalSearchSpace; ensured by _validate
+                per_indicator_values.append(list(self._indicator_value_sets[itag]))
         return [
             dict(zip(self._indicator_tags, combo))
-            for combo in itertools_product(bool_values, repeat=len(self._indicator_tags))
+            for combo in itertools_product(*per_indicator_values)
         ]
 
-    def is_active(self, tag: str, indicator_config: Mapping[str, bool]) -> bool:
+    def is_active(self, tag: str, indicator_config: Mapping[str, Union[bool, int]]) -> bool:
         """
         Check whether a non-indicator subspace is active for a given indicator configuration.
 
@@ -1935,14 +1982,16 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
 
     @staticmethod
     def _node_is_active(
-        node: HierarchyNode, indicator_config: Mapping[str, bool]
+        node: HierarchyNode, indicator_config: Mapping[str, Union[bool, int]]
     ) -> bool:
-        """Check whether a node's indicator_conditions are all satisfied."""
+        """Check whether a node's indicator_conditions are all satisfied. Uses integer
+        equality so that K-ary categorical indicators (with values in {0, ..., K-1}) are
+        compared exactly rather than via Boolean truthiness."""
         for ind_tag, required in node.indicator_conditions.items():
             actual = indicator_config.get(ind_tag)
             if actual is None:
                 return False
-            if bool(actual) != bool(required):
+            if int(actual) != int(required):
                 return False
         return True
 
