@@ -2249,6 +2249,119 @@ def test_hss_with_mixed_subspace_types() -> None:
         assert s in space
 
 
+# ===== HierarchicalSearchSpace categorical-indicator tests =====
+
+
+def _make_categorical_hss() -> HierarchicalSearchSpace:
+    """Worked example with a 3-ary categorical indicator gating three branches."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        CategoricalSearchSpace(3),
+        Box([0.0], [5.0]),
+        Box([-1.0], [1.0]),
+    ]
+    tags = ["x1", "y1", "x2", "x3"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}),
+        HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}),
+    ]
+    return HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_categorical_indicator_construction() -> None:
+    space = _make_categorical_hss()
+    assert space.indicator_tags == ("y1",)
+    assert space.indicator_value_sets == {"y1": (0, 1, 2)}
+
+
+def test_hss_categorical_indicator_enumerate_tasks() -> None:
+    tasks = _make_categorical_hss().enumerate_tasks()
+    assert tasks == [{"y1": 0}, {"y1": 1}, {"y1": 2}]
+
+
+def test_hss_categorical_indicator_active_subspaces() -> None:
+    space = _make_categorical_hss()
+    assert space.active_subspace_tags({"y1": 0}) == ["x1"]
+    assert set(space.active_subspace_tags({"y1": 1})) == {"x1", "x2"}
+    assert set(space.active_subspace_tags({"y1": 2})) == {"x1", "x3"}
+
+
+def test_hss_categorical_indicator_is_active() -> None:
+    space = _make_categorical_hss()
+    assert space.is_active("x2", {"y1": 1})
+    assert not space.is_active("x2", {"y1": 2})
+    assert not space.is_active("x2", {"y1": 0})
+    assert space.is_active("x3", {"y1": 2})
+    assert not space.is_active("x3", {"y1": 0})
+
+
+def test_hss_raises_on_multidim_categorical_indicator() -> None:
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        CategoricalSearchSpace([3, 2]),
+    ]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 1})]
+    with pytest.raises(ValueError, match="dimension-1 CategoricalSearchSpace"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_raises_on_out_of_set_condition_value() -> None:
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        CategoricalSearchSpace(3),
+    ]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 5})]
+    with pytest.raises(ValueError, match="not in the indicator's permitted set"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_raises_on_negative_condition_value() -> None:
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        CategoricalSearchSpace(3),
+    ]
+    tags = ["x1", "y1"]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": -1})]
+    with pytest.raises(ValueError, match="not in the indicator's permitted set"):
+        HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+
+
+def test_hss_mixed_boolean_and_categorical_indicators() -> None:
+    """Cartesian product across mixed indicator kinds: |C(y1)| * |C(y2)| = 2 * 3 = 6."""
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        BooleanSearchSpace(),
+        CategoricalSearchSpace(3),
+        Box([0.0], [5.0]),
+    ]
+    tags = ["x1", "y1", "y2", "x2"]
+    hierarchy = [
+        HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+        HierarchyNode(
+            "branch", subspace_tags=["x2"], indicator_conditions={"y1": True, "y2": 2}
+        ),
+    ]
+    space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1", "y2"])
+    tasks = space.enumerate_tasks()
+    assert len(tasks) == 6
+    assert {"y1": False, "y2": 0} in tasks
+    assert {"y1": True, "y2": 2} in tasks
+    assert space.is_active("x2", {"y1": True, "y2": 2})
+    assert not space.is_active("x2", {"y1": True, "y2": 1})
+    assert not space.is_active("x2", {"y1": False, "y2": 2})
+
+
+def test_hss_categorical_indicator_sample_within_bounds() -> None:
+    space = _make_categorical_hss()
+    samples = space.sample(20)
+    assert samples.shape == (20, 4)
+    for s in samples:
+        assert s in space
+
+
 # ===== ConditionalConstraint tests =====
 
 
