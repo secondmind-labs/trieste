@@ -34,6 +34,7 @@ from trieste.models.gpflow.kernels.hierarchical_builders import (
 from trieste.space import (
     BooleanSearchSpace,
     Box,
+    CategoricalSearchSpace,
     HierarchicalSearchSpace,
     HierarchyNode,
 )
@@ -99,6 +100,29 @@ def _multi_dim_space() -> HierarchicalSearchSpace:
     )
 
 
+def _categorical_space() -> HierarchicalSearchSpace:
+    """3-ary categorical indicator y1 gating two branches plus a shared subspace."""
+    return HierarchicalSearchSpace(
+        spaces=[
+            Box([0.0], [1.0]),
+            CategoricalSearchSpace(3),
+            Box([0.0], [5.0]),
+            Box([-1.0], [1.0]),
+        ],
+        tags=["x1", "y1", "x2", "x3"],
+        hierarchy=[
+            HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+            HierarchyNode(
+                "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}
+            ),
+            HierarchyNode(
+                "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}
+            ),
+        ],
+        indicator_tags=["y1"],
+    )
+
+
 # ---------------------------------------------------------------------------
 # primitives_from_space
 # ---------------------------------------------------------------------------
@@ -142,6 +166,25 @@ class TestPrimitivesFromSpace:
             {0: True},
             {0: True},
         ]
+
+    def test_categorical_indicator_requirements_use_int(self) -> None:
+        # Layout: x1 (col 0, shared), y1 (col 1, 3-ary categorical),
+        #         x2 (col 2, y1==1), x3 (col 3, y1==2).
+        space = _categorical_space()
+        feat_dims, bounds, ind_dims, conds = primitives_from_space(space)
+        assert feat_dims == [0, 2, 3]
+        assert ind_dims == [1]
+
+        by_dim = {c.feature_dim: c for c in conds}
+        assert dict(by_dim[0].requirements) == {}
+        assert dict(by_dim[2].requirements) == {0: 1}
+        assert dict(by_dim[3].requirements) == {0: 2}
+
+        # The branch_B value must remain a non-bool int. A latent bool()
+        # coercion would have collapsed the categorical 2 to True (=1) and
+        # made branch_A and branch_B numerically indistinguishable.
+        assert type(by_dim[3].requirements[0]) is int
+        assert by_dim[3].requirements[0] != 1
 
 
 # ---------------------------------------------------------------------------
@@ -218,6 +261,38 @@ class TestFactoryEquivalence:
         K = k.K(X)
         assert K.shape == (2, 2)
         assert tf.reduce_all(tf.math.is_finite(K)).numpy()
+
+    @pytest.mark.parametrize(
+        "factory, kernel_cls",
+        [(arc_kernel_from_space, ArcKernel), (wedge_kernel_from_space, WedgeKernel)],
+    )
+    def test_categorical_factory_matches_hand_built(
+        self, factory, kernel_cls
+    ) -> None:
+        space = _categorical_space()
+        k_factory = factory(space)
+        k_manual = _hand_built(kernel_cls, space)
+        _copy_trainables(k_factory, k_manual)
+
+        # Cover all three categorical values (0, 1, 2) and a non-trivial
+        # mix of feature values so each branch's mask state is exercised.
+        X = tf.constant(
+            [
+                [0.1, 0.0, 2.5, 0.5],   # y1=0: only x1 active
+                [0.4, 1.0, 3.0, -0.2],  # y1=1: x1 + x2 active
+                [0.7, 2.0, 4.0, 0.3],   # y1=2: x1 + x3 active
+            ],
+            dtype=tf.float64,
+        )
+        npt.assert_allclose(
+            k_factory.K(X).numpy(), k_manual.K(X).numpy(), atol=1e-10
+        )
+
+        # The 0 and 2 rows must produce a distinct kernel column from the 1
+        # row: a latent bool() coercion in the builder would treat 1 and 2
+        # as identical (both True), so K[0, 1] would equal K[0, 2].
+        K = k_factory.K(X).numpy()
+        assert not np.isclose(K[0, 1], K[0, 2], atol=1e-6)
 
 
 # ---------------------------------------------------------------------------

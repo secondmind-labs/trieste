@@ -54,7 +54,9 @@ def primitives_from_space(
           ``feature_dim`` set to that column and ``requirements`` populated
           from the owning :class:`HierarchyNode`'s ``indicator_conditions``
           (translating indicator tags into local indices into
-          ``indicator_dims``). Unconditional features produce an
+          ``indicator_dims`` and preserving the integer required value, so
+          both boolean and ``K``-ary categorical indicators round-trip
+          intact). Unconditional features produce an
           :class:`ActivityCondition` with empty requirements.
     """
     indicator_tags = list(space.indicator_tags)
@@ -86,7 +88,7 @@ def primitives_from_space(
         nodes = space.node_for_subspace(tag)
         if nodes and nodes[0].indicator_conditions:
             requirements = {
-                indicator_local_by_tag[ind_tag]: bool(required)
+                indicator_local_by_tag[ind_tag]: int(required)
                 for ind_tag, required in nodes[0].indicator_conditions.items()
             }
         else:

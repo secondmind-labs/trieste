@@ -61,13 +61,16 @@ class ActivityCondition:
     :param feature_dim: The column index into the flat input vector ``X``
         that this condition applies to. Must appear in the kernel's
         ``feature_dims`` argument.
-    :param requirements: Mapping ``{indicator_local_index: required_bool}``.
-        All listed indicators must take their required value for the feature
-        to be active. An empty mapping means the feature is unconditional.
+    :param requirements: Mapping ``{indicator_local_index: required_value}``.
+        The required value is a non-negative integer matching the indicator's
+        permitted set: 0 or 1 for boolean indicators, or any value in
+        ``0..K-1`` for a K-ary categorical indicator. All listed indicators
+        must take their required value for the feature to be active. An
+        empty mapping means the feature is unconditional.
     """
 
     feature_dim: int
-    requirements: Mapping[int, bool] = field(default_factory=dict)
+    requirements: Mapping[int, int] = field(default_factory=dict)
 
     @classmethod
     def unconditional(cls, feature_dim: int) -> "ActivityCondition":
@@ -80,7 +83,7 @@ class ActivityCondition:
         return not self.requirements
 
     def items(self):
-        """Iterate over ``(indicator_local_index, required_bool)`` pairs."""
+        """Iterate over ``(indicator_local_index, required_value)`` pairs."""
         return self.requirements.items()
 
     def __iter__(self):
@@ -115,8 +118,11 @@ def _compile_activity_conditions(
     :param n_indicators: Number of indicator dimensions ``D_i``.
     :return: Tuple ``(required, is_ignore)`` where ``required`` is an
         ``int32`` tensor of shape ``[D_f, D_i]`` with entries in
-        ``{-1, 0, 1}`` and ``is_ignore`` is a ``bool`` tensor of the same
-        shape, True where ``required == -1``.
+        ``{-1} ∪ {0, 1, ...}`` (``-1`` is the ignored-indicator sentinel;
+        non-negative values are the required indicator values, supporting
+        boolean ``0/1`` indicators and ``K``-ary categorical
+        ``0..K-1`` indicators alike) and ``is_ignore`` is a ``bool`` tensor
+        of the same shape, True where ``required == -1``.
     """
     n_features = len(feature_dims)
     feat_to_local = {int(dim): j for j, dim in enumerate(feature_dims)}
@@ -146,19 +152,26 @@ def _compile_activity_conditions(
         seen.add(c.feature_dim)
 
         j = feat_to_local[c.feature_dim]
-        for k, required_bool in c.items():
+        for k, required_value in c.items():
             if not (0 <= int(k) < n_indicators):
                 raise ValueError(
                     f"ActivityCondition(feature_dim={c.feature_dim}) references "
                     f"indicator index {k}; must be in [0, {n_indicators})."
                 )
-            val = 1 if bool(required_bool) else 0
+            val = int(required_value)
+            if val < 0:
+                raise ValueError(
+                    f"ActivityCondition(feature_dim={c.feature_dim}) requires "
+                    f"value {required_value!r} for indicator {k}; required "
+                    f"values must be non-negative integers (negative collides "
+                    f"with the ignored-indicator sentinel)."
+                )
             existing = required[j, int(k)]
             if existing != _IGNORE and existing != val:
                 raise ValueError(
                     f"ActivityCondition(feature_dim={c.feature_dim}) contains "
                     f"contradictory requirements for indicator {k}: both "
-                    f"{bool(existing)} and {bool(required_bool)}."
+                    f"{int(existing)} and {val}."
                 )
             required[j, int(k)] = val
 
@@ -289,14 +302,16 @@ class _HierarchicalEmbeddingKernel(gpflow.kernels.Kernel):
 
         ind_vals = tf.gather(X, self._indicator_dims, axis=-1)
         ind_vals = tf.cast(ind_vals, gpflow.default_float())
-        ind_int = tf.cast(ind_vals > to_default_float(0.5), tf.int32)  # [N, D_i]
+        ind_int = tf.cast(tf.round(ind_vals), tf.int32)  # [N, D_i]
 
         # Evaluate the per-feature AND-conjunction over all indicators by
         # broadcasting the batch of indicator values ``ind_int`` ([N, 1, D_i])
         # against the compiled requirements ``_required`` ([1, D_f, D_i]).
         # An indicator slot matches when either it is ignored for this feature
-        # (``_required_is_ignore`` true) or the observed 0/1 value equals the
-        # required value. A feature is active iff every indicator matches.
+        # (``_required_is_ignore`` true) or the observed integer value equals
+        # the required value (boolean indicators carry 0/1, categorical
+        # indicators carry 0..K-1). A feature is active iff every indicator
+        # matches.
         match = tf.logical_or(
             self._required_is_ignore[None, :, :],
             tf.equal(ind_int[:, None, :], self._required[None, :, :]),

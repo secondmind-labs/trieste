@@ -127,6 +127,14 @@ class TestActivityCondition:
         with pytest.raises(Exception):
             c.feature_dim = 1  # type: ignore[misc]
 
+    def test_accepts_int_requirements(self) -> None:
+        # Categorical indicators carry integer values >= 2; they must
+        # round-trip through the dataclass intact (no bool coercion).
+        c = ActivityCondition(feature_dim=0, requirements={0: 2})
+        assert c.requirements[0] == 2
+        assert not c.is_unconditional
+        assert bool(c)
+
 
 # ---------------------------------------------------------------------------
 # Tests: _compile_activity_conditions
@@ -215,6 +223,41 @@ class TestCompileActivityConditions:
 
         object.__setattr__(contradictory, "requirements", _Requirements())
         with pytest.raises(ValueError, match="contradictory requirements"):
+            _compile_activity_conditions(
+                [contradictory], feature_dims=[0], n_indicators=1
+            )
+
+    def test_compiles_categorical_int_value(self) -> None:
+        required, is_ignore = _compile_activity_conditions(
+            [ActivityCondition(feature_dim=0, requirements={0: 2})],
+            feature_dims=[0],
+            n_indicators=1,
+        )
+        assert required.numpy().tolist() == [[2]]
+        assert is_ignore.numpy().tolist() == [[False]]
+
+    def test_rejects_negative_required_value(self) -> None:
+        # A negative value would collide with the _IGNORE = -1 sentinel.
+        with pytest.raises(ValueError, match="non-negative"):
+            _compile_activity_conditions(
+                [ActivityCondition(feature_dim=0, requirements={0: -1})],
+                feature_dims=[0],
+                n_indicators=1,
+            )
+
+    def test_contradiction_message_uses_int(self) -> None:
+        # The error message should report the actual integer values, not
+        # bool-coerced ones (which previously made "1 vs 2" read as "True
+        # and True").
+        contradictory = ActivityCondition.__new__(ActivityCondition)
+        object.__setattr__(contradictory, "feature_dim", 0)
+
+        class _Requirements(dict):
+            def items(self):  # type: ignore[override]
+                return [(0, 1), (0, 2)]
+
+        object.__setattr__(contradictory, "requirements", _Requirements())
+        with pytest.raises(ValueError, match="both 1 and 2"):
             _compile_activity_conditions(
                 [contradictory], feature_dims=[0], n_indicators=1
             )
@@ -394,6 +437,49 @@ class TestBuildActivityMask:
         pts = tf.constant([[0.1, 0.2], [0.3, 0.4]], dtype=tf.float64)
         mask = _mask(kernel_cls, prim, pts)
         tf.debugging.assert_equal(mask, tf.constant([[True, True], [True, True]]))
+
+    @pytest.mark.parametrize("kernel_cls", [ArcKernel, WedgeKernel])
+    def test_categorical_indicator_mask(self, kernel_cls) -> None:
+        # x1 (col 0, uncond), y1 (col 1, 3-ary categorical), x2 (col 2, y1=2).
+        prim = dict(
+            feature_dims=[0, 2],
+            feature_bounds=tf.constant([[0.0, 1.0], [0.0, 5.0]], dtype=tf.float64),
+            indicator_dims=[1],
+            activity_conditions=[
+                ActivityCondition(feature_dim=0),
+                ActivityCondition(feature_dim=2, requirements={0: 2}),
+            ],
+        )
+        pts = tf.constant(
+            [[0.1, 0.0, 0.5], [0.1, 1.0, 0.5], [0.1, 2.0, 0.5]], dtype=tf.float64
+        )
+        mask = _mask(kernel_cls, prim, pts)
+        # x1 always active; x2 only when y1 == 2.
+        expected = tf.constant(
+            [[True, False], [True, False], [True, True]], dtype=tf.bool
+        )
+        tf.debugging.assert_equal(mask, expected)
+
+    @pytest.mark.parametrize("kernel_cls", [ArcKernel, WedgeKernel])
+    def test_categorical_mask_robust_to_float_drift(self, kernel_cls) -> None:
+        # Indicator values stored as floats with small drift around the
+        # integer category should still round to the right integer.
+        prim = dict(
+            feature_dims=[0, 2],
+            feature_bounds=tf.constant([[0.0, 1.0], [0.0, 5.0]], dtype=tf.float64),
+            indicator_dims=[1],
+            activity_conditions=[
+                ActivityCondition(feature_dim=0),
+                ActivityCondition(feature_dim=2, requirements={0: 2}),
+            ],
+        )
+        pts = tf.constant(
+            [[0.1, 1.999, 0.5], [0.1, 2.001, 0.5]], dtype=tf.float64
+        )
+        mask = _mask(kernel_cls, prim, pts)
+        # Both rows should round y1 to 2 and activate x2.
+        expected = tf.constant([[True, True], [True, True]], dtype=tf.bool)
+        tf.debugging.assert_equal(mask, expected)
 
 
 # ---------------------------------------------------------------------------
