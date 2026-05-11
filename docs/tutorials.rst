@@ -43,6 +43,8 @@ The following tutorials illustrate solving different types of optimization probl
    notebooks/rembo
    notebooks/trust_region
    notebooks/mixed_search_spaces
+   notebooks/hierarchical_search_space
+   notebooks/hierarchical_kernel_from_scratch
 
 Frequently asked questions
 --------------------------
