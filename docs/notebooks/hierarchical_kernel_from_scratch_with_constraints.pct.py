@@ -85,19 +85,11 @@ spaces = [
 tags = ["x1", "y1", "y2", "x2", "x3", "x4"]
 hierarchy = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode(
-        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}
-    ),
-    HierarchyNode(
-        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}
-    ),
-    HierarchyNode(
-        "branch_C", subspace_tags=["x4"], indicator_conditions={"y2": True}
-    ),
+    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+    HierarchyNode("branch_C", subspace_tags=["x4"], indicator_conditions={"y2": True}),
 ]
-space_unconstrained = HierarchicalSearchSpace(
-    spaces, tags, hierarchy, indicator_tags=["y1", "y2"]
-)
+space_unconstrained = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1", "y2"])
 print("dimension:        ", int(space_unconstrained.dimension))
 print("indicator_tags:   ", space_unconstrained.indicator_tags)
 print("non_indicator_tags:", space_unconstrained.non_indicator_tags)
@@ -192,9 +184,7 @@ demo_batch = tf.constant(
     dtype=tf.float64,
 )
 residuals = space_with_cond.constraints_residuals(demo_batch).numpy()
-print(
-    "residuals per row (global lb, global ub, conditional lb, conditional ub):"
-)
+print("residuals per row (global lb, global ub, conditional lb, conditional ub):")
 for row, r in zip(demo_batch.numpy(), residuals):
     print(f"  {row}  ->  {r}")
 print(f"\nINACTIVE_CONSTRAINT_RESIDUAL = {INACTIVE_CONSTRAINT_RESIDUAL:.1e}")
@@ -304,17 +294,13 @@ def primitives_from_space(space):
         col += sub_dim
 
     if lowers:
-        feature_bounds = tf.stack(
-            [tf.concat(lowers, axis=0), tf.concat(uppers, axis=0)], axis=-1
-        )
+        feature_bounds = tf.stack([tf.concat(lowers, axis=0), tf.concat(uppers, axis=0)], axis=-1)
     else:
         feature_bounds = tf.zeros([0, 2], dtype=gpflow.default_float())
     return feature_dims, feature_bounds, indicator_dims, activity_conditions
 
 
-feature_dims, feature_bounds, indicator_dims, activity_conditions = (
-    primitives_from_space(space)
-)
+feature_dims, feature_bounds, indicator_dims, activity_conditions = primitives_from_space(space)
 print("feature_dims:        ", feature_dims)
 print("indicator_dims:      ", indicator_dims)
 print("feature_bounds:\n", feature_bounds.numpy())
@@ -371,9 +357,7 @@ class ArcKernel(gpflow.kernels.Kernel):
 
         self._feature_dims = tf.constant(feature_dims, dtype=tf.int32)
         self._indicator_dims = tf.constant(indicator_dims, dtype=tf.int32)
-        self._bounds = tf.convert_to_tensor(
-            feature_bounds, dtype=gpflow.default_float()
-        )
+        self._bounds = tf.convert_to_tensor(feature_bounds, dtype=gpflow.default_float())
         self._required = tf.constant(required, dtype=tf.int32)
         self._required_is_ignore = tf.equal(self._required, _IGNORE)
 
@@ -397,9 +381,7 @@ class ArcKernel(gpflow.kernels.Kernel):
         if self._n_cond > 0:
             self.angle = gpflow.Parameter(
                 0.5 * tf.ones(self._n_cond, dtype=gpflow.default_float()),
-                transform=tfp.bijectors.Sigmoid(
-                    to_default_float(0.1), to_default_float(0.9)
-                ),
+                transform=tfp.bijectors.Sigmoid(to_default_float(0.1), to_default_float(0.9)),
                 name="angle",
             )
             self.radius = gpflow.Parameter(
@@ -423,9 +405,7 @@ class ArcKernel(gpflow.kernels.Kernel):
         X = tf.cast(X, gpflow.default_float())
         v = tf.gather(X, self._feature_dims, axis=-1)
         lo, hi = self._bounds[:, 0], self._bounds[:, 1]
-        ranges = tf.where(
-            tf.abs(hi - lo) < 1e-12, tf.ones_like(hi - lo), hi - lo
-        )
+        ranges = tf.where(tf.abs(hi - lo) < 1e-12, tf.ones_like(hi - lo), hi - lo)
         return (v - lo) / ranges
 
     def _embed(self, X):
@@ -453,9 +433,7 @@ class ArcKernel(gpflow.kernels.Kernel):
         return self.base_kernel.K_diag(self._embed(X))
 
 
-arc = ArcKernel(
-    feature_dims, feature_bounds, indicator_dims, activity_conditions
-)
+arc = ArcKernel(feature_dims, feature_bounds, indicator_dims, activity_conditions)
 print("n_uncond:", arc._n_uncond, "  n_cond:", arc._n_cond)
 
 # %% [markdown]
@@ -482,12 +460,8 @@ class WedgeKernel(ArcKernel):
                 name="theta2",
             )
             self.rho = gpflow.Parameter(
-                0.5
-                * np.pi
-                * tf.ones(self._n_cond, dtype=gpflow.default_float()),
-                transform=tfp.bijectors.Sigmoid(
-                    to_default_float(1e-6), to_default_float(np.pi)
-                ),
+                0.5 * np.pi * tf.ones(self._n_cond, dtype=gpflow.default_float()),
+                transform=tfp.bijectors.Sigmoid(to_default_float(1e-6), to_default_float(np.pi)),
                 name="rho",
             )
 
@@ -500,9 +474,7 @@ class WedgeKernel(ArcKernel):
         if self._n_cond > 0:
             v_c = tf.gather(v, self._cond_local_idx, axis=-1)
             m_c = tf.gather(m, self._cond_local_idx, axis=-1)
-            comp1 = (
-                self.theta1 * v_c + self.theta2 * v_c * tf.cos(self.rho)
-            ) * m_c
+            comp1 = (self.theta1 * v_c + self.theta2 * v_c * tf.cos(self.rho)) * m_c
             comp2 = (self.theta2 * v_c * tf.sin(self.rho)) * m_c
             parts.extend([comp1, comp2])
         if not parts:
@@ -547,13 +519,9 @@ X_train = raw[mask]
 Y_train = objective(X_train) + 0.05 * np.random.randn(X_train.shape[0], 1)
 print(f"feasibility-filter: kept {X_train.shape[0]}/80 raw samples")
 
-arc_for_fit = ArcKernel(
-    feature_dims, feature_bounds, indicator_dims, activity_conditions
-)
+arc_for_fit = ArcKernel(feature_dims, feature_bounds, indicator_dims, activity_conditions)
 kernel = gpflow.kernels.Constant() * arc_for_fit
-gpr = gpflow.models.GPR(
-    data=(X_train, Y_train), kernel=kernel, noise_variance=0.05
-)
+gpr = gpflow.models.GPR(data=(X_train, Y_train), kernel=kernel, noise_variance=0.05)
 print(f"LML before fit: {gpr.log_marginal_likelihood().numpy():+.3f}")
 gpflow.optimizers.Scipy().minimize(
     gpr.training_loss, gpr.trainable_variables, options={"maxiter": 100}
@@ -587,22 +555,16 @@ def expected_improvement(model, candidates, best):
     mean, var = model.predict_f(candidates)
     mean = tf.reshape(mean, [-1])
     sigma = tf.sqrt(tf.maximum(tf.reshape(var, [-1]), 1e-12))
-    normal = tfp.distributions.Normal(
-        loc=tf.zeros_like(mean), scale=tf.ones_like(mean)
-    )
+    normal = tfp.distributions.Normal(loc=tf.zeros_like(mean), scale=tf.ones_like(mean))
     z = (best - mean) / sigma
     ei = (best - mean) * normal.cdf(z) + sigma * normal.prob(z)
     return tf.maximum(ei, 0.0)
 
 
 def refit_arc(X, Y):
-    arc_local = ArcKernel(
-        feature_dims, feature_bounds, indicator_dims, activity_conditions
-    )
+    arc_local = ArcKernel(feature_dims, feature_bounds, indicator_dims, activity_conditions)
     kernel_local = gpflow.kernels.Constant() * arc_local
-    gpr_local = gpflow.models.GPR(
-        data=(X, Y), kernel=kernel_local, noise_variance=0.05
-    )
+    gpr_local = gpflow.models.GPR(data=(X, Y), kernel=kernel_local, noise_variance=0.05)
     gpflow.optimizers.Scipy().minimize(
         gpr_local.training_loss,
         gpr_local.trainable_variables,
@@ -620,9 +582,7 @@ for step in range(n_bo_steps):
     if feasible.shape[0] == 0:
         print(f"step {step+1}: no feasible candidates in pool; skipping")
         continue
-    ei = expected_improvement(
-        gpr, tf.constant(feasible, dtype=tf.float64), best_so_far
-    ).numpy()
+    ei = expected_improvement(gpr, tf.constant(feasible, dtype=tf.float64), best_so_far).numpy()
     idx = int(np.argmax(ei))
     x_next = feasible[idx : idx + 1]
     y_next = objective(x_next) + 0.05 * np.random.randn(1, 1)
@@ -666,9 +626,7 @@ feas = space.is_feasible(tf.constant(X_test, dtype=tf.float64)).numpy()
 mean, var = gpr.predict_f(X_test)
 truth = objective(X_test).ravel()
 print("test predictions:")
-for x, m, v, t, ok in zip(
-    X_test, mean.numpy().ravel(), var.numpy().ravel(), truth, feas
-):
+for x, m, v, t, ok in zip(X_test, mean.numpy().ravel(), var.numpy().ravel(), truth, feas):
     print(
         f"  x = {x.tolist()}  ->  mean = {m:+.3f}  var = {v:.3f}  "
         f"truth = {t:+.3f}  feasible = {bool(ok)}"
@@ -681,13 +639,9 @@ for x, m, v, t, ok in zip(
 # BO loop at all. Two cells suffice.
 
 # %%
-wedge_for_fit = WedgeKernel(
-    feature_dims, feature_bounds, indicator_dims, activity_conditions
-)
+wedge_for_fit = WedgeKernel(feature_dims, feature_bounds, indicator_dims, activity_conditions)
 kernel_w = gpflow.kernels.Constant() * wedge_for_fit
-gpr_w = gpflow.models.GPR(
-    data=(X_train, Y_train), kernel=kernel_w, noise_variance=0.05
-)
+gpr_w = gpflow.models.GPR(data=(X_train, Y_train), kernel=kernel_w, noise_variance=0.05)
 gpflow.optimizers.Scipy().minimize(
     gpr_w.training_loss, gpr_w.trainable_variables, options={"maxiter": 100}
 )
@@ -698,13 +652,8 @@ print("learnt rho   :", wedge_for_fit.rho.numpy())
 
 mean_w, _ = gpr_w.predict_f(X_test)
 print("\nWedge predictions on the same held-out batch:")
-for x, m_a, m_w, t in zip(
-    X_test, mean.numpy().ravel(), mean_w.numpy().ravel(), truth
-):
-    print(
-        f"  x = {x.tolist()}  ->  arc = {m_a:+.3f}  "
-        f"wedge = {m_w:+.3f}  truth = {t:+.3f}"
-    )
+for x, m_a, m_w, t in zip(X_test, mean.numpy().ravel(), mean_w.numpy().ravel(), truth):
+    print(f"  x = {x.tolist()}  ->  arc = {m_a:+.3f}  " f"wedge = {m_w:+.3f}  truth = {t:+.3f}")
 
 # %% [markdown]
 # ## What this shows
@@ -715,7 +664,7 @@ for x, m_a, m_w, t in zip(
 #   the constraints, the constraints never inspect the kernel.
 # * The constraint API is gradient-aware where it can be (global +
 #   conditional via `constraints_residuals`) and gradient-agnostic where it
-#   can't be (logical propositions via `is_feasible`). 
+#   can't be (logical propositions via `is_feasible`).
 # * The Big-M inactive-residual handles indicator-gated constraints in a
 #   way gradient-based polishers can swallow without modification: a
 #   conditional constraint with its indicators in the "off" state reports
