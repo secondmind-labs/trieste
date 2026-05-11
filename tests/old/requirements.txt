@@ -16,6 +16,9 @@ packaging
 pytest
 PyYAML
 
+# setuptools pin
+setuptools<81
+
 # pin to older version of TF (for now)
 tensorflow ~= 2.8.0
 tensorflow-probability ~= 0.13.0
