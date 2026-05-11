@@ -73,8 +73,12 @@ spaces = [
 tags = ["x1", "y1", "x2", "x3"]
 hierarchy = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+    HierarchyNode(
+        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}
+    ),
+    HierarchyNode(
+        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}
+    ),
 ]
 space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
 
@@ -138,10 +142,16 @@ spaces_c = [
 ]
 hierarchy_c = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}),
+    HierarchyNode(
+        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}
+    ),
+    HierarchyNode(
+        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}
+    ),
 ]
-space_c = HierarchicalSearchSpace(spaces_c, tags, hierarchy_c, indicator_tags=["y1"])
+space_c = HierarchicalSearchSpace(
+    spaces_c, tags, hierarchy_c, indicator_tags=["y1"]
+)
 
 print("indicator_value_sets:", space_c.indicator_value_sets)
 print("enumerate_tasks:", space_c.enumerate_tasks())
@@ -166,7 +176,11 @@ spaces_mix = [
 tags_mix = ["x1", "y1", "y2", "x2"]
 hierarchy_mix = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch", subspace_tags=["x2"], indicator_conditions={"y1": True, "y2": 2}),
+    HierarchyNode(
+        "branch",
+        subspace_tags=["x2"],
+        indicator_conditions={"y1": True, "y2": 2},
+    ),
 ]
 space_mix = HierarchicalSearchSpace(
     spaces_mix, tags_mix, hierarchy_mix, indicator_tags=["y1", "y2"]
@@ -204,7 +218,11 @@ _expect_value_error(
     lambda: HierarchicalSearchSpace(
         spaces=[Box([0.0], [1.0]), CategoricalSearchSpace(3)],
         tags=["x1", "y1"],
-        hierarchy=[HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 5})],
+        hierarchy=[
+            HierarchyNode(
+                "n", subspace_tags=["x1"], indicator_conditions={"y1": 5}
+            )
+        ],
         indicator_tags=["y1"],
     )
 )
@@ -213,7 +231,11 @@ _expect_value_error(
     lambda: HierarchicalSearchSpace(
         spaces=[Box([0.0], [1.0]), CategoricalSearchSpace([3, 2])],
         tags=["x1", "y1"],
-        hierarchy=[HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 1})],
+        hierarchy=[
+            HierarchyNode(
+                "n", subspace_tags=["x1"], indicator_conditions={"y1": 1}
+            )
+        ],
         indicator_tags=["y1"],
     )
 )

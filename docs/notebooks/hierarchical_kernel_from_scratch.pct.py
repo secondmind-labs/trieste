@@ -89,8 +89,12 @@ spaces = [
 tags = ["x1", "y1", "x2", "x3"]
 hierarchy = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+    HierarchyNode(
+        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}
+    ),
+    HierarchyNode(
+        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}
+    ),
 ]
 space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
 print("dimension:", int(space.dimension))
@@ -148,13 +152,17 @@ def primitives_from_space(space):
         col += sub_dim
 
     if lowers:
-        feature_bounds = tf.stack([tf.concat(lowers, axis=0), tf.concat(uppers, axis=0)], axis=-1)
+        feature_bounds = tf.stack(
+            [tf.concat(lowers, axis=0), tf.concat(uppers, axis=0)], axis=-1
+        )
     else:
         feature_bounds = tf.zeros([0, 2], dtype=gpflow.default_float())
     return feature_dims, feature_bounds, indicator_dims, activity_conditions
 
 
-feature_dims, feature_bounds, indicator_dims, activity_conditions = primitives_from_space(space)
+feature_dims, feature_bounds, indicator_dims, activity_conditions = (
+    primitives_from_space(space)
+)
 print("feature_dims:        ", feature_dims)
 print("indicator_dims:      ", indicator_dims)
 print("feature_bounds:\n", feature_bounds.numpy())
@@ -206,7 +214,9 @@ class ArcKernel(gpflow.kernels.Kernel):
 
         self._feature_dims = tf.constant(feature_dims, dtype=tf.int32)
         self._indicator_dims = tf.constant(indicator_dims, dtype=tf.int32)
-        self._bounds = tf.convert_to_tensor(feature_bounds, dtype=gpflow.default_float())
+        self._bounds = tf.convert_to_tensor(
+            feature_bounds, dtype=gpflow.default_float()
+        )
         self._required = tf.constant(required, dtype=tf.int32)
         self._required_is_ignore = tf.equal(self._required, _IGNORE)
 
@@ -230,7 +240,9 @@ class ArcKernel(gpflow.kernels.Kernel):
         if self._n_cond > 0:
             self.angle = gpflow.Parameter(
                 0.5 * tf.ones(self._n_cond, dtype=gpflow.default_float()),
-                transform=tfp.bijectors.Sigmoid(to_default_float(0.1), to_default_float(0.9)),
+                transform=tfp.bijectors.Sigmoid(
+                    to_default_float(0.1), to_default_float(0.9)
+                ),
                 name="angle",
             )
             self.radius = gpflow.Parameter(
@@ -254,7 +266,9 @@ class ArcKernel(gpflow.kernels.Kernel):
         X = tf.cast(X, gpflow.default_float())
         v = tf.gather(X, self._feature_dims, axis=-1)
         lo, hi = self._bounds[:, 0], self._bounds[:, 1]
-        ranges = tf.where(tf.abs(hi - lo) < 1e-12, tf.ones_like(hi - lo), hi - lo)
+        ranges = tf.where(
+            tf.abs(hi - lo) < 1e-12, tf.ones_like(hi - lo), hi - lo
+        )
         return (v - lo) / ranges
 
     def _embed(self, X):
@@ -282,7 +296,9 @@ class ArcKernel(gpflow.kernels.Kernel):
         return self.base_kernel.K_diag(self._embed(X))
 
 
-arc = ArcKernel(feature_dims, feature_bounds, indicator_dims, activity_conditions)
+arc = ArcKernel(
+    feature_dims, feature_bounds, indicator_dims, activity_conditions
+)
 print("n_uncond:", arc._n_uncond, "  n_cond:", arc._n_cond)
 
 # %% [markdown]
@@ -333,9 +349,13 @@ X_train = space.sample(40).numpy()
 Y_train = objective(X_train) + 0.05 * np.random.randn(40, 1)
 
 # Wrap in a Constant() factor so the GP can learn an overall variance.
-arc_for_fit = ArcKernel(feature_dims, feature_bounds, indicator_dims, activity_conditions)
+arc_for_fit = ArcKernel(
+    feature_dims, feature_bounds, indicator_dims, activity_conditions
+)
 kernel = gpflow.kernels.Constant() * arc_for_fit
-gpr = gpflow.models.GPR(data=(X_train, Y_train), kernel=kernel, noise_variance=0.05)
+gpr = gpflow.models.GPR(
+    data=(X_train, Y_train), kernel=kernel, noise_variance=0.05
+)
 
 print(f"LML before fit: {gpr.log_marginal_likelihood().numpy():+.3f}")
 gpflow.optimizers.Scipy().minimize(
@@ -365,7 +385,9 @@ mean, var = gpr.predict_f(X_test)
 print("test predictions vs ground truth:")
 truth = objective(X_test).ravel()
 for x, m, v, t in zip(X_test, mean.numpy().ravel(), var.numpy().ravel(), truth):
-    print(f"  x = {x.tolist()}  ->  mean = {m:+.3f}  var = {v:.3f}  truth = {t:+.3f}")
+    print(
+        f"  x = {x.tolist()}  ->  mean = {m:+.3f}  var = {v:.3f}  truth = {t:+.3f}"
+    )
 
 # %% [markdown]
 # ## A Wedge variant
@@ -400,8 +422,12 @@ class WedgeKernel(ArcKernel):
                 name="theta2",
             )
             self.rho = gpflow.Parameter(
-                0.5 * np.pi * tf.ones(self._n_cond, dtype=gpflow.default_float()),
-                transform=tfp.bijectors.Sigmoid(to_default_float(1e-6), to_default_float(np.pi)),
+                0.5
+                * np.pi
+                * tf.ones(self._n_cond, dtype=gpflow.default_float()),
+                transform=tfp.bijectors.Sigmoid(
+                    to_default_float(1e-6), to_default_float(np.pi)
+                ),
                 name="rho",
             )
 
@@ -414,7 +440,9 @@ class WedgeKernel(ArcKernel):
         if self._n_cond > 0:
             v_c = tf.gather(v, self._cond_local_idx, axis=-1)
             m_c = tf.gather(m, self._cond_local_idx, axis=-1)
-            comp1 = (self.theta1 * v_c + self.theta2 * v_c * tf.cos(self.rho)) * m_c
+            comp1 = (
+                self.theta1 * v_c + self.theta2 * v_c * tf.cos(self.rho)
+            ) * m_c
             comp2 = (self.theta2 * v_c * tf.sin(self.rho)) * m_c
             parts.extend([comp1, comp2])
         if not parts:
@@ -422,7 +450,9 @@ class WedgeKernel(ArcKernel):
         return tf.concat(parts, axis=-1)
 
 
-wedge = WedgeKernel(feature_dims, feature_bounds, indicator_dims, activity_conditions)
+wedge = WedgeKernel(
+    feature_dims, feature_bounds, indicator_dims, activity_conditions
+)
 K_wedge = wedge.K(X_demo).numpy()
 print("Wedge kernel matrix on demo points:")
 print(K_wedge)
