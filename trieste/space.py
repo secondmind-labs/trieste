@@ -18,7 +18,8 @@ import operator
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import reduce
-from itertools import chain, product as itertools_product
+from itertools import chain
+from itertools import product as itertools_product
 from typing import (
     Callable,
     Dict,
