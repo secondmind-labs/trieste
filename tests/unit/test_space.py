@@ -2026,7 +2026,10 @@ def test_hss_raises_if_indicator_tag_not_in_tags() -> None:
 
 
 def test_hss_raises_if_indicator_tag_not_boolean_space() -> None:
-    spaces: list[SearchSpace] = [Box([0.0], [1.0]), DiscreteSearchSpace(tf.constant([[0], [1], [2]]))]
+    spaces: list[SearchSpace] = [
+        Box([0.0], [1.0]),
+        DiscreteSearchSpace(tf.constant([[0], [1], [2]])),
+    ]
     tags = ["x1", "y1"]
     hierarchy = [HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": True})]
     with pytest.raises(ValueError, match="must reference a BooleanSearchSpace"):
@@ -2337,9 +2340,7 @@ def test_hss_mixed_boolean_and_categorical_indicators() -> None:
     tags = ["x1", "y1", "y2", "x2"]
     hierarchy = [
         HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-        HierarchyNode(
-            "branch", subspace_tags=["x2"], indicator_conditions={"y1": True, "y2": 2}
-        ),
+        HierarchyNode("branch", subspace_tags=["x2"], indicator_conditions={"y1": True, "y2": 2}),
     ]
     space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1", "y2"])
     tasks = space.enumerate_tasks()
