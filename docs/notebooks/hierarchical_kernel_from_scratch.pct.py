@@ -29,14 +29,14 @@
 # 2014) and the **Wedge** kernel (Horn et al. 2019) — *from scratch*, using
 # only:
 #
-# * the search-space primitives in `trieste.space` (already in this branch),
+# * the search-space primitives in `trieste.space`,
 # * GPflow's stationary kernels as the base covariance in the embedded space,
 # * TensorFlow / TensorFlow Probability for differentiable plumbing.
 #
 # Nothing from `trieste.models` is used. The point is to show that the
 # `HierarchicalSearchSpace` API alone is enough to wire a conditional GP, and
-# to give a self-contained reading of the kernel before its trieste-packaged
-# version lands.
+# to give a self-contained reading of the kernel before its added to relevant
+# tooling.
 
 # %%
 import gpflow
@@ -433,12 +433,5 @@ print(K_wedge)
 # The whole conditional-GP pipeline above relies only on:
 #
 # * `BooleanSearchSpace`, `Box`, `HierarchyNode`, `HierarchicalSearchSpace`
-#   from `trieste.space` (the PR 1 / PR 1b surface);
+#   from `trieste.space`;
 # * GPflow / TF / TFP for the differentiable kernel itself.
-#
-# A later PR packages exactly this Arc / Wedge construction into trieste —
-# adding an `ActivityCondition` dataclass for the activity-mask DSL, a shared
-# `_HierarchicalEmbeddingKernel` base class so the two kernels share the
-# embedding plumbing, and a `hierarchical_builders.primitives_from_space`
-# factory that wraps the index-and-bounds bookkeeping shown above. The
-# behaviour is the same as what you have just read.
