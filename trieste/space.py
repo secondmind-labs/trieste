@@ -274,9 +274,7 @@ class ConditionalConstraint:
         inactive_residual = tf.fill(
             tf.shape(real_residual), tf.constant(INACTIVE_CONSTRAINT_RESIDUAL, dtype=points.dtype)
         )
-        mask_expanded = tf.broadcast_to(
-            active_mask[:, tf.newaxis], tf.shape(real_residual)
-        )
+        mask_expanded = tf.broadcast_to(active_mask[:, tf.newaxis], tf.shape(real_residual))
         return tf.where(mask_expanded, real_residual, inactive_residual)
 
 
@@ -1896,9 +1894,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
     def has_constraints(self) -> bool:
         """True if any global, conditional, or logical constraints are present."""
         return bool(
-            self._global_constraints
-            or self._conditional_constraints
-            or self._logical_propositions
+            self._global_constraints or self._conditional_constraints or self._logical_propositions
         )
 
     def constraints_residuals(self, points: TensorType) -> TensorType:
@@ -1947,8 +1943,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
 
         if self._logical_propositions:
             ind_values: Dict[str, TensorType] = {
-                tag: self.get_subspace_component(tag, points)
-                for tag in self._indicator_tags
+                tag: self.get_subspace_component(tag, points) for tag in self._indicator_tags
             }
             for prop in self._logical_propositions:
                 feasible = feasible & prop.fun(ind_values)
@@ -1976,11 +1971,12 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         conditional_constraints = list(self._conditional_constraints) + list(
             other._conditional_constraints
         )
-        logical_propositions = list(self._logical_propositions) + list(
-            other._logical_propositions
-        )
+        logical_propositions = list(self._logical_propositions) + list(other._logical_propositions)
         return HierarchicalSearchSpace(
-            spaces, tags, hierarchy, indicator_tags,
+            spaces,
+            tags,
+            hierarchy,
+            indicator_tags,
             global_constraints=global_constraints,
             conditional_constraints=conditional_constraints,
             logical_propositions=logical_propositions,
