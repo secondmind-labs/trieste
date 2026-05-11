@@ -22,7 +22,7 @@
 # Variables in such a space are gated by *indicator variables* (binary or categorical)
 # that decide which other dimensions are meaningful.
 #
-# The core primitives introduced in PR 1 of the hierarchical-inputs effort are:
+# The core primitives introduced:
 #
 # - `BooleanSearchSpace`: a one-dimensional discrete space restricted to ``{0, 1}``.
 # - `CategoricalSearchSpace`: a one-dimensional discrete space over ``K`` named or
@@ -34,10 +34,7 @@
 #
 # We walk through the API on two small examples: a Boolean indicator (the canonical
 # four-variable disjunction) and a 3-ary categorical indicator. The notebook stops at
-# the search-space layer; an end-to-end Bayesian-optimisation tutorial that combines
-# `HierarchicalSearchSpace` with the Conditional kernel and the GA acquisition
-# optimiser will land alongside PR 4 (kernels) and PR 6 (benchmarks).
-
+# the search-space layer.
 # %%
 import numpy as np
 import tensorflow as tf
@@ -73,12 +70,8 @@ spaces = [
 tags = ["x1", "y1", "x2", "x3"]
 hierarchy = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode(
-        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}
-    ),
-    HierarchyNode(
-        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}
-    ),
+    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
+    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
 ]
 space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
 
@@ -142,16 +135,10 @@ spaces_c = [
 ]
 hierarchy_c = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode(
-        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}
-    ),
-    HierarchyNode(
-        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}
-    ),
+    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}),
+    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}),
 ]
-space_c = HierarchicalSearchSpace(
-    spaces_c, tags, hierarchy_c, indicator_tags=["y1"]
-)
+space_c = HierarchicalSearchSpace(spaces_c, tags, hierarchy_c, indicator_tags=["y1"])
 
 print("indicator_value_sets:", space_c.indicator_value_sets)
 print("enumerate_tasks:", space_c.enumerate_tasks())
@@ -218,11 +205,7 @@ _expect_value_error(
     lambda: HierarchicalSearchSpace(
         spaces=[Box([0.0], [1.0]), CategoricalSearchSpace(3)],
         tags=["x1", "y1"],
-        hierarchy=[
-            HierarchyNode(
-                "n", subspace_tags=["x1"], indicator_conditions={"y1": 5}
-            )
-        ],
+        hierarchy=[HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 5})],
         indicator_tags=["y1"],
     )
 )
@@ -231,31 +214,7 @@ _expect_value_error(
     lambda: HierarchicalSearchSpace(
         spaces=[Box([0.0], [1.0]), CategoricalSearchSpace([3, 2])],
         tags=["x1", "y1"],
-        hierarchy=[
-            HierarchyNode(
-                "n", subspace_tags=["x1"], indicator_conditions={"y1": 1}
-            )
-        ],
+        hierarchy=[HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 1})],
         indicator_tags=["y1"],
     )
 )
-
-# %% [markdown]
-# ## What's next
-#
-# This notebook covers the PR 1 surface only. PR 1b adds:
-#
-# - `ConditionalConstraint` for indicator-gated disjunctive constraints
-#   $h_{ik}(\mathbf{x}) \le 0$;
-# - `LogicalProposition` for consistency conditions $\Omega(\mathbf{Y})$ on the
-#   indicators alone;
-# - constraint integration on `HierarchicalSearchSpace`
-#   (`global_constraints`, `conditional_constraints`, `logical_propositions`,
-#   `constraints_residuals`, `is_feasible`).
-#
-# Once PR 1b is merged this notebook will be extended with a constrained example
-# (a global linear coupling, a conditional inequality gated by an indicator, and a
-# logical proposition on the indicators). A richer end-to-end Bayesian-optimisation
-# tutorial that combines `HierarchicalSearchSpace` with the Conditional kernel and
-# the GA acquisition optimiser will land alongside PR 4 (kernels) and PR 6
-# (benchmarks).
