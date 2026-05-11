@@ -65,16 +65,20 @@ tf.random.set_seed(1793)
 
 # %%
 spaces = [
-    Box([0.0], [1.0]),     # x1: unconditional
+    Box([0.0], [1.0]),  # x1: unconditional
     BooleanSearchSpace(),  # y1: Boolean indicator
-    Box([0.0], [5.0]),     # x2: active when y1 = 1
-    Box([-1.0], [1.0]),    # x3: active when y1 = 0
+    Box([0.0], [5.0]),  # x2: active when y1 = 1
+    Box([-1.0], [1.0]),  # x3: active when y1 = 0
 ]
 tags = ["x1", "y1", "x2", "x3"]
 hierarchy = [
-    HierarchyNode("shared",   subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+    HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+    HierarchyNode(
+        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}
+    ),
+    HierarchyNode(
+        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}
+    ),
 ]
 space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
 
@@ -131,17 +135,23 @@ print("nodes containing 'x2':", [n.name for n in space.node_for_subspace("x2")])
 
 # %%
 spaces_c = [
-    Box([0.0], [1.0]),                      # x1: unconditional
-    CategoricalSearchSpace(3),              # y1: 3-ary indicator
-    Box([0.0], [5.0]),                      # x2: active when y1 = 1
-    Box([-1.0], [1.0]),                     # x3: active when y1 = 2
+    Box([0.0], [1.0]),  # x1: unconditional
+    CategoricalSearchSpace(3),  # y1: 3-ary indicator
+    Box([0.0], [5.0]),  # x2: active when y1 = 1
+    Box([-1.0], [1.0]),  # x3: active when y1 = 2
 ]
 hierarchy_c = [
-    HierarchyNode("shared",   subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}),
+    HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
+    HierarchyNode(
+        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}
+    ),
+    HierarchyNode(
+        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}
+    ),
 ]
-space_c = HierarchicalSearchSpace(spaces_c, tags, hierarchy_c, indicator_tags=["y1"])
+space_c = HierarchicalSearchSpace(
+    spaces_c, tags, hierarchy_c, indicator_tags=["y1"]
+)
 
 print("indicator_value_sets:", space_c.indicator_value_sets)
 print("enumerate_tasks:", space_c.enumerate_tasks())
@@ -167,7 +177,9 @@ tags_mix = ["x1", "y1", "y2", "x2"]
 hierarchy_mix = [
     HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
     HierarchyNode(
-        "branch", subspace_tags=["x2"], indicator_conditions={"y1": True, "y2": 2}
+        "branch",
+        subspace_tags=["x2"],
+        indicator_conditions={"y1": True, "y2": 2},
     ),
 ]
 space_mix = HierarchicalSearchSpace(
@@ -190,6 +202,7 @@ for t in tasks:
 #   permitted set (e.g. `5` for a 3-ary categorical, or any non-Boolean value for a
 #   `BooleanSearchSpace`);
 # - an indicator that gates nothing (does not appear as a key in any node).
+
 
 # %%
 def _expect_value_error(fn):

@@ -18,8 +18,20 @@ import operator
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import reduce
-from itertools import chain, product as itertools_product
-from typing import Callable, Dict, List, Mapping, Optional, Sequence, Tuple, TypeVar, Union, overload
+from itertools import chain
+from itertools import product as itertools_product
+from typing import (
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
 import numpy as np
 import scipy.optimize as spo
@@ -608,9 +620,9 @@ class BooleanSearchSpace(DiscreteSearchSpace):
 
         >>> space = BooleanSearchSpace()
         >>> assert space.dimension == 1
-        >>> assert tf.constant([0.0]) in space
-        >>> assert tf.constant([1.0]) in space
-        >>> assert tf.constant([2.0]) not in space
+        >>> assert tf.constant([0.0], dtype=tf.float64) in space
+        >>> assert tf.constant([1.0], dtype=tf.float64) in space
+        >>> assert tf.constant([2.0], dtype=tf.float64) not in space
 
     """
 
@@ -1635,9 +1647,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         self._validate()
 
         subspace_sizes = self.subspace_dimension
-        self._subspace_sizes_by_tag: Dict[str, TensorType] = dict(
-            zip(self._tags, subspace_sizes)
-        )
+        self._subspace_sizes_by_tag: Dict[str, TensorType] = dict(zip(self._tags, subspace_sizes))
         self._subspace_starting_indices: Dict[str, TensorType] = dict(
             zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
         )
@@ -1650,9 +1660,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         # CategoricalSearchSpace; record each indicator's permitted value set.
         for itag in self._indicator_tags:
             if itag not in all_tags:
-                raise ValueError(
-                    f"Indicator tag '{itag}' not found in subspace tags {all_tags}."
-                )
+                raise ValueError(f"Indicator tag '{itag}' not found in subspace tags {all_tags}.")
             sub = self.get_subspace(itag)
             if isinstance(sub, BooleanSearchSpace):
                 self._indicator_value_sets[itag] = (0, 1)
@@ -1805,9 +1813,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         end = start + self._subspace_sizes_by_tag[tag]
         return values[..., start:end]
 
-    def active_subspace_tags(
-        self, indicator_config: Mapping[str, Union[bool, int]]
-    ) -> List[str]:
+    def active_subspace_tags(self, indicator_config: Mapping[str, Union[bool, int]]) -> List[str]:
         """
         Return the non-indicator subspace tags that are active for a given indicator
         configuration.
