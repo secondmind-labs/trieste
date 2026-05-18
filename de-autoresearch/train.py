@@ -1,9 +1,11 @@
 # Copyright (C) Secondmind Ltd 2026 - All Rights Reserved
 # Unauthorised copying of this file, via any medium is strictly prohibited
 # Proprietary and confidential
+import shutil
 from pathlib import Path
 
 import numpy as np
+import tensorflow as tf
 from gpflow.keras import tf_keras
 
 from trieste.data import Dataset
@@ -13,6 +15,7 @@ from trieste.models.optimizer import KerasOptimizer
 
 
 DATA_DIR = Path(__file__).resolve().parent
+PROFILE_DIR = DATA_DIR / "logs" / "profile"
 
 
 def rmse(y_true: np.ndarray, y: np.ndarray) -> float:
@@ -77,8 +80,19 @@ if __name__ == "__main__":
     )
 
     model = build_model(train_dataset)
-    model.optimize(train_dataset)
 
+    shutil.rmtree(PROFILE_DIR, ignore_errors=True)
+    PROFILE_DIR.mkdir(parents=True)
+
+    options = tf.profiler.experimental.ProfilerOptions(
+        host_tracer_level=2,
+        python_tracer_level=1,
+        device_tracer_level=1,
+    )
+
+    with tf.profiler.experimental.Profile(str(PROFILE_DIR), options=options):
+        model.optimize(train_dataset)
+    
     test_data = np.load(DATA_DIR / "test.npz")
     mu, var = model.predict_y(test_data["X"])
 
