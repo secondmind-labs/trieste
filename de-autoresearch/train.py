@@ -109,3 +109,4 @@ if __name__ == "__main__":
     print("---")
     print(f"Test RMSE: {test_rmse:.6f}")
     print(f"Test NLPD: {test_nlpd:.6f}")
+    print(f"Training Time: {timer.time():.2f}s")
