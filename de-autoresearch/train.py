@@ -84,14 +84,15 @@ if __name__ == "__main__":
     shutil.rmtree(PROFILE_DIR, ignore_errors=True)
     PROFILE_DIR.mkdir(parents=True)
 
-    options = tf.profiler.experimental.ProfilerOptions(
-        host_tracer_level=2,
-        python_tracer_level=1,
-        device_tracer_level=1,
-    )
+    #
+    # options = tf.profiler.experimental.ProfilerOptions(
+    #     host_tracer_level=2,
+    #     python_tracer_level=1,
+    #     device_tracer_level=1,
+    # )
 
-    with tf.profiler.experimental.Profile(str(PROFILE_DIR), options=options):
-        model.optimize(train_dataset)
+    # with tf.profiler.experimental.Profile(str(PROFILE_DIR), options=options):
+    model.optimize(train_dataset)
     
     test_data = np.load(DATA_DIR / "test.npz")
     mu, var = model.predict_y(test_data["X"])
@@ -99,5 +100,6 @@ if __name__ == "__main__":
     y_test = test_data["y"].reshape(-1, 1)
     test_rmse = rmse(y_test, np.asarray(mu))
     test_nlpd = nlpd(y_test, np.asarray(mu), np.asarray(var))
+    print("---")
     print(f"Test RMSE: {test_rmse:.6f}")
     print(f"Test NLPD: {test_nlpd:.6f}")
