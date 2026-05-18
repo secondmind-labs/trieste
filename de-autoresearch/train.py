@@ -51,7 +51,6 @@ def build_model(dataset: Dataset) -> DeepEnsemble:
     fit_args = {
         "batch_size": 128,
         "epochs": 3,
-        "validation_split": 0.0,
         "verbose": 1,
     }
 
