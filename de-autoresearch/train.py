@@ -12,6 +12,7 @@ from trieste.data import Dataset
 from trieste.models.keras import DeepEnsemble
 from trieste.models.keras.builders import build_keras_ensemble
 from trieste.models.optimizer import KerasOptimizer
+from trieste.utils.misc import Timer
 
 
 DATA_DIR = Path(__file__).resolve().parent
@@ -92,7 +93,8 @@ if __name__ == "__main__":
     # )
 
     # with tf.profiler.experimental.Profile(str(PROFILE_DIR), options=options):
-    model.optimize(train_dataset)
+    with Timer() as timer:
+        model.optimize(train_dataset)
     
     test_data = np.load(DATA_DIR / "test.npz")
     mu, var = model.predict_y(test_data["X"])
