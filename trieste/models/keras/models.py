@@ -517,11 +517,14 @@ class DeepEnsemble(
         tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))
 
         if "steps_per_epoch" in self.optimizer.fit_args:
-            tf_dataset = tf_dataset.prefetch(tf.data.experimental.AUTOTUNE).repeat()
+            tf_dataset = tf_dataset.prefetch(tf.data.AUTOTUNE).repeat()
 
         if "batch_size" in self.optimizer.fit_args:
             batch_size = self.optimizer.fit_args["batch_size"]
             tf_dataset = tf_dataset.batch(batch_size)
+
+        if "steps_per_epoch" not in self.optimizer.fit_args:
+            tf_dataset = tf_dataset.prefetch(tf.data.AUTOTUNE)
 
         return tf_dataset
 
