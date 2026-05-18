@@ -1,0 +1,6 @@
+Commit	Training Time	GPU Utilisation	GPU Memory	RMSE	NLPD	Status	Description
+af0508ab	52.71	71	17	1.006263	1.427326	Keep	Baseline before any Deep Ensemble implementation changes
+8749d7a8	52.20	69	17	1.005391	1.423919	Keep	Prefetch batched tf.data when epochs finite; tf.data.AUTOTUNE
+1beb1859	53.36	72	18	1.007941	1.429075	Discard	Batched bootstrap indices; slower and worse RMSE/NLPD vs baseline
+1bd79575	53.54	72	17	1.005146	1.424070	Discard	In-memory tensor fit path; slower than prefetched tf.data
+043cf459	53.77	71	17	1.006152	1.425045	Discard	tf.data.cache before prefetch; slower wall clock vs prefetch-only
