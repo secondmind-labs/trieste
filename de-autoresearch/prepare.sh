@@ -1,6 +1,7 @@
 python -m pip install --upgrade pip
 pip install -e .
 python3 -m pip install 'tensorflow[and-cuda]'
+pip install -U tensorboard_plugin_profile
 pip install .[qhsri] -r tests/latest/requirements.txt -c tests/latest/constraints.txt
 
 export PATH="/usr/local/cuda/bin:$HOME/.local/bin:$PATH"
