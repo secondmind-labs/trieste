@@ -100,6 +100,10 @@ if __name__ == "__main__":
     y_test = test_data["y"].reshape(-1, 1)
     test_rmse = rmse(y_test, np.asarray(mu))
     test_nlpd = nlpd(y_test, np.asarray(mu), np.asarray(var))
+
+    # Log results
+    # Note: before the following lines, if profiling is enabled this line is printed
+    # Collecting XSpace to repository: <absolute path>.xplane.pb
     print("---")
     print(f"Test RMSE: {test_rmse:.6f}")
     print(f"Test NLPD: {test_nlpd:.6f}")
