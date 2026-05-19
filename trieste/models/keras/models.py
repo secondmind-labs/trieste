@@ -14,17 +14,8 @@
 
 from __future__ import annotations
 
-import os
 import re
 from typing import Any, Dict, Mapping, Optional
-
-# Enable XLA GPU persistent compilation cache so repeated invocations (across
-# processes) can skip the expensive ptxas step for identical model/input shapes.
-_xla_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "trieste_xla")
-os.makedirs(_xla_cache_dir, exist_ok=True)
-_xla_flags = os.environ.get("XLA_FLAGS", "")
-if "--xla_gpu_cache_dir" not in _xla_flags:
-    os.environ["XLA_FLAGS"] = f"{_xla_flags} --xla_gpu_cache_dir={_xla_cache_dir}".strip()
 
 import dill
 import tensorflow as tf
@@ -560,7 +551,13 @@ class DeepEnsemble(
         tf_optimizer = self.optimizer.optimizer
         model = self.model
 
-        @tf.function(jit_compile=True)
+        # Build concrete input_signature so XLA compiles for fixed shapes,
+        # avoiding dynamic shape handling and enabling more aggressive kernel fusion.
+        first_x, first_y = next(iter(tf_train_dataset))
+        x_sig = {k: tf.TensorSpec(shape=v.shape, dtype=v.dtype) for k, v in first_x.items()}
+        y_sig = {k: tf.TensorSpec(shape=v.shape, dtype=v.dtype) for k, v in first_y.items()}
+
+        @tf.function(jit_compile=True, input_signature=[x_sig, y_sig])
         def train_step(x_batch: Dict[str, tf.Tensor], y_batch: Dict[str, tf.Tensor]) -> tf.Tensor:
             with tf.GradientTape() as tape:
                 y_pred = model(x_batch, training=True)
