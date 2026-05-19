@@ -177,6 +177,7 @@ class DeepEnsemble(
         self._model = model
         self._bootstrap = bootstrap
         self._diversify = diversify
+        self._compile_args = dict(compile_args)
 
     def __repr__(self) -> str:
         """"""
@@ -490,6 +491,15 @@ class DeepEnsemble(
             fit_args["validation_data"] = tf.data.Dataset.from_tensor_slices((x_val, y_val))
 
         x, y = self.prepare_dataset(dataset)
+
+        if "batch_size" in fit_args and "steps_per_epoch" not in fit_args:
+            self.model.compile(
+                optimizer=self.optimizer.optimizer,
+                loss=[self.optimizer.loss] * self.ensemble_size,
+                metrics=[self.optimizer.metrics] * self.ensemble_size,
+                **{**self._compile_args, "steps_per_execution": 1},
+            )
+
         tf_train_dataset = self._build_tf_dataset(x, y)
 
         history = self.model.fit(
@@ -517,11 +527,14 @@ class DeepEnsemble(
         tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))
 
         if "steps_per_epoch" in self.optimizer.fit_args:
-            tf_dataset = tf_dataset.prefetch(tf.data.experimental.AUTOTUNE).repeat()
+            tf_dataset = tf_dataset.prefetch(tf.data.AUTOTUNE).repeat()
 
         if "batch_size" in self.optimizer.fit_args:
             batch_size = self.optimizer.fit_args["batch_size"]
             tf_dataset = tf_dataset.batch(batch_size)
+
+        if "steps_per_epoch" not in self.optimizer.fit_args:
+            tf_dataset = tf_dataset.prefetch(tf.data.AUTOTUNE)
 
         return tf_dataset
 
