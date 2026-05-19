@@ -557,10 +557,11 @@ class DeepEnsemble(
                 y_pred = model(x_batch, training=True)
                 preds = y_pred if isinstance(y_pred, (list, tuple)) else [y_pred]
                 # Cast targets to match model's output dtype (Keras does this internally too).
+                # Reduce mean over batch per output, then sum (matching Keras SUM_OVER_BATCH_SIZE).
                 model_dtype = preds[0].dtype
                 total_loss = tf.add_n(
                     [
-                        loss_fn(tf.cast(y_batch[name], model_dtype), pred)
+                        tf.reduce_mean(loss_fn(tf.cast(y_batch[name], model_dtype), pred))
                         for name, pred in zip(output_names, preds)
                     ]
                 )
