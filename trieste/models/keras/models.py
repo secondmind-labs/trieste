@@ -492,23 +492,34 @@ class DeepEnsemble(
 
         x, y = self.prepare_dataset(dataset)
 
-        if "batch_size" in fit_args and "steps_per_epoch" not in fit_args:
-            self.model.compile(
-                optimizer=self.optimizer.optimizer,
-                loss=[self.optimizer.loss] * self.ensemble_size,
-                metrics=[self.optimizer.metrics] * self.ensemble_size,
-                **{**self._compile_args, "steps_per_execution": 1, "jit_compile": False},
-            )
+        use_custom_loop = (
+            "batch_size" in fit_args
+            and "steps_per_epoch" not in fit_args
+            and "validation_data" not in fit_args
+        )
 
         tf_train_dataset = self._build_tf_dataset(x, y)
 
-        history = self.model.fit(
-            tf_train_dataset,
-            **fit_args,
-            initial_epoch=self._absolute_epochs,
-        )
+        if use_custom_loop:
+            n_epochs = self._custom_train_loop(tf_train_dataset, fit_args)
+            history = None
+        else:
+            if "batch_size" in fit_args and "steps_per_epoch" not in fit_args:
+                self.model.compile(
+                    optimizer=self.optimizer.optimizer,
+                    loss=[self.optimizer.loss] * self.ensemble_size,
+                    metrics=[self.optimizer.metrics] * self.ensemble_size,
+                    **{**self._compile_args, "steps_per_execution": 1},
+                )
+            history = self.model.fit(
+                tf_train_dataset,
+                **fit_args,
+                initial_epoch=self._absolute_epochs,
+            )
+            n_epochs = len(history.history["loss"])
+
         if self._continuous_optimisation:
-            self._absolute_epochs = self._absolute_epochs + len(history.history["loss"])
+            self._absolute_epochs = self._absolute_epochs + n_epochs
 
         # Reset lr in case there was an lr schedule: a schedule will have changed the learning
         # rate, so that the next time we call `optimize` the starting learning rate would be
@@ -520,6 +531,77 @@ class DeepEnsemble(
             self.optimizer.optimizer.lr.assign(self.original_lr)
 
         return history
+
+    def _custom_train_loop(
+        self, tf_train_dataset: tf.data.Dataset, fit_args: dict
+    ) -> int:
+        """Custom training loop: @tf.function epoch avoids per-step Python overhead.
+
+        The inner 625-step loop runs entirely in the TF C++ runtime (via tf.while_loop),
+        with each step XLA-compiled. EarlyStopping is re-implemented at Python level
+        (only ~600 epoch-level calls instead of 375,000 per-step calls).
+
+        Returns the number of epochs trained.
+        """
+        end_epoch = fit_args.get("epochs", 1)
+        start_epoch = self._absolute_epochs
+
+        output_names = self.model.output_names
+        loss_fn = self.optimizer.loss
+        tf_optimizer = self.optimizer.optimizer
+        model = self.model
+
+        @tf.function(jit_compile=True)
+        def train_step(x_batch: Dict[str, tf.Tensor], y_batch: Dict[str, tf.Tensor]) -> tf.Tensor:
+            with tf.GradientTape() as tape:
+                y_pred = model(x_batch, training=True)
+                preds = y_pred if isinstance(y_pred, (list, tuple)) else [y_pred]
+                total_loss = tf.add_n(
+                    [loss_fn(y_batch[name], pred) for name, pred in zip(output_names, preds)]
+                )
+            grads = tape.gradient(total_loss, model.trainable_variables)
+            tf_optimizer.apply_gradients(zip(grads, model.trainable_variables))
+            return total_loss
+
+        @tf.function
+        def run_one_epoch() -> tf.Tensor:
+            total_loss = tf.constant(0.0)
+            n_steps = tf.constant(0)
+            for x, y in tf_train_dataset:
+                total_loss = total_loss + train_step(x, y)
+                n_steps = n_steps + 1
+            return total_loss / tf.cast(n_steps, tf.float32)
+
+        patience = None
+        restore_best_weights = False
+        for cb in fit_args.get("callbacks", []):
+            if isinstance(cb, tf_keras.callbacks.EarlyStopping):
+                patience = cb.patience
+                restore_best_weights = cb.restore_best_weights
+                break
+
+        best_loss = float("inf")
+        best_weights = None
+        wait = 0
+        epochs_trained = 0
+
+        for _ in range(start_epoch, end_epoch):
+            epoch_loss = float(run_one_epoch())
+            epochs_trained += 1
+            if patience is not None:
+                if epoch_loss < best_loss:
+                    best_loss = epoch_loss
+                    if restore_best_weights:
+                        best_weights = model.get_weights()
+                    wait = 0
+                else:
+                    wait += 1
+                    if wait >= patience:
+                        if restore_best_weights and best_weights is not None:
+                            model.set_weights(best_weights)
+                        break
+
+        return epochs_trained
 
     def _build_tf_dataset(
         self, x: Dict[str, tf.Tensor], y: Dict[str, tf.Tensor]
