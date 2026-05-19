@@ -573,7 +573,7 @@ class DeepEnsemble(
             total_loss = tf.constant(0.0)
             n_steps = tf.constant(0)
             for x, y in tf_train_dataset:
-                total_loss = total_loss + train_step(x, y)
+                total_loss = total_loss + tf.cast(train_step(x, y), tf.float32)
                 n_steps = n_steps + 1
             return total_loss / tf.cast(n_steps, tf.float32)
 
