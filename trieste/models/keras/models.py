@@ -497,7 +497,7 @@ class DeepEnsemble(
                 optimizer=self.optimizer.optimizer,
                 loss=[self.optimizer.loss] * self.ensemble_size,
                 metrics=[self.optimizer.metrics] * self.ensemble_size,
-                **{**self._compile_args, "steps_per_execution": 1},
+                **{**self._compile_args, "steps_per_execution": 1, "jit_compile": False},
             )
 
         tf_train_dataset = self._build_tf_dataset(x, y)
