@@ -595,14 +595,15 @@ class DeepEnsemble(
         ]
 
         # ── Stack input/output data: [n_ensemble, n_batches, batch_size, D] ──────
+        n_use = n_batches * batch_size  # drop tail samples so reshape is exact
         x_stacked = tf.stack(
-            [tf.reshape(x[name], [n_batches, batch_size, -1]) for name in model.input_names],
+            [tf.reshape(x[name][:n_use], [n_batches, batch_size, -1]) for name in model.input_names],
             axis=0,
-        )  # [10, n_batches, batch_size, D_in]
+        )  # [n_ensemble, n_batches, batch_size, D_in]
         y_stacked = tf.stack(
-            [tf.reshape(y[name], [n_batches, batch_size, -1]) for name in model.output_names],
+            [tf.reshape(y[name][:n_use], [n_batches, batch_size, -1]) for name in model.output_names],
             axis=0,
-        )  # [10, n_batches, batch_size, 1]
+        )  # [n_ensemble, n_batches, batch_size, 1]
 
         inv_n_batches = tf.constant(1.0 / n_batches)
         log_2pi = tf.constant(_math.log(2.0 * _math.pi), dtype=x_stacked.dtype)
