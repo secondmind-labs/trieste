@@ -561,33 +561,28 @@ class DeepEnsemble(
         x_batched = {k: tf.reshape(v, [n_batches, batch_size, -1]) for k, v in x.items()}
         y_batched = {k: tf.reshape(v, [n_batches, batch_size, -1]) for k, v in y.items()}
 
-        @tf.function(jit_compile=True)
-        def train_step(x_batch: Dict[str, tf.Tensor], y_batch: Dict[str, tf.Tensor]) -> tf.Tensor:
-            with tf.GradientTape() as tape:
-                y_pred = model(x_batch, training=True)
-                preds = y_pred if isinstance(y_pred, (list, tuple)) else [y_pred]
-                # Cast targets to match model's output dtype (Keras does this internally too).
-                # Reduce mean over batch per output, then sum (matching Keras SUM_OVER_BATCH_SIZE).
-                model_dtype = preds[0].dtype
-                total_loss = tf.add_n(
-                    [
-                        tf.reduce_mean(loss_fn(tf.cast(y_batch[name], model_dtype), pred))
-                        for name, pred in zip(output_names, preds)
-                    ]
-                )
-            grads = tape.gradient(total_loss, model.trainable_variables)
-            tf_optimizer.apply_gradients(zip(grads, model.trainable_variables))
-            return total_loss
-
         inv_n_batches = tf.constant(1.0 / n_batches)
 
-        @tf.function
+        @tf.function(jit_compile=True)
         def run_one_epoch() -> tf.Tensor:
+            """Entire epoch compiled as one XLA program: 625 steps, pure GPU, no CPU sync."""
             total_loss = tf.constant(0.0)
             for i in tf.range(n_batches):
                 x_i = {k: x_batched[k][i] for k in x_batched}
                 y_i = {k: y_batched[k][i] for k in y_batched}
-                total_loss = total_loss + tf.cast(train_step(x_i, y_i), tf.float32)
+                with tf.GradientTape() as tape:
+                    y_pred = model(x_i, training=True)
+                    preds = y_pred if isinstance(y_pred, (list, tuple)) else [y_pred]
+                    model_dtype = preds[0].dtype
+                    step_loss = tf.add_n(
+                        [
+                            tf.reduce_mean(loss_fn(tf.cast(y_i[name], model_dtype), pred))
+                            for name, pred in zip(output_names, preds)
+                        ]
+                    )
+                grads = tape.gradient(step_loss, model.trainable_variables)
+                tf_optimizer.apply_gradients(zip(grads, model.trainable_variables))
+                total_loss = total_loss + tf.cast(step_loss, tf.float32)
             return total_loss * inv_n_batches
 
         patience = None
