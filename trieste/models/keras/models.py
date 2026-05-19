@@ -507,12 +507,11 @@ class DeepEnsemble(
             and "validation_data" not in fit_args
         )
 
-        tf_train_dataset = self._build_tf_dataset(x, y)
-
         if use_custom_loop:
-            n_epochs = self._custom_train_loop(tf_train_dataset, fit_args)
+            n_epochs = self._custom_train_loop(x, y, fit_args)
             history = None
         else:
+            tf_train_dataset = self._build_tf_dataset(x, y)
             if "batch_size" in fit_args and "steps_per_epoch" not in fit_args:
                 self.model.compile(
                     optimizer=self.optimizer.optimizer,
@@ -542,13 +541,16 @@ class DeepEnsemble(
         return history
 
     def _custom_train_loop(
-        self, tf_train_dataset: tf.data.Dataset, fit_args: dict
+        self, x: Dict[str, tf.Tensor], y: Dict[str, tf.Tensor], fit_args: dict
     ) -> int:
         """Custom training loop: @tf.function epoch avoids per-step Python overhead.
 
-        The inner 625-step loop runs entirely in the TF C++ runtime (via tf.while_loop),
+        The inner n_batches-step loop runs entirely in the TF C++ runtime (via tf.while_loop),
         with each step XLA-compiled. EarlyStopping is re-implemented at Python level
         (only ~600 epoch-level calls instead of 375,000 per-step calls).
+
+        Uses pre-batched tensors directly (tf.reshape is a no-copy view), bypassing
+        the tf.data pipeline to use a simpler tf.range loop with static iteration count.
 
         Returns the number of epochs trained.
         """
@@ -559,6 +561,14 @@ class DeepEnsemble(
         loss_fn = self.optimizer.loss
         tf_optimizer = self.optimizer.optimizer
         model = self.model
+
+        batch_size = fit_args["batch_size"]
+        n_samples = next(iter(x.values())).shape[0]
+        n_batches = n_samples // batch_size
+
+        # Reshape [N, D] → [n_batches, batch_size, D] (no-copy view).
+        x_batched = {k: tf.reshape(v, [n_batches, batch_size, -1]) for k, v in x.items()}
+        y_batched = {k: tf.reshape(v, [n_batches, batch_size, -1]) for k, v in y.items()}
 
         @tf.function(jit_compile=True)
         def train_step(x_batch: Dict[str, tf.Tensor], y_batch: Dict[str, tf.Tensor]) -> tf.Tensor:
@@ -578,14 +588,16 @@ class DeepEnsemble(
             tf_optimizer.apply_gradients(zip(grads, model.trainable_variables))
             return total_loss
 
+        inv_n_batches = tf.constant(1.0 / n_batches)
+
         @tf.function
         def run_one_epoch() -> tf.Tensor:
             total_loss = tf.constant(0.0)
-            n_steps = tf.constant(0)
-            for x, y in tf_train_dataset:
-                total_loss = total_loss + tf.cast(train_step(x, y), tf.float32)
-                n_steps = n_steps + 1
-            return total_loss / tf.cast(n_steps, tf.float32)
+            for i in tf.range(n_batches):
+                x_i = {k: x_batched[k][i] for k in x_batched}
+                y_i = {k: y_batched[k][i] for k in y_batched}
+                total_loss = total_loss + tf.cast(train_step(x_i, y_i), tf.float32)
+            return total_loss * inv_n_batches
 
         patience = None
         restore_best_weights = False
