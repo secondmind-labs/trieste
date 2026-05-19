@@ -14,8 +14,17 @@
 
 from __future__ import annotations
 
+import os
 import re
 from typing import Any, Dict, Mapping, Optional
+
+# Enable XLA GPU persistent compilation cache so repeated invocations (across
+# processes) can skip the expensive ptxas step for identical model/input shapes.
+_xla_cache_dir = os.path.join(os.path.expanduser("~"), ".cache", "trieste_xla")
+os.makedirs(_xla_cache_dir, exist_ok=True)
+_xla_flags = os.environ.get("XLA_FLAGS", "")
+if "--xla_gpu_cache_dir" not in _xla_flags:
+    os.environ["XLA_FLAGS"] = f"{_xla_flags} --xla_gpu_cache_dir={_xla_cache_dir}".strip()
 
 import dill
 import tensorflow as tf
