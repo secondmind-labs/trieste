@@ -27,8 +27,14 @@
 # - `BooleanSearchSpace`: a one-dimensional discrete space restricted to ``{0, 1}``.
 # - `CategoricalSearchSpace`: a one-dimensional discrete space over ``K`` named or
 #   indexed categories.
-# - `HierarchyNode`: a frozen dataclass describing one disjunction (which subspaces are
-#   active when which indicators take which values).
+# - `gpflow.kernels.HierarchyNode` (re-exported as `trieste.space.HierarchyNode`): a
+#   GPflow primitive describing one disjunction via `feature_dims` (integer flat-vector
+#   columns), `feature_bounds`, and an `ActivityCondition` whose `requirements` map
+#   indicator local indices to required integer values.
+# - `hierarchy_node_from_tags`: a thin tag-based factory that resolves
+#   `subspace_tags` / `activity_condition_tags` against a `subspaces` mapping and
+#   returns a populated `HierarchyNode`. User-facing examples use this factory rather
+#   than constructing `HierarchyNode` by hand.
 # - `HierarchicalSearchSpace`: a `CollectionSearchSpace` that wires the indicators and
 #   nodes together and exposes a tag-based query API for downstream consumers.
 #
@@ -40,11 +46,11 @@ import numpy as np
 import tensorflow as tf
 
 from trieste.space import (
-    Box,
     BooleanSearchSpace,
+    Box,
     CategoricalSearchSpace,
-    HierarchyNode,
     HierarchicalSearchSpace,
+    hierarchy_node_from_tags,
 )
 
 np.random.seed(1793)
@@ -57,23 +63,33 @@ tf.random.set_seed(1793)
 # continuous and always active; $y_1$ is the indicator; $x_2$ is continuous and active
 # only when $y_1 = 1$; $x_3$ is continuous and active only when $y_1 = 0$.
 #
-# We list the subspaces, give them tags, then describe the hierarchy as three
-# `HierarchyNode`s — one unconditional ("shared") and two gated by `y1`.
+# We give each subspace a tag in the `subspaces` mapping (iteration order defines
+# the flat-vector layout), then describe the hierarchy as three nodes — one
+# unconditional ("shared") and two gated by `y1`. `hierarchy_node_from_tags`
+# resolves the tag-based inputs to a populated `gpflow.kernels.HierarchyNode`.
 
 # %%
-spaces = [
-    Box([0.0], [1.0]),  # x1: unconditional
-    BooleanSearchSpace(),  # y1: Boolean indicator
-    Box([0.0], [5.0]),  # x2: active when y1 = 1
-    Box([-1.0], [1.0]),  # x3: active when y1 = 0
-]
-tags = ["x1", "y1", "x2", "x3"]
+subspaces = {
+    "x1": Box([0.0], [1.0]),  # unconditional
+    "y1": BooleanSearchSpace(),  # Boolean indicator
+    "x2": Box([0.0], [5.0]),  # active when y1 = 1
+    "x3": Box([-1.0], [1.0]),  # active when y1 = 0
+}
 hierarchy = [
-    HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
+    hierarchy_node_from_tags(
+        "shared", subspace_tags=["x1"],
+        subspaces=subspaces, indicator_tags=["y1"],
+    ),
+    hierarchy_node_from_tags(
+        "branch_A", subspace_tags=["x2"], activity_condition_tags={"y1": 1},
+        subspaces=subspaces, indicator_tags=["y1"],
+    ),
+    hierarchy_node_from_tags(
+        "branch_B", subspace_tags=["x3"], activity_condition_tags={"y1": 0},
+        subspaces=subspaces, indicator_tags=["y1"],
+    ),
 ]
-space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+space = HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1"])
 
 print("dimension:", int(space.dimension))
 print("indicator_tags:", space.indicator_tags)
@@ -127,18 +143,27 @@ print("nodes containing 'x2':", [n.name for n in space.node_for_subspace("x2")])
 # types $\{0\colon\text{shared-only},\;1\colon\text{branch A},\;2\colon\text{branch B}\}$.
 
 # %%
-spaces_c = [
-    Box([0.0], [1.0]),  # x1: unconditional
-    CategoricalSearchSpace(3),  # y1: 3-ary indicator
-    Box([0.0], [5.0]),  # x2: active when y1 = 1
-    Box([-1.0], [1.0]),  # x3: active when y1 = 2
-]
+subspaces_c = {
+    "x1": Box([0.0], [1.0]),  # unconditional
+    "y1": CategoricalSearchSpace(3),  # 3-ary indicator
+    "x2": Box([0.0], [5.0]),  # active when y1 = 1
+    "x3": Box([-1.0], [1.0]),  # active when y1 = 2
+}
 hierarchy_c = [
-    HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": 1}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": 2}),
+    hierarchy_node_from_tags(
+        "shared", subspace_tags=["x1"],
+        subspaces=subspaces_c, indicator_tags=["y1"],
+    ),
+    hierarchy_node_from_tags(
+        "branch_A", subspace_tags=["x2"], activity_condition_tags={"y1": 1},
+        subspaces=subspaces_c, indicator_tags=["y1"],
+    ),
+    hierarchy_node_from_tags(
+        "branch_B", subspace_tags=["x3"], activity_condition_tags={"y1": 2},
+        subspaces=subspaces_c, indicator_tags=["y1"],
+    ),
 ]
-space_c = HierarchicalSearchSpace(spaces_c, tags, hierarchy_c, indicator_tags=["y1"])
+space_c = HierarchicalSearchSpace(subspaces_c, hierarchy_c, indicator_tags=["y1"])
 
 print("indicator_value_sets:", space_c.indicator_value_sets)
 print("enumerate_tasks:", space_c.enumerate_tasks())
@@ -154,23 +179,25 @@ print("active for y1=2:", space_c.active_subspace_tags({"y1": 2}))
 # every indicator's permitted set: $|\{0,1\}| \times |\{0,1,2\}| = 6$ tasks below.
 
 # %%
-spaces_mix = [
-    Box([0.0], [1.0]),
-    BooleanSearchSpace(),
-    CategoricalSearchSpace(3),
-    Box([0.0], [5.0]),
-]
-tags_mix = ["x1", "y1", "y2", "x2"]
+subspaces_mix = {
+    "x1": Box([0.0], [1.0]),
+    "y1": BooleanSearchSpace(),
+    "y2": CategoricalSearchSpace(3),
+    "x2": Box([0.0], [5.0]),
+}
 hierarchy_mix = [
-    HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode(
-        "branch",
-        subspace_tags=["x2"],
-        indicator_conditions={"y1": True, "y2": 2},
+    hierarchy_node_from_tags(
+        "shared", subspace_tags=["x1"],
+        subspaces=subspaces_mix, indicator_tags=["y1", "y2"],
+    ),
+    hierarchy_node_from_tags(
+        "branch", subspace_tags=["x2"],
+        activity_condition_tags={"y1": 1, "y2": 2},
+        subspaces=subspaces_mix, indicator_tags=["y1", "y2"],
     ),
 ]
 space_mix = HierarchicalSearchSpace(
-    spaces_mix, tags_mix, hierarchy_mix, indicator_tags=["y1", "y2"]
+    subspaces_mix, hierarchy_mix, indicator_tags=["y1", "y2"]
 )
 tasks = space_mix.enumerate_tasks()
 print(f"number of tasks: {len(tasks)}")
@@ -185,8 +212,8 @@ for t in tasks:
 #
 # - an indicator tag that does not point to a `BooleanSearchSpace` or a
 #   one-dimensional `CategoricalSearchSpace`;
-# - a `HierarchyNode.indicator_conditions` value that is outside the indicator's
-#   permitted set (e.g. `5` for a 3-ary categorical, or any non-Boolean value for a
+# - an `activity_condition` required value that is outside the indicator's permitted
+#   set (e.g. `5` for a 3-ary categorical, or any non-Boolean value for a
 #   `BooleanSearchSpace`);
 # - an indicator that gates nothing (does not appear as a key in any node).
 
@@ -201,20 +228,40 @@ def _expect_value_error(fn):
         raise AssertionError("expected ValueError but none was raised")
 
 
+# Out-of-permitted-set required value: y1 is a 3-ary categorical, so 5 is invalid.
+_subspaces_oor = {
+    "x1": Box([0.0], [1.0]),
+    "y1": CategoricalSearchSpace(3),
+}
 _expect_value_error(
     lambda: HierarchicalSearchSpace(
-        spaces=[Box([0.0], [1.0]), CategoricalSearchSpace(3)],
-        tags=["x1", "y1"],
-        hierarchy=[HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 5})],
+        _subspaces_oor,
+        [
+            hierarchy_node_from_tags(
+                "n", subspace_tags=["x1"],
+                activity_condition_tags={"y1": 5},
+                subspaces=_subspaces_oor, indicator_tags=["y1"],
+            )
+        ],
         indicator_tags=["y1"],
     )
 )
 
+# Indicator subspace must be dimension-1: a 2-D CategoricalSearchSpace is rejected.
+_subspaces_2d = {
+    "x1": Box([0.0], [1.0]),
+    "y1": CategoricalSearchSpace([3, 2]),
+}
 _expect_value_error(
     lambda: HierarchicalSearchSpace(
-        spaces=[Box([0.0], [1.0]), CategoricalSearchSpace([3, 2])],
-        tags=["x1", "y1"],
-        hierarchy=[HierarchyNode("n", subspace_tags=["x1"], indicator_conditions={"y1": 1})],
+        _subspaces_2d,
+        [
+            hierarchy_node_from_tags(
+                "n", subspace_tags=["x1"],
+                activity_condition_tags={"y1": 1},
+                subspaces=_subspaces_2d, indicator_tags=["y1"],
+            )
+        ],
         indicator_tags=["y1"],
     )
 )
