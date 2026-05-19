@@ -1,0 +1,18 @@
+Commit	Training Time	GPU Utilisation	GPU Memory	RMSE	NLPD	Status	Description
+5716697a	53.11	68	17	1.005575	1.423948	Keep	Baseline: no changes (site-packages; edits had no effect)
+5716697a	51.20	68	17	1.005751	1.428188	Keep	Re-baseline after pip install -e . (editable install; same code)
+84988f02	52.38	68	17	1.005673	1.423861	Discard	Prefetch tf.data after batch; AUTOTUNE; no measurable improvement
+5ab97060	51.82	68	17	1.005955	1.424974	Discard	Prefetch + steps_per_execution=steps_per_epoch; within variance
+5ad7925c	51.61	68	17	1.007426	1.426409	Discard	Lazy per-batch bootstrap; slightly worse RMSE; no time improvement
+2c3d2a0b	50.66	57	96	1.006076	1.425026	Keep	SPE=1 + prefetch after batch; both runs faster (50.94, 50.38) vs 51.20 baseline
+ba32eb0b	56.83	62	96	1.005353	1.423928	Discard	jit_compile=False: XLA saves more than it costs even for small networks
+326cddd9	40.94	N/A	96	1.005372	1.425318	Keep	Custom tf.function epoch loop: 625-step loop in C++; 19% faster (41.12, 40.76)
+e1d42005	42.13	N/A	96	1.004262	1.424313	Discard	cache() after batch: cache fill overhead > benefit; prefetch already overlaps
+0bb77d58	N/A	N/A	N/A	N/A	N/A	Crash	XLA_FLAGS --xla_gpu_cache_dir not supported in TF 2.16.2
+cc120d06	40.59	N/A	96	1.005871	1.424126	Discard	TF_XLA_FLAGS persistent cache: flag silently ignored, no cache files written
+51616a7d	40.70	74	96	1.005889	1.425024	Discard	Concrete input_signature for train_step: no improvement within variance (41.24, 40.15)
+781a07b7	33.06	96	96	1.005480	1.425021	Keep	Bypass tf.data; pre-batch tensors + tf.range: GPU util 96%; 19% faster (33.28, 32.84)
+af4af12f	29.74	N/A	96	1.006367	1.426179	Keep	Full epoch as one jit_compile=True XLA program: 625 steps, pure GPU; 10% faster (29.60, 29.87)
+7791bd69	9.63	100	66	1.005687	1.424426	Keep	Vectorised ensemble: stack 10 networks into [10,bs,dim] batched matmuls; 67% faster (9.73, 9.53)
+11c362a5	9.49	N/A	N/A	1.007360	1.426464	Discard	Per-batch XLA (no while_loop): same speed but 625 Python dispatches/epoch; simpler while_loop wins
+85dc6d8a	7.33	N/A	N/A	1.007020	1.425881	Discard	4x internal batch: better SM occupancy but RMSE systematically > last keep (1.006543, 1.007497)
