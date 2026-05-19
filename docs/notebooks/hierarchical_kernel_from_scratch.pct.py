@@ -49,7 +49,7 @@ from trieste.space import (
     BooleanSearchSpace,
     Box,
     HierarchicalSearchSpace,
-    HierarchyNode,
+    hierarchy_node_from_tags,
 )
 
 np.random.seed(1793)
@@ -80,23 +80,27 @@ tf.random.set_seed(1793)
 # indicator, $x_2$ active when $y_1 = 1$, $x_3$ active when $y_1 = 0$.
 
 # %%
-spaces = [
-    Box([0.0], [1.0]),  # x1: unconditional
-    BooleanSearchSpace(),  # y1: Boolean indicator
-    Box([0.0], [5.0]),  # x2: active when y1 = 1
-    Box([-1.0], [1.0]),  # x3: active when y1 = 0
-]
-tags = ["x1", "y1", "x2", "x3"]
+subspaces = {
+    "x1": Box([0.0], [1.0]),  # unconditional
+    "y1": BooleanSearchSpace(),  # Boolean indicator
+    "x2": Box([0.0], [5.0]),  # active when y1 = 1
+    "x3": Box([-1.0], [1.0]),  # active when y1 = 0
+}
 hierarchy = [
-    HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode(
-        "branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}
+    hierarchy_node_from_tags(
+        "shared", subspace_tags=["x1"],
+        subspaces=subspaces, indicator_tags=["y1"],
     ),
-    HierarchyNode(
-        "branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}
+    hierarchy_node_from_tags(
+        "branch_A", subspace_tags=["x2"], activity_condition_tags={"y1": 1},
+        subspaces=subspaces, indicator_tags=["y1"],
+    ),
+    hierarchy_node_from_tags(
+        "branch_B", subspace_tags=["x3"], activity_condition_tags={"y1": 0},
+        subspaces=subspaces, indicator_tags=["y1"],
     ),
 ]
-space = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1"])
+space = HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1"])
 print("dimension:", int(space.dimension))
 print("indicator_tags:", space.indicator_tags)
 print("non_indicator_tags:", space.non_indicator_tags)
@@ -117,13 +121,15 @@ print("non_indicator_tags:", space.non_indicator_tags)
 #   of indicator requirements (an empty dict means the column is unconditional).
 #
 # We walk `space.subspace_tags` in order to discover column positions, then
-# read the activity rules off `space.node_for_subspace(tag)`.
+# read the activity rules off `space.node_for_subspace(tag)`, which returns
+# `gpflow.kernels.HierarchyNode` objects. The integer-keyed
+# `node.activity_condition.requirements` map is the source of truth for the
+# AND-conjunction; no tag→index translation is needed.
 
 
 # %%
 def primitives_from_space(space):
     indicator_set = set(space.indicator_tags)
-    indicator_local_by_tag = {t: k for k, t in enumerate(space.indicator_tags)}
 
     indicator_dims, feature_dims = [], []
     lowers, uppers, activity_conditions = [], [], []
@@ -140,12 +146,11 @@ def primitives_from_space(space):
             lowers.append(tf.cast(sub.lower, gpflow.default_float()))
             uppers.append(tf.cast(sub.upper, gpflow.default_float()))
             nodes = space.node_for_subspace(tag)
+            # ``HierarchyNode.activity_condition.requirements`` is already keyed by
+            # indicator local index (int), so no tag→index translation is needed.
             req = (
-                {
-                    indicator_local_by_tag[t]: int(v)
-                    for t, v in nodes[0].indicator_conditions.items()
-                }
-                if nodes and nodes[0].indicator_conditions
+                {int(k): int(v) for k, v in nodes[0].activity_condition.requirements.items()}
+                if nodes
                 else {}
             )
             activity_conditions.extend([dict(req)] * sub_dim)
