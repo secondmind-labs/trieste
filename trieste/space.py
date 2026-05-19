@@ -235,12 +235,17 @@ INACTIVE_CONSTRAINT_RESIDUAL = 1e10
 class ConditionalConstraint:
     """
     A disjunctive constraint :math:`h_{ik}(x) \\leq 0` that is enforced only when a set of
-    Boolean indicator variables take specified values.
+    indicator variables take specified values.
 
     When the ``indicator_conditions`` are satisfied, the underlying ``constraint`` is evaluated
     on the subspace slice identified by ``active_subspace_tags``. When inactive, the residual
     is set to a large positive value (:data:`INACTIVE_CONSTRAINT_RESIDUAL`), making the point
     unconstrainedly feasible with respect to this constraint.
+
+    Required indicator values may be ``bool`` (legacy Boolean form) or ``int`` (Boolean or
+    :math:`K`-ary categorical category index, :math:`\\{0, \\ldots, K-1\\}`); both forms are
+    matched against the indicator's column value with a half-unit tolerance, which uniformly
+    distinguishes adjacent category indices.
 
     :param constraint: The underlying :class:`LinearConstraint` or :class:`NonlinearConstraint`.
     :param indicator_conditions: ``{indicator_tag: required_value}`` specifying which indicators
@@ -250,7 +255,7 @@ class ConditionalConstraint:
     """
 
     constraint: Constraint
-    indicator_conditions: Mapping[str, bool]
+    indicator_conditions: Mapping[str, Union[bool, int]]
     active_subspace_tags: Sequence[str]
 
     def residual(self, points: TensorType, space: HierarchicalSearchSpace) -> TensorType:
@@ -266,7 +271,7 @@ class ConditionalConstraint:
         active_mask = tf.ones([tf.shape(points)[0]], dtype=tf.bool)
         for ind_tag, required in self.indicator_conditions.items():
             ind_vals = space.get_subspace_component(ind_tag, points)  # [N, 1]
-            target = tf.constant(1.0 if required else 0.0, dtype=points.dtype)
+            target = tf.constant(float(int(required)), dtype=points.dtype)
             match = tf.abs(ind_vals[:, 0] - target) < 0.5
             active_mask = active_mask & match
 
@@ -291,11 +296,13 @@ class ConditionalConstraint:
 @dataclass
 class LogicalProposition:
     """
-    A constraint on the Boolean indicator variables only, :math:`\\Omega(Y) = \\text{True}`.
+    A constraint on the indicator variables only, :math:`\\Omega(Y) = \\text{True}`.
 
     The function receives a dictionary ``{indicator_tag: values_tensor}`` where each tensor
-    has shape ``[N, 1]`` containing 0.0/1.0 values, and must return a boolean tensor of shape
-    ``[N]`` indicating feasibility.
+    has shape ``[N, 1]`` with values in the indicator's permitted set (:math:`\\{0, 1\\}` for
+    :class:`BooleanSearchSpace` indicators, :math:`\\{0, \\ldots, K-1\\}` for :math:`K`-ary
+    dimension-1 :class:`CategoricalSearchSpace` indicators), and must return a boolean tensor
+    of shape ``[N]`` indicating feasibility.
 
     Logical propositions are checked during ``is_feasible()`` and sampling, but are **not**
     included in ``constraints_residuals()`` since they have no useful gradient for continuous
@@ -1727,8 +1734,6 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         self._logical_propositions = tuple(logical_propositions)
         self._ctol = ctol
 
-        self._validate()
-
         subspace_sizes = self.subspace_dimension
         self._subspace_sizes_by_tag: Dict[str, TensorType] = dict(zip(self._tags, subspace_sizes))
         self._subspace_starting_indices: Dict[str, TensorType] = dict(
@@ -1854,6 +1859,39 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                         f"{list(permitted)}."
                     )
                 used_indicator_local_indices.add(local_index)
+
+        # ConditionalConstraint argument validation: each constraint's
+        # ``indicator_conditions`` keys must be declared indicator tags,
+        # required values must be in the indicator's permitted set, and
+        # ``active_subspace_tags`` must reference non-indicator subspaces.
+        indicator_tag_set = set(self._indicator_tags)
+        for cc_index, cc in enumerate(self._conditional_constraints):
+            for ind_tag, required in cc.indicator_conditions.items():
+                if ind_tag not in indicator_tag_set:
+                    raise ValueError(
+                        f"ConditionalConstraint[{cc_index}] indicator_conditions key "
+                        f"'{ind_tag}' is not in indicator_tags "
+                        f"{sorted(indicator_tag_set)}."
+                    )
+                permitted = self._indicator_value_sets[ind_tag]
+                if int(required) not in permitted:
+                    raise ValueError(
+                        f"ConditionalConstraint[{cc_index}] indicator_conditions required "
+                        f"value {required!r} for indicator '{ind_tag}' is not in the "
+                        f"indicator's permitted set {list(permitted)}."
+                    )
+            for stag in cc.active_subspace_tags:
+                if stag not in all_tags:
+                    raise ValueError(
+                        f"ConditionalConstraint[{cc_index}] active_subspace_tags entry "
+                        f"'{stag}' is not a key of `subspaces` {sorted(all_tags)}."
+                    )
+                if stag in indicator_tag_set:
+                    raise ValueError(
+                        f"ConditionalConstraint[{cc_index}] active_subspace_tags entry "
+                        f"'{stag}' refers to an indicator subspace; conditional "
+                        f"constraints operate on the non-indicator slice only."
+                    )
 
         # Every non-indicator column must be covered by some node.feature_dims
         orphan_columns = non_indicator_columns - covered_non_indicator_columns
@@ -2122,66 +2160,6 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
     def logical_propositions(self) -> tuple[LogicalProposition, ...]:
         """Indicator-only consistency constraints."""
         return self._logical_propositions
-
-    @property
-    def has_constraints(self) -> bool:
-        """True if any global, conditional, or logical constraints are present."""
-        return bool(
-            self._global_constraints or self._conditional_constraints or self._logical_propositions
-        )
-
-    def constraints_residuals(self, points: TensorType) -> TensorType:
-        """
-        Compute constraint residuals from global and conditional constraints.
-
-        Logical propositions are **not** included because they have no gradient-compatible
-        residual for continuous optimizers.
-
-        :param points: Points in flat-vector representation, shape ``[N, D]``.
-        :return: Concatenated residuals, shape ``[N, C]``.
-        :raises NotImplementedError: If no gradient-compatible constraints exist.
-        """
-        residuals: List[TensorType] = []
-
-        for gc in self._global_constraints:
-            residuals.append(gc.residual(points))
-
-        for cc in self._conditional_constraints:
-            residuals.append(cc.residual(points, self))
-
-        if not residuals:
-            raise NotImplementedError(
-                "No gradient-compatible constraints to compute residuals for."
-            )
-
-        return tf.concat(residuals, axis=-1)
-
-    def is_feasible(self, points: TensorType) -> TensorType:
-        """
-        Check whether points satisfy all constraints, including logical propositions.
-
-        :param points: Points in flat-vector representation, shape ``[N, D]``.
-        :return: Boolean tensor of shape ``[N]``.
-        """
-        has_constraints_on_disjunctions_or_globally = bool(
-            self._global_constraints or self._conditional_constraints
-        )
-
-        if has_constraints_on_disjunctions_or_globally:
-            feasible = tf.math.reduce_all(
-                self.constraints_residuals(points) >= -self._ctol, axis=-1
-            )
-        else:
-            feasible = tf.ones([tf.shape(points)[0]], dtype=tf.bool)
-
-        if self._logical_propositions:
-            ind_values: Dict[str, TensorType] = {
-                tag: self.get_subspace_component(tag, points) for tag in self._indicator_tags
-            }
-            for prop in self._logical_propositions:
-                feasible = feasible & prop.fun(ind_values)
-
-        return feasible
 
     def product(self, other: HierarchicalSearchSpace) -> HierarchicalSearchSpace:
         """

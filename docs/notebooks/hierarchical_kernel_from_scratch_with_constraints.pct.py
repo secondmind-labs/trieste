@@ -43,14 +43,14 @@ import tensorflow_probability as tfp
 from gpflow.utilities import positive, to_default_float
 
 from trieste.space import (
+    INACTIVE_CONSTRAINT_RESIDUAL,
     BooleanSearchSpace,
     Box,
     ConditionalConstraint,
     HierarchicalSearchSpace,
-    HierarchyNode,
-    INACTIVE_CONSTRAINT_RESIDUAL,
     LinearConstraint,
     LogicalProposition,
+    hierarchy_node_from_tags,
 )
 
 np.random.seed(1793)
@@ -70,26 +70,40 @@ tf.random.set_seed(1793)
 #
 # `HierarchicalSearchSpace` validation rejects an indicator that does not
 # gate any node, so every declared indicator must appear in at least one
-# `HierarchyNode.indicator_conditions`. We give $y_2$ its own conditional
+# node's `activity_condition`. We give $y_2$ its own conditional
 # subspace $x_4$.
 
 # %%
-spaces = [
-    Box([0.0], [1.0]),  # x1: unconditional
-    BooleanSearchSpace(),  # y1: Boolean indicator
-    BooleanSearchSpace(),  # y2: Boolean indicator
-    Box([0.0], [5.0]),  # x2: active when y1 = 1
-    Box([-1.0], [1.0]),  # x3: active when y1 = 0
-    Box([0.0], [2.0]),  # x4: active when y2 = 1
-]
-tags = ["x1", "y1", "y2", "x2", "x3", "x4"]
+subspaces = {
+    "x1": Box([0.0], [1.0]),  # unconditional
+    "y1": BooleanSearchSpace(),  # Boolean indicator
+    "y2": BooleanSearchSpace(),  # Boolean indicator
+    "x2": Box([0.0], [5.0]),  # active when y1 = 1
+    "x3": Box([-1.0], [1.0]),  # active when y1 = 0
+    "x4": Box([0.0], [2.0]),  # active when y2 = 1
+}
+indicator_tags = ["y1", "y2"]
 hierarchy = [
-    HierarchyNode("shared", subspace_tags=["x1"], indicator_conditions={}),
-    HierarchyNode("branch_A", subspace_tags=["x2"], indicator_conditions={"y1": True}),
-    HierarchyNode("branch_B", subspace_tags=["x3"], indicator_conditions={"y1": False}),
-    HierarchyNode("branch_C", subspace_tags=["x4"], indicator_conditions={"y2": True}),
+    hierarchy_node_from_tags(
+        "shared", subspace_tags=["x1"],
+        subspaces=subspaces, indicator_tags=indicator_tags,
+    ),
+    hierarchy_node_from_tags(
+        "branch_A", subspace_tags=["x2"], activity_condition_tags={"y1": 1},
+        subspaces=subspaces, indicator_tags=indicator_tags,
+    ),
+    hierarchy_node_from_tags(
+        "branch_B", subspace_tags=["x3"], activity_condition_tags={"y1": 0},
+        subspaces=subspaces, indicator_tags=indicator_tags,
+    ),
+    hierarchy_node_from_tags(
+        "branch_C", subspace_tags=["x4"], activity_condition_tags={"y2": 1},
+        subspaces=subspaces, indicator_tags=indicator_tags,
+    ),
 ]
-space_unconstrained = HierarchicalSearchSpace(spaces, tags, hierarchy, indicator_tags=["y1", "y2"])
+space_unconstrained = HierarchicalSearchSpace(
+    subspaces, hierarchy, indicator_tags=indicator_tags
+)
 print("dimension:        ", int(space_unconstrained.dimension))
 print("indicator_tags:   ", space_unconstrained.indicator_tags)
 print("non_indicator_tags:", space_unconstrained.non_indicator_tags)
@@ -121,10 +135,9 @@ global_constraint = LinearConstraint(
     ub=np.array([0.9]),
 )
 space_global = HierarchicalSearchSpace(
-    spaces,
-    tags,
+    subspaces,
     hierarchy,
-    indicator_tags=["y1", "y2"],
+    indicator_tags=indicator_tags,
     global_constraints=[global_constraint],
 )
 print("has_constraints:", space_global.has_constraints)
@@ -157,14 +170,13 @@ conditional_constraint = ConditionalConstraint(
         lb=np.array([-0.5]),
         ub=np.array([np.inf]),
     ),
-    indicator_conditions={"y1": False},
+    indicator_conditions={"y1": False},  # equivalent to {"y1": 0}; K-ary categorical indicators accept any int in {0, ..., K-1}
     active_subspace_tags=["x3"],
 )
 space_with_cond = HierarchicalSearchSpace(
-    spaces,
-    tags,
+    subspaces,
     hierarchy,
-    indicator_tags=["y1", "y2"],
+    indicator_tags=indicator_tags,
     global_constraints=[global_constraint],
     conditional_constraints=[conditional_constraint],
 )
@@ -216,10 +228,9 @@ y2_implies_y1 = LogicalProposition(
     name="y2_implies_y1",
 )
 space = HierarchicalSearchSpace(
-    spaces,
-    tags,
+    subspaces,
     hierarchy,
-    indicator_tags=["y1", "y2"],
+    indicator_tags=indicator_tags,
     global_constraints=[global_constraint],
     conditional_constraints=[conditional_constraint],
     logical_propositions=[y2_implies_y1],
@@ -265,7 +276,6 @@ print(space.constraints_residuals(probe).numpy())
 # %%
 def primitives_from_space(space):
     indicator_set = set(space.indicator_tags)
-    indicator_local_by_tag = {t: k for k, t in enumerate(space.indicator_tags)}
 
     indicator_dims, feature_dims = [], []
     lowers, uppers, activity_conditions = [], [], []
@@ -282,12 +292,11 @@ def primitives_from_space(space):
             lowers.append(tf.cast(sub.lower, gpflow.default_float()))
             uppers.append(tf.cast(sub.upper, gpflow.default_float()))
             nodes = space.node_for_subspace(tag)
+            # ``HierarchyNode.activity_condition.requirements`` is already keyed by
+            # indicator local index (int), so no tag→index translation is needed.
             req = (
-                {
-                    indicator_local_by_tag[t]: int(v)
-                    for t, v in nodes[0].indicator_conditions.items()
-                }
-                if nodes and nodes[0].indicator_conditions
+                {int(k): int(v) for k, v in nodes[0].activity_condition.requirements.items()}
+                if nodes
                 else {}
             )
             activity_conditions.extend([dict(req)] * sub_dim)
@@ -308,8 +317,8 @@ print("activity_conditions: ", activity_conditions)
 
 # %% [markdown]
 # Note that `y2` appears in `indicator_dims` even though no
-# `HierarchyNode.indicator_conditions` references it — it's part of the
-# flat vector, the kernel sees its column, and the activity mask is
+# `HierarchyNode.activity_condition.requirements` references it — it's part
+# of the flat vector, the kernel sees its column, and the activity mask is
 # computed over both indicators (with no requirement on `y2` for any
 # feature). Constraints know about `y2`; the kernel is indifferent.
 
