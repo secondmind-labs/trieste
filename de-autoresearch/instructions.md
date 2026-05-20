@@ -23,7 +23,7 @@ aim to vectorise the ensemble still using Keras, if possible, before attempting
 to bypass Keras and implement a custom tf.function epoch loop.
 
 An analysis has been conducted in the past to compare execution of Deep Ensemble training on TPU vs GPU.
-The results are collected on the following in-scope files:
+The results are collected on the following in-scope files which you can use to generate and evaluate ides:
 
 - TPU_PERFORMANCE_SUMMARY.md
 - TPU_PERFORMANCE_ANALYSIS.md
@@ -37,12 +37,18 @@ The results are collected on the following in-scope files:
 
 ### What you cannot do
 
+**IMPORTANT**
+
 - Do not attempt to change the model public API, because other model types and the project in
 its entirety depend on it.
 - Modify any of the files in this directory (e.g. `data.py`, `train.py` etc.). Preventing the modification of `train.py` means that all improvements must come from the code, not by changing model hyperparameters/configuration.
-- Alter the architecture in a way that does not support the configuration, hyperparameters, callbacks the implementation currently supports
-- Optimise performance specifically for the given training set and architecture (e.g. 625 steps, 10 ensembles etc), improvements must be generally valid
+- Alter the architecture in a way that does not support the configuration, hyperparameters, optimiser, callbacks the implementation currently supports
+- Optimise performance specifically for the given training set, architecture and optimiser (e.g. 625 steps, 10 ensembles, Adam etc), improvements must be generally valid
 - Apply optimisations suggested in the TPU vs GPU analysis files which specifically apply to TPU and not GPUs, based on your understanding of the architectural differences between these two accelerators
+- Modify the code such that:
+  - keras callbacks, metrics and losses are not used
+  - keras compile and fit methods are not used
+  - Training has no verbosity or the verbosity is changed compared to what seen when running the baseline
 
 ## Experimentation
 
@@ -77,6 +83,9 @@ utilization.gpu [%], utilization.memory [%], memory.total [MiB], memory.free [Mi
 ```
 
 and keep track of the max of the `utilization.gpu` and `utilization.memory` metrics.
+To precisely keep track of them, devise a suitable strategy which can probe `nvidia-smi`
+at the right granularity while epochs are running. These figures must be absolutely reported
+in the log file (see below).
 
 ## Logging Results
 
@@ -108,7 +117,7 @@ Commit  Training Time   GPU Utilisation GPU Memory  RMSE    NLPD    Status  Desc
     - <date>-<model>.tsv (if available), these are the results.tsv files of previous experiment runs, to understand what's been done
     - the TPU vs GPU analysis files
 3. Analyse commits of previous experiment run branches de-autoresearch/<date>
-4**Agree on a run tag** based on today's date (e.g. 18-05-2025). The branch `de-autoresearch/<tag>` must not already exist
+4. **Agree on a run tag** based on today's date (e.g. 18-05-2025). The branch `de-autoresearch/<tag>` must not already exist. If it exists, create a branch with a unique tag, still referring to the current date
 5. **Create the branch**: `git checkout -b de-autoresearch/<tag>` from the current branch
 6. **Initialise results**: create results.tsv with just the header row. The baseline will be recorded after the first run
 7. **Confirm and go**: Confirm you understand the aim of this experiment and that the set up looks good.
@@ -123,7 +132,7 @@ Record the baseline to `results.tsv`.
 
 ## Phase 2: The Experiment Loop
 
-Loop for 1 hour:
+Loop:
 1. Look at the git state: the current branch/commit you're on
 2. Generate an implementation idea, plan how to implement and execute
 3. git commit
@@ -139,7 +148,7 @@ The idea is that you are a completely autonomous researcher trying things out. I
 And you're advancing the branch so that you can iterate. If you feel like you're getting stuck in some way, you can rewind 
 but you should probably do this very very sparingly (if ever).
 
-**Timeout**: Each experiment should take a couple of minutes at most (including startup and eval overhead). If a run exceeds
+**Timeout**: Baseline experiment should approx take 1 min  (including startup and eval overhead). If a run exceeds
 that, kill it and treat it as a failure (discard and revert).
 
 **Crashes**: If a run crashes (OOM, or a bug, or etc.), use your judgment: If it's something dumb and easy to fix (e.g. a 
