@@ -223,14 +223,25 @@ class DeepEnsemble(
         """
         inputs = {}
         outputs = {}
-        for index in range(self.ensemble_size):
-            if self._bootstrap and not do_not_bootstrap:
-                resampled_data = sample_with_replacement(dataset)
-            else:
-                resampled_data = dataset
-            input_name = self.model.input_names[index]
-            output_name = self.model.output_names[index]
-            inputs[input_name], outputs[output_name] = resampled_data.astuple()
+        input_names = self.model.input_names
+        output_names = self.model.output_names
+
+        if self._bootstrap and not do_not_bootstrap:
+            # Generate all E bootstrap index sets in one call, then gather once per tensor.
+            n_rows = dataset.observations.shape[0]
+            all_indices = tf.random.uniform(
+                (self.ensemble_size, n_rows), maxval=n_rows, dtype=tf.dtypes.int32
+            )
+            all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
+            all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
+            for index in range(self.ensemble_size):
+                inputs[input_names[index]] = all_X[index]
+                outputs[output_names[index]] = all_y[index]
+        else:
+            X, y = dataset.astuple()
+            for index in range(self.ensemble_size):
+                inputs[input_names[index]] = X
+                outputs[output_names[index]] = y
 
         return inputs, outputs
 
