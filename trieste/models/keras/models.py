@@ -614,6 +614,20 @@ class DeepEnsemble(
         x, y = self.prepare_dataset(dataset)
         tf_train_dataset = self._build_tf_dataset(x, y)
 
+        # Maximise steps_per_execution so the entire epoch runs in one Python→GPU
+        # dispatch instead of ceil(n_batches/current_spe) separate dispatches.
+        # Keras stores spe as a mutable tf.Variable; updating it avoids recompilation
+        # while letting the XLA while-loop iterate over all n_batches steps per call.
+        if (
+            "batch_size" in self.optimizer.fit_args
+            and "steps_per_epoch" not in self.optimizer.fit_args
+            and hasattr(self.model, "steps_per_execution")
+        ):
+            n = next(iter(x.values())).shape[0]
+            batch_size = self.optimizer.fit_args["batch_size"]
+            if n is not None and batch_size and n % batch_size == 0:
+                self.model.steps_per_execution = n // batch_size
+
         history = self.model.fit(
             tf_train_dataset,
             **fit_args,
