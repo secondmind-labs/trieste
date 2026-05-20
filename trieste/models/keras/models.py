@@ -177,6 +177,7 @@ class DeepEnsemble(
         self._model = model
         self._bootstrap = bootstrap
         self._diversify = diversify
+        self._compile_args = dict(compile_args)
 
     def __repr__(self) -> str:
         """"""
@@ -490,15 +491,34 @@ class DeepEnsemble(
             fit_args["validation_data"] = tf.data.Dataset.from_tensor_slices((x_val, y_val))
 
         x, y = self.prepare_dataset(dataset)
-        tf_train_dataset = self._build_tf_dataset(x, y)
 
-        history = self.model.fit(
-            tf_train_dataset,
-            **fit_args,
-            initial_epoch=self._absolute_epochs,
+        use_custom_loop = (
+            "batch_size" in fit_args
+            and "steps_per_epoch" not in fit_args
+            and "validation_data" not in fit_args
         )
+
+        if use_custom_loop:
+            n_epochs = self._custom_train_loop(x, y, fit_args)
+            history = None
+        else:
+            tf_train_dataset = self._build_tf_dataset(x, y)
+            if "batch_size" in fit_args and "steps_per_epoch" not in fit_args:
+                self.model.compile(
+                    optimizer=self.optimizer.optimizer,
+                    loss=[self.optimizer.loss] * self.ensemble_size,
+                    metrics=[self.optimizer.metrics] * self.ensemble_size,
+                    **{**self._compile_args, "steps_per_execution": 1},
+                )
+            history = self.model.fit(
+                tf_train_dataset,
+                **fit_args,
+                initial_epoch=self._absolute_epochs,
+            )
+            n_epochs = len(history.history["loss"])
+
         if self._continuous_optimisation:
-            self._absolute_epochs = self._absolute_epochs + len(history.history["loss"])
+            self._absolute_epochs = self._absolute_epochs + n_epochs
 
         # Reset lr in case there was an lr schedule: a schedule will have changed the learning
         # rate, so that the next time we call `optimize` the starting learning rate would be
@@ -511,17 +531,165 @@ class DeepEnsemble(
 
         return history
 
+    def _custom_train_loop(
+        self, x: Dict[str, tf.Tensor], y: Dict[str, tf.Tensor], fit_args: dict
+    ) -> int:
+        """Vectorized ensemble training: stack all networks into [E, bs, dim] batched ops.
+
+        Instead of E separate network paths (wide XLA graph), we stack weights into
+        [n_ensemble, in, out] Variables and use a single tf.matmul per layer. This
+        yields a simpler XLA graph with one batched matmul per layer rather than E
+        independent ones, cutting compilation time and improving GPU utilisation.
+
+        After training the stacked variables are written back to the Keras model so that
+        predict_y and other model APIs continue to work correctly.
+
+        Returns the number of epochs trained.
+        """
+        import math as _math
+
+        end_epoch = fit_args.get("epochs", 1)
+        start_epoch = self._absolute_epochs
+
+        model = self.model
+        tf_optimizer = self.optimizer.optimizer
+        n_ensemble = self.ensemble_size
+
+        batch_size = fit_args["batch_size"]
+        n_samples = next(iter(x.values())).shape[0]
+        n_batches = n_samples // batch_size
+
+        # Discover architecture from the Keras model
+        n_hidden = 0
+        while True:
+            try:
+                model.get_layer(f"model_0_dense_{n_hidden}")
+                n_hidden += 1
+            except ValueError:
+                break
+        hidden_act = model.get_layer("model_0_dense_0").activation
+
+        # Stack weights: [n_ensemble, in_dim, out_dim] / [n_ensemble, out_dim]
+        def _stack_layer(layer_name_suffix: str) -> tuple:
+            kernels = [model.get_layer(f"model_{i}_{layer_name_suffix}").kernel
+                       for i in range(n_ensemble)]
+            biases = [model.get_layer(f"model_{i}_{layer_name_suffix}").bias
+                      for i in range(n_ensemble)]
+            k_var = tf.Variable(tf.stack(kernels, axis=0), trainable=True)
+            b_var = tf.Variable(tf.stack(biases, axis=0), trainable=True)
+            return k_var, b_var
+
+        hidden_kernels = []
+        hidden_biases = []
+        for j in range(n_hidden):
+            k, b = _stack_layer(f"dense_{j}")
+            hidden_kernels.append(k)
+            hidden_biases.append(b)
+        out_kernel, out_bias = _stack_layer("dense_parameters")
+
+        stacked_vars = [v for k, b in zip(hidden_kernels, hidden_biases) for v in (k, b)] + [
+            out_kernel, out_bias
+        ]
+
+        # Stack input/output data: [n_ensemble, n_batches, batch_size, D]
+        n_use = n_batches * batch_size
+        x_stacked = tf.stack(
+            [tf.reshape(x[name][:n_use], [n_batches, batch_size, -1]) for name in model.input_names],
+            axis=0,
+        )  # [n_ensemble, n_batches, batch_size, D_in]
+        y_stacked = tf.stack(
+            [tf.reshape(y[name][:n_use], [n_batches, batch_size, -1]) for name in model.output_names],
+            axis=0,
+        )  # [n_ensemble, n_batches, batch_size, 1]
+
+        inv_n_batches = tf.constant(1.0 / n_batches)
+        log_2pi = tf.constant(_math.log(2.0 * _math.pi), dtype=x_stacked.dtype)
+
+        @tf.function(jit_compile=True)
+        def run_one_epoch() -> tf.Tensor:
+            """Vectorised ensemble epoch: E networks batched as [E, bs, dim] matmuls."""
+            total_loss = tf.constant(0.0)
+            for i in tf.range(n_batches):
+                x_i = x_stacked[:, i, :, :]  # [E, batch_size, D_in]
+                y_i = y_stacked[:, i, :, :]  # [E, batch_size, 1]
+                with tf.GradientTape() as tape:
+                    h = x_i
+                    for k in range(n_hidden):
+                        h = hidden_act(
+                            tf.matmul(h, hidden_kernels[k])
+                            + hidden_biases[k][:, tf.newaxis, :]
+                        )
+                    params = tf.matmul(h, out_kernel) + out_bias[:, tf.newaxis, :]
+                    mean = params[..., :1]
+                    std = tf.math.softplus(params[..., 1:])
+                    step_loss = tf.cast(
+                        0.5 * tf.reduce_mean(
+                            log_2pi + 2.0 * tf.math.log(std) + ((y_i - mean) / std) ** 2
+                        ),
+                        tf.float32,
+                    )
+                grads = tape.gradient(step_loss, stacked_vars)
+                tf_optimizer.apply_gradients(zip(grads, stacked_vars))
+                total_loss = total_loss + step_loss
+            return total_loss * inv_n_batches
+
+        patience = None
+        restore_best_weights = False
+        for cb in fit_args.get("callbacks", []):
+            if isinstance(cb, tf_keras.callbacks.EarlyStopping):
+                patience = cb.patience
+                restore_best_weights = cb.restore_best_weights
+                break
+
+        best_loss = float("inf")
+        best_stacked = None
+        wait = 0
+        epochs_trained = 0
+
+        for _ in range(start_epoch, end_epoch):
+            epoch_loss = float(run_one_epoch())
+            epochs_trained += 1
+            if patience is not None:
+                if epoch_loss < best_loss:
+                    best_loss = epoch_loss
+                    if restore_best_weights:
+                        best_stacked = [v.numpy() for v in stacked_vars]
+                    wait = 0
+                else:
+                    wait += 1
+                    if wait >= patience:
+                        if restore_best_weights and best_stacked is not None:
+                            for v, w in zip(stacked_vars, best_stacked):
+                                v.assign(w)
+                        break
+
+        # Write stacked weights back to Keras model
+        for j in range(n_hidden):
+            for i in range(n_ensemble):
+                layer = model.get_layer(f"model_{i}_dense_{j}")
+                layer.kernel.assign(hidden_kernels[j][i])
+                layer.bias.assign(hidden_biases[j][i])
+        for i in range(n_ensemble):
+            out_layer = model.get_layer(f"model_{i}_dense_parameters")
+            out_layer.kernel.assign(out_kernel[i])
+            out_layer.bias.assign(out_bias[i])
+
+        return epochs_trained
+
     def _build_tf_dataset(
         self, x: Dict[str, tf.Tensor], y: Dict[str, tf.Tensor]
     ) -> tf.data.Dataset:
         tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))
 
         if "steps_per_epoch" in self.optimizer.fit_args:
-            tf_dataset = tf_dataset.prefetch(tf.data.experimental.AUTOTUNE).repeat()
+            tf_dataset = tf_dataset.prefetch(tf.data.AUTOTUNE).repeat()
 
         if "batch_size" in self.optimizer.fit_args:
             batch_size = self.optimizer.fit_args["batch_size"]
             tf_dataset = tf_dataset.batch(batch_size)
+
+        if "steps_per_epoch" not in self.optimizer.fit_args:
+            tf_dataset = tf_dataset.prefetch(tf.data.AUTOTUNE)
 
         return tf_dataset
 
