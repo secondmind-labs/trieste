@@ -579,21 +579,42 @@ class DeepEnsemble(
                        for i in range(n_ensemble)]
             biases = [model.get_layer(f"model_{i}_{layer_name_suffix}").bias
                       for i in range(n_ensemble)]
-            k_var = tf.Variable(tf.cast(tf.stack(kernels, axis=0), _train_dtype), trainable=True)
-            b_var = tf.Variable(tf.cast(tf.stack(biases, axis=0), _train_dtype), trainable=True)
-            return k_var, b_var
+            k_stacked = tf.cast(tf.stack(kernels, axis=0), _train_dtype)
+            b_stacked = tf.cast(tf.stack(biases, axis=0), _train_dtype)
+            return k_stacked, b_stacked
 
-        hidden_kernels = []
-        hidden_biases = []
+        hidden_k_tensors, hidden_b_tensors = [], []
         for j in range(n_hidden):
             k, b = _stack_layer(f"dense_{j}")
-            hidden_kernels.append(k)
-            hidden_biases.append(b)
-        out_kernel, out_bias = _stack_layer("dense_parameters")
+            hidden_k_tensors.append(k)
+            hidden_b_tensors.append(b)
+        out_k_tensor, out_b_tensor = _stack_layer("dense_parameters")
 
-        stacked_vars = [v for k, b in zip(hidden_kernels, hidden_biases) for v in (k, b)] + [
-            out_kernel, out_bias
+        # Flatten all weights into ONE variable: simpler XLA graph for Adam (1 var vs 8)
+        all_tensors = [v for k, b in zip(hidden_k_tensors, hidden_b_tensors) for v in (k, b)] + [
+            out_k_tensor, out_b_tensor
         ]
+        tensor_shapes = [t.shape.as_list() for t in all_tensors]
+        tensor_sizes = [int(tf.size(t)) for t in all_tensors]
+        tensor_offsets = []
+        _off = 0
+        for s in tensor_sizes:
+            tensor_offsets.append(_off)
+            _off += s
+        flat_size = _off
+
+        all_weights = tf.Variable(
+            tf.concat([tf.reshape(t, [-1]) for t in all_tensors], axis=0),
+            trainable=True, dtype=_train_dtype,
+        )
+        adam_m = tf.Variable(tf.zeros(flat_size, dtype=_train_dtype), trainable=False)
+        adam_v = tf.Variable(tf.zeros(flat_size, dtype=_train_dtype), trainable=False)
+        adam_step_var = tf.Variable(start_epoch * n_batches, dtype=tf.int64, trainable=False)
+
+        adam_lr_c = tf.constant(float(tf_optimizer.lr.numpy()), dtype=_train_dtype)
+        adam_b1 = tf.constant(float(tf_optimizer.beta_1), dtype=_train_dtype)
+        adam_b2 = tf.constant(float(tf_optimizer.beta_2), dtype=_train_dtype)
+        adam_eps = tf.constant(float(tf_optimizer.epsilon), dtype=_train_dtype)
 
         # Stack input/output data as float32: [n_ensemble, n_batches, batch_size, D]
         n_use = n_batches * batch_size
@@ -609,28 +630,54 @@ class DeepEnsemble(
         inv_n_batches = tf.constant(1.0 / n_batches, dtype=_train_dtype)
         log_2pi = tf.constant(_math.log(2.0 * _math.pi), dtype=_train_dtype)
 
+        # Closures over tensor_offsets/shapes so the forward pass can slice all_weights
+        _t_offsets = tensor_offsets
+        _t_sizes = tensor_sizes
+        _t_shapes = tensor_shapes
+
         @tf.function(jit_compile=True)
         def run_one_epoch() -> tf.Tensor:
-            """Vectorised ensemble epoch: E networks batched as [E, bs, dim] matmuls."""
+            """Vectorised ensemble: 1 flat variable → 1 Adam update (simpler XLA graph)."""
             total_loss = tf.constant(0.0, dtype=_train_dtype)
             for i in tf.range(n_batches):
-                x_i = x_stacked[:, i, :, :]  # [E, batch_size, D_in]
-                y_i = y_stacked[:, i, :, :]  # [E, batch_size, 1]
+                x_i = x_stacked[:, i, :, :]
+                y_i = y_stacked[:, i, :, :]
                 with tf.GradientTape() as tape:
+                    # Reconstruct layer tensors from flat variable
+                    idx = 0
+                    hks, hbs = [], []
+                    for j in range(n_hidden):
+                        k_off, k_sz, k_sh = _t_offsets[idx], _t_sizes[idx], _t_shapes[idx]
+                        b_off, b_sz, b_sh = _t_offsets[idx+1], _t_sizes[idx+1], _t_shapes[idx+1]
+                        hks.append(tf.reshape(all_weights[k_off:k_off+k_sz], k_sh))
+                        hbs.append(tf.reshape(all_weights[b_off:b_off+b_sz], b_sh))
+                        idx += 2
+                    ok_off, ok_sz, ok_sh = _t_offsets[idx], _t_sizes[idx], _t_shapes[idx]
+                    ob_off, ob_sz, ob_sh = _t_offsets[idx+1], _t_sizes[idx+1], _t_shapes[idx+1]
+                    ok = tf.reshape(all_weights[ok_off:ok_off+ok_sz], ok_sh)
+                    ob = tf.reshape(all_weights[ob_off:ob_off+ob_sz], ob_sh)
+
                     h = x_i
                     for k in range(n_hidden):
-                        h = hidden_act(
-                            tf.matmul(h, hidden_kernels[k])
-                            + hidden_biases[k][:, tf.newaxis, :]
-                        )
-                    params = tf.matmul(h, out_kernel) + out_bias[:, tf.newaxis, :]
+                        h = hidden_act(tf.matmul(h, hks[k]) + hbs[k][:, tf.newaxis, :])
+                    params = tf.matmul(h, ok) + ob[:, tf.newaxis, :]
                     mean = params[..., :1]
                     std = tf.math.softplus(params[..., 1:])
                     step_loss = 0.5 * tf.reduce_mean(
                         log_2pi + 2.0 * tf.math.log(std) + ((y_i - mean) / std) ** 2
                     )
-                grads = tape.gradient(step_loss, stacked_vars)
-                tf_optimizer.apply_gradients(zip(grads, stacked_vars))
+
+                grad_flat = tape.gradient(step_loss, all_weights)  # single flat gradient
+                # Manual Adam: 1 large variable update instead of 8 separate
+                adam_step_var.assign_add(tf.constant(1, dtype=tf.int64))
+                step_f = tf.cast(adam_step_var, _train_dtype)
+                lr_t = adam_lr_c * tf.sqrt(1.0 - adam_b2 ** step_f) / (1.0 - adam_b1 ** step_f)
+                new_m = adam_b1 * adam_m + (1.0 - adam_b1) * grad_flat
+                new_v = adam_b2 * adam_v + (1.0 - adam_b2) * grad_flat * grad_flat
+                adam_m.assign(new_m)
+                adam_v.assign(new_v)
+                all_weights.assign_sub(lr_t * new_m / (tf.sqrt(new_v) + adam_eps))
+
                 total_loss = total_loss + step_loss
             return total_loss * inv_n_batches
 
@@ -643,7 +690,7 @@ class DeepEnsemble(
                 break
 
         best_loss = float("inf")
-        best_stacked = None
+        best_flat = None
         wait = 0
         epochs_trained = 0
 
@@ -654,26 +701,36 @@ class DeepEnsemble(
                 if epoch_loss < best_loss:
                     best_loss = epoch_loss
                     if restore_best_weights:
-                        best_stacked = [v.numpy() for v in stacked_vars]
+                        best_flat = all_weights.numpy().copy()
                     wait = 0
                 else:
                     wait += 1
                     if wait >= patience:
-                        if restore_best_weights and best_stacked is not None:
-                            for v, w in zip(stacked_vars, best_stacked):
-                                v.assign(w)
+                        if restore_best_weights and best_flat is not None:
+                            all_weights.assign(best_flat)
                         break
 
         # Write stacked weights back to Keras model (cast to original layer dtype)
+        final_weights = all_weights.numpy()
+        idx = 0
         for j in range(n_hidden):
+            k_off, k_sz, k_sh = tensor_offsets[idx], tensor_sizes[idx], tensor_shapes[idx]
+            b_off, b_sz, b_sh = tensor_offsets[idx+1], tensor_sizes[idx+1], tensor_shapes[idx+1]
+            k_stacked = final_weights[k_off:k_off+k_sz].reshape(k_sh)
+            b_stacked = final_weights[b_off:b_off+b_sz].reshape(b_sh)
             for i in range(n_ensemble):
                 layer = model.get_layer(f"model_{i}_dense_{j}")
-                layer.kernel.assign(tf.cast(hidden_kernels[j][i], layer.kernel.dtype))
-                layer.bias.assign(tf.cast(hidden_biases[j][i], layer.bias.dtype))
+                layer.kernel.assign(tf.cast(k_stacked[i], layer.kernel.dtype))
+                layer.bias.assign(tf.cast(b_stacked[i], layer.bias.dtype))
+            idx += 2
+        ok_off, ok_sz, ok_sh = tensor_offsets[idx], tensor_sizes[idx], tensor_shapes[idx]
+        ob_off, ob_sz, ob_sh = tensor_offsets[idx+1], tensor_sizes[idx+1], tensor_shapes[idx+1]
+        ok_stacked = final_weights[ok_off:ok_off+ok_sz].reshape(ok_sh)
+        ob_stacked = final_weights[ob_off:ob_off+ob_sz].reshape(ob_sh)
         for i in range(n_ensemble):
             out_layer = model.get_layer(f"model_{i}_dense_parameters")
-            out_layer.kernel.assign(tf.cast(out_kernel[i], out_layer.kernel.dtype))
-            out_layer.bias.assign(tf.cast(out_bias[i], out_layer.bias.dtype))
+            out_layer.kernel.assign(tf.cast(ok_stacked[i], out_layer.kernel.dtype))
+            out_layer.bias.assign(tf.cast(ob_stacked[i], out_layer.bias.dtype))
 
         return epochs_trained
 
