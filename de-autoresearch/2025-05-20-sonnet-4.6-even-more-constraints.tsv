@@ -1,0 +1,5 @@
+Commit	Training Time	GPU Utilisation	GPU Memory	RMSE	NLPD	Status	Description
+b8bd0c60	63.63	62	15	1.006715	1.424921	Keep	Baseline: original code with Keras fit() verbose=1
+c5501b0c	38.87	57	34	1.005568	1.424113	Keep	Vectorised ensemble in Keras: stack E inputs one batched matmul per layer split E outputs
+687f54ce	33.96	43	16	1.005578	1.428963	Discard	Float32 training: NLPD worse than baseline (1.428963 > 1.424921); float32+TFP less stable
+f76fe719	38.63	64	40	1.010532	1.431807	Discard	Raw tensor NLL: no time improvement vs vectorised; RMSE/NLPD worse than baseline
