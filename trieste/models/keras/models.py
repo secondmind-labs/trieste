@@ -494,7 +494,9 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        input_dims = min(len(query_points.shape), len(self.model.input_shape[0]))
+        raw_input_shape = self.model.input_shape
+        first_input_shape = raw_input_shape[0] if isinstance(raw_input_shape, list) else raw_input_shape
+        input_dims = min(len(query_points.shape), len(first_input_shape))
         flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
         ensemble_distributions = self.ensemble_distributions(flat_x)
         predicted_means = tf.stack(
