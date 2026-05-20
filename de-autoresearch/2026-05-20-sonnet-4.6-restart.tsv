@@ -1,0 +1,16 @@
+Commit	Training Time	GPU Utilisation	GPU Memory	RMSE	NLPD	Status	Description
+8fc0b14d	54.98	40	10	1.008067	1.427498	Keep	Baseline: float32 data; original separate-branch Keras ensemble
+cef7f950	35.00	39	13	1.008987	1.428764	Keep	Vectorised ensemble in Keras: stack E inputs one batched matmul per layer split E outputs
+eb66cdf8	34.30	50	18	1.011839	1.430908	Discard	Auto-tune steps_per_execution to full epoch: negligible speedup; RMSE/NLPD slightly worse
+262fcb4e	7.41	40	14	1.008688	1.427814	Keep	Pre-compile XLA in __init__ before Timer: moves 29s compile cost outside optimize()
+0b99b352	7.50	40	13	1.008374	1.428073	Discard	Prefetch after batch: no improvement; in-memory data already fast
+031aad73	7.00	44	15	1.008491	1.427186	Keep	Vectorised bootstrap sampling: one batched tf.gather per tensor instead of E separate calls
+dbdc6cdb	5.86	51	18	1.008038	1.426965	Keep	Pre-batch dataset: reshape [N,D] to [n_batches,B,D] before from_tensor_slices - O(1) slice vs stack-B-samples
+14763801	-	-	-	-	-	Crash	Single-input/output model: crash in predict_ensemble_encoded (fixed in next commit)
+8e741068	3.98	61	26	1.007744	1.427334	Keep	Single-input/output model: 1 stacked [E*D] input + 1 batched [batch,E,1] output reduces per-step tensor overhead 20→2
+3ac0152e	3.84	60	25	1.008754	1.427545	Keep	Optimise bootstrap gather: transpose [E,N] indices → direct [N,E,D] gather (saves one 60MB alloc/transpose)
+9fa80f6e	3.39	69	29	1.006660	1.426877	Keep	Maximise steps_per_execution to n_batches=625: Keras spe is a tf.Variable, so no recompile; 63→1 Python dispatches/epoch
+d6a870cb	3.515	65	28	1.008425	1.429352	Discard	Pre-warm GPU for full-epoch spe: extra warmup advances RNG state and gives slightly worse timing on avg
+318f3a97	3.635	69	29	1.008245	1.427273	Discard	Explicit steps_per_epoch to skip cardinality inference: higher variance and worse average timing
+9ecb932c	3.33	100	34	1.009697	1.428280	Keep	VEM make_train_function(jit_compile=False): eliminates 625 GPU→CPU syncs/epoch at cost of XLA fusion; GPU util 69→100% but timing ~equal
+b5e8b992	3.45	100	43	1.009024	1.428054	Discard	VEM jit_compile=True (scalar loss + y_pred.mean fix): XLA+sync-free but Epoch1 warm-up 2s; 750ms/epoch x2 still no net gain
