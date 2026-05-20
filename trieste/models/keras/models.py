@@ -160,10 +160,19 @@ class DeepEnsemble(
         if self.optimizer.metrics is None:
             self.optimizer.metrics = ["mse"]
 
+        # Single-output vectorized models use one loss/metric instead of E copies.
+        n_outputs = len(model.model.outputs)
+        if n_outputs == 1:
+            compile_loss = self.optimizer.loss
+            compile_metrics = self.optimizer.metrics
+        else:
+            compile_loss = [self.optimizer.loss] * n_outputs
+            compile_metrics = [self.optimizer.metrics] * n_outputs
+
         model.model.compile(
             optimizer=self.optimizer.optimizer,
-            loss=[self.optimizer.loss] * model.ensemble_size,
-            metrics=[self.optimizer.metrics] * model.ensemble_size,
+            loss=compile_loss,
+            metrics=compile_metrics,
             **compile_args,
         )
 
@@ -221,6 +230,30 @@ class DeepEnsemble(
             bootstrap. This can be useful for preparing validation data.
         :return: A dictionary with input data and a dictionary with output data.
         """
+        E = self.ensemble_size
+        single_input = len(self.model.input_names) == 1
+
+        if single_input:
+            # Single stacked input/output model: pack all E members' data into one tensor.
+            n_rows = dataset.observations.shape[0]
+            if self._bootstrap and not do_not_bootstrap:
+                all_indices = tf.random.uniform(
+                    (E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32
+                )
+                all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
+                all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
+            else:
+                all_X = tf.tile(dataset.query_points[tf.newaxis], [E, 1, 1])  # [E, N, D]
+                all_y = tf.tile(dataset.observations[tf.newaxis], [E, 1, 1])  # [E, N, 1]
+            # [E, N, D] → [N, E*D]  (row-major: member 0 features first, then member 1, …)
+            X_stacked = tf.reshape(tf.transpose(all_X, [1, 0, 2]), [n_rows, -1])
+            # [E, N, 1] → [N, E, 1]
+            y_stacked = tf.transpose(all_y, [1, 0, 2])
+            return (
+                {self.model.input_names[0]: X_stacked},
+                {self.model.output_names[0]: y_stacked},
+            )
+
         inputs = {}
         outputs = {}
         input_names = self.model.input_names
@@ -230,16 +263,16 @@ class DeepEnsemble(
             # Generate all E bootstrap index sets in one call, then gather once per tensor.
             n_rows = dataset.observations.shape[0]
             all_indices = tf.random.uniform(
-                (self.ensemble_size, n_rows), maxval=n_rows, dtype=tf.dtypes.int32
+                (E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32
             )
             all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
             all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
-            for index in range(self.ensemble_size):
+            for index in range(E):
                 inputs[input_names[index]] = all_X[index]
                 outputs[output_names[index]] = all_y[index]
         else:
             X, y = dataset.astuple()
-            for index in range(self.ensemble_size):
+            for index in range(E):
                 inputs[input_names[index]] = X
                 outputs[output_names[index]] = y
 
@@ -253,6 +286,11 @@ class DeepEnsemble(
         :param query_points: A tensor with ``query_points``.
         :return: A dictionary with query_points prepared for predictions.
         """
+        if len(self.model.input_names) == 1:
+            # Single stacked input: tile query_points E times along the feature axis.
+            E = self.ensemble_size
+            return {self.model.input_names[0]: tf.tile(query_points, [1, E])}
+
         inputs = {}
         for index in range(self.ensemble_size):
             inputs[self.model.input_names[index]] = query_points
@@ -268,7 +306,15 @@ class DeepEnsemble(
             ``query_points`` for each member of the ensemble.
         """
         x_transformed: dict[str, TensorType] = self.prepare_query_points(query_points)
-        return self._model.model(x_transformed)
+        result = self._model.model(x_transformed)
+        if isinstance(result, tfd.Distribution):
+            # Single batched output from the vectorized model: batch_shape [N, E, 1].
+            # Split into a tuple of E Normal distributions with batch_shape [N, 1].
+            E = self.ensemble_size
+            return tuple(
+                tfd.Normal(result.loc[:, i, :], result.scale[:, i, :]) for i in range(E)
+            )
+        return result
 
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
