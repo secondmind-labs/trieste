@@ -1,0 +1,7 @@
+Commit	Training Time	GPU Utilisation	GPU Memory	RMSE	NLPD	Status	Description
+2b016232	51.43	70	17	1.005391	1.425425	Keep	Baseline: unmodified code
+67dc657a	9.53	100	65	1.004899	1.422840	Keep	Vectorised ensemble: [E,bs,in]@[E,in,out] batched matmuls; manual Gaussian NLL
+17f22e8f	N/A	N/A	N/A	N/A	N/A	Crash	FP16 matmuls: dtype mismatch (data is float64; log_2pi float64 vs fp32 params)
+6a492eda	7.25	N/A	N/A	1.005581	1.424508	Keep	Train in float32: cast data+weights fp64→fp32; 2x faster on P100 (10.6 vs 5.3 TFLOPS)
+9fc19688	7.28	N/A	N/A	1.005919	1.425517	Discard	FP16 matmuls on fp32 base: no speedup on P100 (P100 FP16 not faster for this workload)
+8c6a75c6	4.55	N/A	N/A	1.003758	1.422734	Keep	Flat weight var: all weights in 1 tf.Variable, manual Adam; 1 XLA update op vs 8
