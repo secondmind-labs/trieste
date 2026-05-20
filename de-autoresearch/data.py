@@ -20,7 +20,10 @@ TEST_FRACTION = 0.2
 RANDOM_SEED = 42
 OUTPUT_DIR = Path(__file__).resolve().parent
 
-search_space = Box([0.0], [pi]) ** 20
+search_space = Box(
+    tf.constant([0.0], dtype=tf.float32),
+    tf.constant([pi], dtype=tf.float32),
+) ** 20
 observer = mk_observer(partial(michalewicz, d=20))
 
 

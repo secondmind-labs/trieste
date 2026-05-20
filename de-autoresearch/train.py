@@ -76,8 +76,8 @@ def build_model(dataset: Dataset) -> DeepEnsemble:
 if __name__ == "__main__":
     train_data = np.load(DATA_DIR / "train.npz")
     train_dataset = Dataset(
-        query_points=train_data["X"],
-        observations=train_data["y"].reshape(-1, 1),
+        query_points=tf.constant(train_data["X"], dtype=tf.float32),
+        observations=tf.constant(train_data["y"].reshape(-1, 1), dtype=tf.float32),
     )
 
     model = build_model(train_dataset)
