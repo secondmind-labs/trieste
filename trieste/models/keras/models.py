@@ -174,9 +174,59 @@ class DeepEnsemble(
         self._absolute_epochs = 0
         self._continuous_optimisation = continuous_optimisation
 
+        # Pre-compile the XLA train function before any user timer starts.
+        # This is only effective when jit_compile=True: the first call to fit() triggers
+        # XLA compilation (~29s); running a dummy fit here moves that cost out of optimize().
+        if compile_args.get("jit_compile", False):
+            self._warmup_jit(model.model, compile_args)
+
         self._model = model
         self._bootstrap = bootstrap
         self._diversify = diversify
+
+    def _warmup_jit(self, keras_model: tf_keras.Model, compile_args: Mapping[str, Any]) -> None:
+        """Trigger XLA compilation with a dummy fit call so optimize() runs without compile lag.
+
+        Runs one epoch of dummy (all-zero) data through the compiled train function, then
+        restores the original weights and resets the optimizer state. Must be called after
+        compile() and before any user timer.
+        """
+        import math
+
+        batch_size = self.optimizer.fit_args.get("batch_size", 16)
+        spe = compile_args.get("steps_per_execution", 1)
+        # Need at least spe batches so the first XLA call compiles for the full spe-step loop.
+        n_warmup = batch_size * spe
+
+        input_shapes = (
+            keras_model.input_shape
+            if isinstance(keras_model.input_shape, list)
+            else [keras_model.input_shape]
+        )
+        output_shapes = (
+            keras_model.output_shape
+            if isinstance(keras_model.output_shape, list)
+            else [keras_model.output_shape]
+        )
+
+        dummy_x = {
+            name: tf.zeros([n_warmup] + list(shape[1:]))
+            for name, shape in zip(keras_model.input_names, input_shapes)
+        }
+        dummy_y = {
+            name: tf.zeros([n_warmup] + list(shape[1:]))
+            for name, shape in zip(keras_model.output_names, output_shapes)
+        }
+        dummy_ds = tf.data.Dataset.from_tensor_slices((dummy_x, dummy_y)).batch(batch_size)
+
+        original_weights = keras_model.get_weights()
+        keras_model.fit(dummy_ds, epochs=1, verbose=0)
+        keras_model.set_weights(original_weights)
+
+        # Reset Adam iteration counter and momentum/variance accumulators to zero.
+        keras_model.optimizer.iterations.assign(0)
+        for var in keras_model.optimizer.variables()[1:]:
+            var.assign(tf.zeros_like(var))
 
     def __repr__(self) -> str:
         """"""
