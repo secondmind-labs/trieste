@@ -569,14 +569,18 @@ class DeepEnsemble(
                 break
         hidden_act = model.get_layer("model_0_dense_0").activation
 
-        # Stack weights: [n_ensemble, in_dim, out_dim] / [n_ensemble, out_dim]
+        # Use float32 for the custom loop regardless of original dtype.
+        # P100: FP32 is 10.6 TFLOPS vs FP64 5.3 TFLOPS; also halves Adam memory bandwidth.
+        _train_dtype = tf.float32
+
+        # Stack weights as float32: [n_ensemble, in_dim, out_dim] / [n_ensemble, out_dim]
         def _stack_layer(layer_name_suffix: str) -> tuple:
             kernels = [model.get_layer(f"model_{i}_{layer_name_suffix}").kernel
                        for i in range(n_ensemble)]
             biases = [model.get_layer(f"model_{i}_{layer_name_suffix}").bias
                       for i in range(n_ensemble)]
-            k_var = tf.Variable(tf.stack(kernels, axis=0), trainable=True)
-            b_var = tf.Variable(tf.stack(biases, axis=0), trainable=True)
+            k_var = tf.Variable(tf.cast(tf.stack(kernels, axis=0), _train_dtype), trainable=True)
+            b_var = tf.Variable(tf.cast(tf.stack(biases, axis=0), _train_dtype), trainable=True)
             return k_var, b_var
 
         hidden_kernels = []
@@ -591,24 +595,24 @@ class DeepEnsemble(
             out_kernel, out_bias
         ]
 
-        # Stack input/output data: [n_ensemble, n_batches, batch_size, D]
+        # Stack input/output data as float32: [n_ensemble, n_batches, batch_size, D]
         n_use = n_batches * batch_size
-        x_stacked = tf.stack(
+        x_stacked = tf.cast(tf.stack(
             [tf.reshape(x[name][:n_use], [n_batches, batch_size, -1]) for name in model.input_names],
             axis=0,
-        )  # [n_ensemble, n_batches, batch_size, D_in]
-        y_stacked = tf.stack(
+        ), _train_dtype)  # [n_ensemble, n_batches, batch_size, D_in]
+        y_stacked = tf.cast(tf.stack(
             [tf.reshape(y[name][:n_use], [n_batches, batch_size, -1]) for name in model.output_names],
             axis=0,
-        )  # [n_ensemble, n_batches, batch_size, 1]
+        ), _train_dtype)  # [n_ensemble, n_batches, batch_size, 1]
 
-        inv_n_batches = tf.constant(1.0 / n_batches)
-        log_2pi = tf.constant(_math.log(2.0 * _math.pi), dtype=x_stacked.dtype)
+        inv_n_batches = tf.constant(1.0 / n_batches, dtype=_train_dtype)
+        log_2pi = tf.constant(_math.log(2.0 * _math.pi), dtype=_train_dtype)
 
         @tf.function(jit_compile=True)
         def run_one_epoch() -> tf.Tensor:
             """Vectorised ensemble epoch: E networks batched as [E, bs, dim] matmuls."""
-            total_loss = tf.constant(0.0)
+            total_loss = tf.constant(0.0, dtype=_train_dtype)
             for i in tf.range(n_batches):
                 x_i = x_stacked[:, i, :, :]  # [E, batch_size, D_in]
                 y_i = y_stacked[:, i, :, :]  # [E, batch_size, 1]
@@ -622,11 +626,8 @@ class DeepEnsemble(
                     params = tf.matmul(h, out_kernel) + out_bias[:, tf.newaxis, :]
                     mean = params[..., :1]
                     std = tf.math.softplus(params[..., 1:])
-                    step_loss = tf.cast(
-                        0.5 * tf.reduce_mean(
-                            log_2pi + 2.0 * tf.math.log(std) + ((y_i - mean) / std) ** 2
-                        ),
-                        tf.float32,
+                    step_loss = 0.5 * tf.reduce_mean(
+                        log_2pi + 2.0 * tf.math.log(std) + ((y_i - mean) / std) ** 2
                     )
                 grads = tape.gradient(step_loss, stacked_vars)
                 tf_optimizer.apply_gradients(zip(grads, stacked_vars))
@@ -663,16 +664,16 @@ class DeepEnsemble(
                                 v.assign(w)
                         break
 
-        # Write stacked weights back to Keras model
+        # Write stacked weights back to Keras model (cast to original layer dtype)
         for j in range(n_hidden):
             for i in range(n_ensemble):
                 layer = model.get_layer(f"model_{i}_dense_{j}")
-                layer.kernel.assign(hidden_kernels[j][i])
-                layer.bias.assign(hidden_biases[j][i])
+                layer.kernel.assign(tf.cast(hidden_kernels[j][i], layer.kernel.dtype))
+                layer.bias.assign(tf.cast(hidden_biases[j][i], layer.bias.dtype))
         for i in range(n_ensemble):
             out_layer = model.get_layer(f"model_{i}_dense_parameters")
-            out_layer.kernel.assign(out_kernel[i])
-            out_layer.bias.assign(out_bias[i])
+            out_layer.kernel.assign(tf.cast(out_kernel[i], out_layer.kernel.dtype))
+            out_layer.bias.assign(tf.cast(out_bias[i], out_layer.bias.dtype))
 
         return epochs_trained
 
