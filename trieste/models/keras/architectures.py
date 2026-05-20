@@ -190,28 +190,33 @@ class KerasEnsemble:
         return tf_keras.Model(inputs=inputs, outputs=outputs)
 
     def _build_vectorized_ensemble(self) -> tf_keras.Model:
-        """Vectorized ensemble: stack E inputs, one batched matmul per layer, split E outputs.
+        """Vectorized ensemble with a single stacked input and a single batched output.
 
-        Instead of E independent network branches (E separate matmuls per layer), this builds a
-        single model that stacks the E inputs into ``[E, batch, D]``, runs one batched matmul per
-        hidden layer (``[E, batch, D] @ [E, D, H]``), then splits the ``[E, batch, 2]`` parameter
-        output into E separate Distribution outputs. The external interface (named inputs/outputs,
-        loss and metric structure) is identical to the original functional model.
+        A single input ``"ensemble_input"`` of shape ``[E * D]`` is reshaped to
+        ``[E, batch, D]`` inside the model and fed through one shared set of
+        :class:`VectorizedEnsembleDenseLayer` layers (one batched matmul per layer).
+        The ``[E, batch, 2]`` parameter tensor is transposed to ``[batch, E, 2]`` and
+        wrapped in a single :class:`~tfp.layers.DistributionLambda`, yielding a
+        ``Normal`` with ``batch_shape = [batch, E, 1]``.
+
+        Using one input and one output instead of E of each eliminates E-fold tensor
+        handling overhead per training step in the ``tf.data`` pipeline and Keras metrics.
         """
         E = len(self._networks)
         network = self._networks[0]
         dtype = network.input_tensor_spec.dtype.name
         input_dim = int(np.prod(network.input_tensor_spec.shape))
 
-        inputs = [
-            tf_keras.Input(shape=(input_dim,), dtype=dtype, name=net.input_layer_name)
-            for net in self._networks
-        ]
+        # Single stacked input: [batch, E * input_dim]
+        stacked_input = tf_keras.Input(
+            shape=(E * input_dim,), dtype=dtype, name="ensemble_input"
+        )
 
-        # Stack E inputs: [E, batch, input_dim]
+        # Reshape to [E, batch, input_dim] for vectorized layers
         h = tf_keras.layers.Lambda(
-            lambda x: tf.stack(x, axis=0), name="ensemble_stack"
-        )(inputs)
+            lambda x: tf.transpose(tf.reshape(x, [-1, E, input_dim]), [1, 0, 2]),
+            name="ensemble_reshape",
+        )(stacked_input)
 
         # Vectorized hidden layers
         for j, layer_args in enumerate(network._hidden_layer_args):
@@ -223,28 +228,24 @@ class KerasEnsemble:
                 dtype=dtype,
             )(h)
 
-        # Output layer: 2 parameters per member (mean + softplus-scale for Normal)
-        params = VectorizedEnsembleDenseLayer(
-            E, 2, None, name="vec_params", dtype=dtype
-        )(h)
+        # Output layer: 2 parameters per member (mean + raw scale)
+        params = VectorizedEnsembleDenseLayer(E, 2, None, name="vec_params", dtype=dtype)(h)
+        # [E, batch, 2] → [batch, E, 2]
+        params_T = tf_keras.layers.Lambda(
+            lambda x: tf.transpose(x, [1, 0, 2]), name="ensemble_transpose"
+        )(params)
 
         def _dist_fn(t: TensorType) -> tfp.distributions.Distribution:
             return tfp.distributions.Normal(t[..., :1], tf.math.softplus(t[..., 1:]))
 
-        outputs = []
-        for i, net in enumerate(self._networks):
-            params_i = tf_keras.layers.Lambda(
-                lambda x, idx=i: x[idx], name=f"split_{i}"
-            )(params)
-            dist_i = tfp.layers.DistributionLambda(
-                make_distribution_fn=_dist_fn,
-                convert_to_tensor_fn=tfp.distributions.Distribution.mean,
-                name=net.output_layer_name,
-                dtype=dtype,
-            )(params_i)
-            outputs.append(dist_i)
+        output = tfp.layers.DistributionLambda(
+            make_distribution_fn=_dist_fn,
+            convert_to_tensor_fn=tfp.distributions.Distribution.mean,
+            name="ensemble_output",
+            dtype=dtype,
+        )(params_T)
 
-        return tf_keras.Model(inputs=inputs, outputs=outputs)
+        return tf_keras.Model(inputs=stacked_input, outputs=output)
 
     def __getstate__(self) -> dict[str, Any]:
         # When pickling use to_json to save the model.
