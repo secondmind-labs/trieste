@@ -575,6 +575,27 @@ class DeepEnsemble(
     def _build_tf_dataset(
         self, x: Dict[str, tf.Tensor], y: Dict[str, tf.Tensor]
     ) -> tf.data.Dataset:
+        # When batch_size is known and N is exactly divisible, pre-batch the tensors so that
+        # each Dataset element is already a full batch. This replaces the stack-B-samples
+        # operation in tf.data.batch() with a single O(1) slice per step.
+        if "steps_per_epoch" not in self.optimizer.fit_args and "batch_size" in self.optimizer.fit_args:
+            batch_size = self.optimizer.fit_args["batch_size"]
+            n = next(iter(x.values())).shape[0]
+            if n is not None and n > 0 and n % batch_size == 0:
+                n_batches = n // batch_size
+
+                def _prebatch(t: tf.Tensor) -> tf.Tensor:
+                    static_tail = t.shape[1:].as_list()
+                    if all(d is not None for d in static_tail):
+                        return tf.reshape(t, [n_batches, batch_size] + static_tail)
+                    return tf.reshape(
+                        t, tf.concat([[n_batches, batch_size], tf.shape(t)[1:]], axis=0)
+                    )
+
+                x_pre = {k: _prebatch(v) for k, v in x.items()}
+                y_pre = {k: _prebatch(v) for k, v in y.items()}
+                return tf.data.Dataset.from_tensor_slices((x_pre, y_pre))
+
         tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))
 
         if "steps_per_epoch" in self.optimizer.fit_args:
