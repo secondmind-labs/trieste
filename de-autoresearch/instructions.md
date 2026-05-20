@@ -10,7 +10,7 @@ The objective is to get the fastest possible implementation of Deep Ensembles.
 To achieve this, you will repeatedly run a benchmarking script (`train.py`) which trains
 a Deep Ensemble model with a given architecture and hyperparameters on a fixed training and testing set.
 
-**Simplicity Criterion**
+### Criteria
 
 All else being equal, simpler is better. A small improvement that adds ugly complexity is not worth it. 
 Conversely, removing something and getting equal or better results is a great outcome — that's a simplification win. 
@@ -18,15 +18,31 @@ When evaluating whether to keep a change, weigh the complexity cost against the 
 A small time improvement that adds 20 lines of hacky code? Probably not worth it. A small time improvement from 
 deleting code? Definitely keep. An improvement of ~0 but much simpler code? Keep.
 
+Improvements must aim to maximise GPU utilisation without VRAM OOM. Furthermore,
+aim to vectorise the ensemble still using Keras, if possible, before attempting 
+to bypass Keras and implement a custom tf.function epoch loop.
+
+An analysis has been conducted in the past to compare execution of Deep Ensemble training on TPU vs GPU.
+The results are collected on the following in-scope files:
+
+- TPU_PERFORMANCE_SUMMARY.md
+- TPU_PERFORMANCE_ANALYSIS.md
+- TFP_TPU_ISSUES.md
+- GPU_VS_TPU_TFP_EXPLANATION.md
+
 ### What you can do
 
 - **You must only improve performance by changing the project Deep Ensemble's internal implementation**.
+- Use the TPU vs GPU analysis files to gather ideas and think about possible improvements
 
 ### What you cannot do
 
 - Do not attempt to change the model public API, because other model types and the project in
 its entirety depend on it.
-- Modify any of the files in this directory (e.g. `data.py`, `train.py` etc.). Preventing the modification of `train.py` means that all improvements must come from the code, not the model hyperparameters.
+- Modify any of the files in this directory (e.g. `data.py`, `train.py` etc.). Preventing the modification of `train.py` means that all improvements must come from the code, not by changing model hyperparameters/configuration.
+- Alter the architecture in a way that does not support the configuration, hyperparameters, callbacks the implementation currently supports
+- Optimise performance specifically for the given training set and architecture (e.g. 625 steps, 10 ensembles etc), improvements must be generally valid
+- Apply optimisations suggested in the TPU vs GPU analysis files which specifically apply to TPU and not GPUs, based on your understanding of the architectural differences between these two accelerators
 
 ## Experimentation
 
@@ -89,10 +105,13 @@ Commit  Training Time   GPU Utilisation GPU Memory  RMSE    NLPD    Status  Desc
     - data.py: how training/test data was created
     - train.npz, test.npz: training/testing data produced by the previous script
     - train.py: training and testing on the data produced by the previous script
-3. **Agree on a run tag** based on today's date (e.g. 18-05-2025). The branch `de-autoresearch/<tag>` must not already exist
-4. **Create the branch**: `git checkout -b de-autoresearch/<tag>` from the current branch
-4. **Initialise results**: create results.tsv with just the header row. The baseline will be recorded after the first run
-5. **Confirm and go**: Confirm you understand the aim of this experiment and that the set up looks good.
+    - <date>-<model>.tsv (if available), these are the results.tsv files of previous experiment runs, to understand what's been done
+    - the TPU vs GPU analysis files
+3. Analyse commits of previous experiment run branches de-autoresearch/<date>
+4**Agree on a run tag** based on today's date (e.g. 18-05-2025). The branch `de-autoresearch/<tag>` must not already exist
+5. **Create the branch**: `git checkout -b de-autoresearch/<tag>` from the current branch
+6. **Initialise results**: create results.tsv with just the header row. The baseline will be recorded after the first run
+7. **Confirm and go**: Confirm you understand the aim of this experiment and that the set up looks good.
 
 Once you get confirmation, kick off the experimentation.
 
