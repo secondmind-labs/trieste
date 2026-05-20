@@ -88,7 +88,13 @@ utilization.gpu [%], utilization.memory [%], memory.total [MiB], memory.free [Mi
 and keep track of the max of the `utilization.gpu` and `utilization.memory` metrics.
 To precisely keep track of them, devise a suitable strategy which can probe `nvidia-smi`
 at the right granularity while epochs are running. These figures must be absolutely reported
-in the log file (see below).
+in the log file (see below). In order to track GPU start, you can run the following:
+
+```bash
+gpu_monitor.sh PID > /tmp/gpu_stats.txt 2>&1
+```
+
+where `PID` refers to the training process.
 
 ## Logging Results
 
