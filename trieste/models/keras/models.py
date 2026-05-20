@@ -38,7 +38,7 @@ from ..interfaces import (
 )
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
-from .architectures import KerasEnsemble, MultivariateNormalTriL
+from .architectures import KerasEnsemble, MultivariateNormalTriL, VectorizedEnsembleModel
 from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
 from .utils import negative_log_likelihood, sample_model_index, sample_with_replacement
@@ -193,8 +193,48 @@ class DeepEnsemble(
         Runs one epoch of dummy (all-zero) data through the compiled train function, then
         restores the original weights and resets the optimizer state. Must be called after
         compile() and before any user timer.
+
+        For VectorizedEnsembleModel (which uses a custom train_step that processes all
+        mini-batches in one XLA call), two warmup passes with different batch-counts are run
+        so that tf.function's reduce_retracing produces a dynamic [None, B, ...] XLA program.
+        Any subsequent call with a different n_batches (e.g. 625 at training time) then reuses
+        the already-compiled program without an expensive on-device recompile.
         """
         batch_size = self.optimizer.fit_args.get("batch_size", 16)
+
+        if isinstance(keras_model, VectorizedEnsembleModel):
+            # Custom train_step receives (x_all [N, B, ...], y_all [N, B, ...]).
+            # Build the output shape via a forward pass.
+            n_warmup_1 = compile_args.get("steps_per_execution", 1)  # e.g. 10
+
+            input_shapes = [keras_model.input_shape]
+            sample_x = {n: tf.zeros([batch_size] + list(s[1:])) for n, s in
+                        zip(keras_model.input_names, input_shapes)}
+            sample_out = keras_model(sample_x, training=False)
+            if isinstance(sample_out, tfd.Distribution):
+                sample_out = sample_out.mean()
+            out_tail = list(sample_out.shape[1:])  # e.g. [E, 1]
+
+            original_weights = keras_model.get_weights()
+
+            for n_w in (n_warmup_1, n_warmup_1 + 1):
+                # Dataset with ONE element of shape [n_w, batch_size, ...]
+                wx = {keras_model.input_names[0]:
+                      tf.zeros([n_w, batch_size] + list(keras_model.input_shape[1:]))}
+                wy = {keras_model.output_names[0]:
+                      tf.zeros([n_w, batch_size] + out_tail)}
+                warmup_ds = tf.data.Dataset.from_tensors((wx, wy))
+                # spe=1 so make_train_function takes the no-loop path (one step_function per epoch)
+                keras_model.steps_per_execution = 1
+                keras_model.make_train_function(force=True)
+                keras_model.fit(warmup_ds, epochs=1, verbose=0)
+
+            keras_model.set_weights(original_weights)
+            keras_model.optimizer.iterations.assign(0)
+            for var in keras_model.optimizer.variables()[1:]:
+                var.assign(tf.zeros_like(var))
+            return
+
         spe = compile_args.get("steps_per_execution", 1)
         # Need at least spe batches so the first XLA call compiles for the full spe-step loop.
         n_warmup = batch_size * spe
@@ -614,10 +654,7 @@ class DeepEnsemble(
         x, y = self.prepare_dataset(dataset)
         tf_train_dataset = self._build_tf_dataset(x, y)
 
-        # Maximise steps_per_execution so the entire epoch runs in one Python→GPU
-        # dispatch instead of ceil(n_batches/current_spe) separate dispatches.
-        # Keras stores spe as a mutable tf.Variable; updating it avoids recompilation
-        # while letting the XLA while-loop iterate over all n_batches steps per call.
+        # Steps-per-execution tuning.
         if (
             "batch_size" in self.optimizer.fit_args
             and "steps_per_epoch" not in self.optimizer.fit_args
@@ -626,7 +663,14 @@ class DeepEnsemble(
             n = next(iter(x.values())).shape[0]
             batch_size = self.optimizer.fit_args["batch_size"]
             if n is not None and batch_size and n % batch_size == 0:
-                self.model.steps_per_execution = n // batch_size
+                if isinstance(self.model, VectorizedEnsembleModel):
+                    # train_step processes all n_batches in ONE XLA call; Keras sees 1 step/epoch.
+                    # Use spe=1 (no outer while-loop) to eliminate N GPU→CPU syncs per epoch.
+                    self.model.steps_per_execution = 1
+                    self.model.make_train_function(force=True)
+                else:
+                    # Maximise spe so the full epoch runs in one Python→GPU dispatch.
+                    self.model.steps_per_execution = n // batch_size
 
         history = self.model.fit(
             tf_train_dataset,
@@ -669,6 +713,13 @@ class DeepEnsemble(
 
                 x_pre = {k: _prebatch(v) for k, v in x.items()}
                 y_pre = {k: _prebatch(v) for k, v in y.items()}
+
+                if isinstance(self.model, VectorizedEnsembleModel):
+                    # VectorizedEnsembleModel.train_step handles [N, B, ...] input internally.
+                    # Return a single-element dataset so next(iterator) is called ONCE per epoch,
+                    # eliminating N-1 GPU→CPU syncs from _train_counter.assign_add.
+                    return tf.data.Dataset.from_tensors((x_pre, y_pre))
+
                 return tf.data.Dataset.from_tensor_slices((x_pre, y_pre))
 
         tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))

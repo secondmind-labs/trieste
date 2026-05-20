@@ -58,6 +58,77 @@ class _GlorotUniformVectorized(tf_keras.initializers.Initializer):
         return {}
 
 
+class VectorizedEnsembleModel(tf_keras.Model):
+    """Keras functional model that eliminates the per-step GPU→CPU sync.
+
+    With standard Keras spe=N training, ``_train_counter.assign_add`` creates a
+    GPU→CPU synchronisation point after *every* mini-batch step (~0.5 ms each).
+    This model overrides ``make_train_function`` so that the entire epoch runs in
+    **one** TF-graph call (``jit_compile=False`` to avoid XLA incompatibilities in
+    ``compiled_loss``/``compiled_metrics``), reducing 625 syncs per epoch to 1.
+
+    Dataset elements must have shape ``([N, B, ...], [N, B, ...])``, where N is
+    the number of mini-batches and B is the mini-batch size.
+
+    The model matmuls still execute via cuBLAS kernels (no XLA overhead removed,
+    but the benefit from sync elimination dominates).
+    """
+
+    def train_step(self, data: Any) -> Any:
+        # data arrives as ({input_name: [N, B, ...]}, {output_name: [N, B, ...]})
+        x_dict, y_dict = data
+        in_key = self.input_names[0]
+        out_key = self.output_names[0]
+        x_all = x_dict[in_key]   # [N, B, E*D]
+        y_all = y_dict[out_key]  # [N, B, E, 1]
+
+        for i in tf.range(tf.shape(x_all)[0]):
+            x_i = {in_key: x_all[i]}
+            y_i = {out_key: y_all[i]}
+            with tf.GradientTape() as tape:
+                y_pred = self(x_i, training=True)
+                loss = self.compiled_loss(y_i, y_pred, regularization_losses=self.losses)
+            self.optimizer.minimize(loss, self.trainable_variables, tape=tape)
+            self.compiled_metrics.update_state(y_i, y_pred)
+
+        return {m.name: m.result() for m in self.metrics}
+
+    def make_train_function(self, force: bool = False) -> Any:
+        if self.train_function is not None and not force:
+            return self.train_function
+
+        # Cache _vem_run_step_fn across make_train_function calls so the tf.function
+        # trace built during _warmup_jit is reused at training time (no retrace inside
+        # the timer).  jit_compile=False avoids XLA shape errors from Keras internals
+        # (remove_squeezable_dimensions) while cuBLAS still handles the matmuls.
+        if not hasattr(self, "_vem_run_step_fn"):
+            model = self
+
+            def _run_step(data: Any) -> Any:
+                outputs = model.train_step(data)
+                flat = list(tf.nest.flatten(outputs))
+                with tf.control_dependencies(flat[:1] if flat else []):
+                    model._train_counter.assign_add(1)
+                return outputs
+
+            self._vem_run_step_fn = tf.function(
+                _run_step, jit_compile=False, reduce_retracing=True
+            )
+
+        run_step_fn = self._vem_run_step_fn
+
+        def train_function(iterator: Any) -> Any:
+            data = next(iterator)
+            return run_step_fn(data)
+
+        if not self.run_eagerly:
+            train_function = tf.function(train_function, reduce_retracing=True)
+            self.train_tf_function = train_function
+
+        self.train_function = train_function
+        return self.train_function
+
+
 class VectorizedEnsembleDenseLayer(tf_keras.layers.Layer):
     """Dense layer that processes E ensemble members in parallel via a single batched matmul.
 
@@ -245,7 +316,7 @@ class KerasEnsemble:
             dtype=dtype,
         )(params_T)
 
-        return tf_keras.Model(inputs=stacked_input, outputs=output)
+        return VectorizedEnsembleModel(inputs=stacked_input, outputs=output)
 
     def __getstate__(self) -> dict[str, Any]:
         # When pickling use to_json to save the model.
