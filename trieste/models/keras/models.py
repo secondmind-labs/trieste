@@ -299,18 +299,24 @@ class DeepEnsemble(
             # Single stacked input/output model: pack all E members' data into one tensor.
             n_rows = dataset.observations.shape[0]
             if self._bootstrap and not do_not_bootstrap:
-                all_indices = tf.random.uniform(
-                    (E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32
+                # Generate [E, N] index sets and transpose to [N, E] so that tf.gather
+                # produces [N, E, D] and [N, E, 1] directly — one fewer transpose+copy
+                # compared to gathering [E, N, D] then transposing.
+                all_indices_T = tf.transpose(
+                    tf.random.uniform((E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32)
+                )  # [N, E]
+                # X_stacked: [N, E, D] → [N, E*D]
+                X_stacked = tf.reshape(
+                    tf.gather(dataset.query_points, all_indices_T), [n_rows, -1]
                 )
-                all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
-                all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
+                # y_stacked: [N, E, 1]
+                y_stacked = tf.gather(dataset.observations, all_indices_T)
             else:
-                all_X = tf.tile(dataset.query_points[tf.newaxis], [E, 1, 1])  # [E, N, D]
-                all_y = tf.tile(dataset.observations[tf.newaxis], [E, 1, 1])  # [E, N, 1]
-            # [E, N, D] → [N, E*D]  (row-major: member 0 features first, then member 1, …)
-            X_stacked = tf.reshape(tf.transpose(all_X, [1, 0, 2]), [n_rows, -1])
-            # [E, N, 1] → [N, E, 1]
-            y_stacked = tf.transpose(all_y, [1, 0, 2])
+                # No bootstrap: all members see the same data.
+                X_stacked = tf.tile(dataset.query_points, [1, E])  # [N, E*D]
+                y_stacked = tf.tile(
+                    dataset.observations[:, tf.newaxis, :], [1, E, 1]
+                )  # [N, E, 1]
             return (
                 {self.model.input_names[0]: X_stacked},
                 {self.model.output_names[0]: y_stacked},
