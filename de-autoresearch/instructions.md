@@ -20,7 +20,10 @@ deleting code? Definitely keep. An improvement of ~0 but much simpler code? Keep
 
 Improvements must aim to maximise GPU utilisation without VRAM OOM. Furthermore,
 aim to vectorise the ensemble still using Keras, if possible, before attempting 
-to bypass Keras and implement a custom tf.function epoch loop.
+to bypass Keras and implement a custom tf.function epoch loop. For this, start
+by reimplementing changes done in commit c5501b0c as the first improvement, as reported in 
+2025-05-20-sonnet-4.6-even-more-constraints.tsv. Consider also the other changes reported
+in the same file, since now data and then the model is in float32. 
 
 An analysis has been conducted in the past to compare execution of Deep Ensemble training on TPU vs GPU.
 The results are collected on the following in-scope files which you can use to generate and evaluate ides:
@@ -141,7 +144,7 @@ Loop:
 5. Read out the results: `grep "^Test\|^Training" run.log`
 6. If the grep output is empty, the run crashed. Run `tail -n 50 run.log` to read the Python stack trace and attempt a fix. If you can't get things to work after more than a few attempts, give up.
 7. Record the results in the tsv (NOTE: do not commit the results.tsv file, leave it untracked by git)
-8. If training time improved (lower), and RMSE/NLPD are as good as the baseline (lower), you "advance" the branch, keeping the git commit
+8. If training time improved (lower), and RMSE/NLPD are as good as the baseline (lower), you "advance" the branch, keeping the git commit. If RMSE/NLPD are slightly worse (up to 3-4 significant digits), this could be done to numerical precision or some randomness. Results in this case should not be considered worse.
 9. If training time is equal or worse, you git reset back to where you started
 
 The idea is that you are a completely autonomous researcher trying things out. If they work, keep. If they don't, discard. 
