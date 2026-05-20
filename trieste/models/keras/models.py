@@ -607,24 +607,19 @@ class DeepEnsemble(
 
         @tf.function(jit_compile=True)
         def run_one_epoch() -> tf.Tensor:
-            """Vectorised ensemble epoch: FP16 matmuls, FP32 loss and optimizer."""
+            """Vectorised ensemble epoch: E networks batched as [E, bs, dim] matmuls."""
             total_loss = tf.constant(0.0)
             for i in tf.range(n_batches):
-                x_i = tf.cast(x_stacked[:, i, :, :], tf.float16)
-                y_i = y_stacked[:, i, :, :]  # keep fp32 for loss
+                x_i = x_stacked[:, i, :, :]  # [E, batch_size, D_in]
+                y_i = y_stacked[:, i, :, :]  # [E, batch_size, 1]
                 with tf.GradientTape() as tape:
                     h = x_i
                     for k in range(n_hidden):
                         h = hidden_act(
-                            tf.matmul(h, tf.cast(hidden_kernels[k], tf.float16))
-                            + tf.cast(hidden_biases[k][:, tf.newaxis, :], tf.float16)
+                            tf.matmul(h, hidden_kernels[k])
+                            + hidden_biases[k][:, tf.newaxis, :]
                         )
-                    # cast back to fp32 before loss for numerical stability
-                    params = tf.cast(
-                        tf.matmul(h, tf.cast(out_kernel, tf.float16))
-                        + tf.cast(out_bias[:, tf.newaxis, :], tf.float16),
-                        tf.float32,
-                    )
+                    params = tf.matmul(h, out_kernel) + out_bias[:, tf.newaxis, :]
                     mean = params[..., :1]
                     std = tf.math.softplus(params[..., 1:])
                     step_loss = tf.cast(
