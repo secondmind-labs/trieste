@@ -41,6 +41,66 @@ from tensorflow_probability.python.layers.distribution_layer import Distribution
 from trieste.types import TensorType
 
 
+class _GlorotUniformVectorized(tf_keras.initializers.Initializer):
+    """Glorot uniform initialiser for [E, fan_in, fan_out] weight tensors.
+
+    Applies the correct (fan_in, fan_out) scale to each ensemble member's slice
+    rather than the full [E, fan_in, fan_out] shape, matching the initialisation
+    that E separate Dense layers would receive.
+    """
+
+    def __call__(self, shape: Any, dtype: Any = None) -> tf.Tensor:
+        fan_in, fan_out = float(shape[1]), float(shape[2])
+        limit = np.sqrt(6.0 / (fan_in + fan_out))
+        return tf.random.uniform(shape, -limit, limit, dtype=dtype)
+
+    def get_config(self) -> dict[str, Any]:
+        return {}
+
+
+class VectorizedEnsembleDenseLayer(tf_keras.layers.Layer):
+    """Dense layer that processes E ensemble members in parallel via a single batched matmul.
+
+    Input shape:  ``[E, batch, fan_in]``
+    Output shape: ``[E, batch, units]``
+    """
+
+    def __init__(self, ensemble_size: int, units: int, activation: Any = None, **kwargs: Any):
+        super().__init__(**kwargs)
+        self.ensemble_size = ensemble_size
+        self.units = units
+        self._activation = activation
+        self.activation_fn = tf_keras.activations.get(activation)
+
+    def build(self, input_shape: Any) -> None:
+        fan_in = int(input_shape[-1])
+        self.kernel = self.add_weight(
+            "kernel",
+            shape=[self.ensemble_size, fan_in, self.units],
+            initializer=_GlorotUniformVectorized(),
+        )
+        self.bias = self.add_weight(
+            "bias",
+            shape=[self.ensemble_size, self.units],
+            initializer="zeros",
+        )
+        super().build(input_shape)
+
+    def call(self, x: TensorType) -> TensorType:
+        h = tf.matmul(x, self.kernel) + self.bias[:, tf.newaxis, :]
+        if self.activation_fn is not None:
+            h = self.activation_fn(h)
+        return h
+
+    def get_config(self) -> dict[str, Any]:
+        return {
+            **super().get_config(),
+            "ensemble_size": self.ensemble_size,
+            "units": self.units,
+            "activation": self._activation,
+        }
+
+
 class KerasEnsemble:
     """
     This class builds an ensemble of neural networks, using Keras. Individual networks must
@@ -114,12 +174,75 @@ class KerasEnsemble:
     def _build_ensemble(self) -> tf_keras.Model:
         """
         Builds the ensemble model by combining all the individual networks in a single Keras model.
-        This method relies on ``connect_layers`` method of :class:`KerasEnsembleNetwork` objects
-        to construct individual networks.
+
+        For :class:`GaussianNetwork` ensembles with a single output dimension, a vectorized
+        model is constructed using batched matmuls across all ensemble members in one pass.
+        For other network types, falls back to the original per-member functional model.
 
         :return: The Keras model.
         """
+        if all(
+            isinstance(n, GaussianNetwork) and n.flattened_output_shape == 1
+            for n in self._networks
+        ):
+            return self._build_vectorized_ensemble()
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
+        return tf_keras.Model(inputs=inputs, outputs=outputs)
+
+    def _build_vectorized_ensemble(self) -> tf_keras.Model:
+        """Vectorized ensemble: stack E inputs, one batched matmul per layer, split E outputs.
+
+        Instead of E independent network branches (E separate matmuls per layer), this builds a
+        single model that stacks the E inputs into ``[E, batch, D]``, runs one batched matmul per
+        hidden layer (``[E, batch, D] @ [E, D, H]``), then splits the ``[E, batch, 2]`` parameter
+        output into E separate Distribution outputs. The external interface (named inputs/outputs,
+        loss and metric structure) is identical to the original functional model.
+        """
+        E = len(self._networks)
+        network = self._networks[0]
+        dtype = network.input_tensor_spec.dtype.name
+        input_dim = int(np.prod(network.input_tensor_spec.shape))
+
+        inputs = [
+            tf_keras.Input(shape=(input_dim,), dtype=dtype, name=net.input_layer_name)
+            for net in self._networks
+        ]
+
+        # Stack E inputs: [E, batch, input_dim]
+        h = tf_keras.layers.Lambda(
+            lambda x: tf.stack(x, axis=0), name="ensemble_stack"
+        )(inputs)
+
+        # Vectorized hidden layers
+        for j, layer_args in enumerate(network._hidden_layer_args):
+            h = VectorizedEnsembleDenseLayer(
+                E,
+                layer_args["units"],
+                layer_args.get("activation"),
+                name=f"vec_dense_{j}",
+                dtype=dtype,
+            )(h)
+
+        # Output layer: 2 parameters per member (mean + softplus-scale for Normal)
+        params = VectorizedEnsembleDenseLayer(
+            E, 2, None, name="vec_params", dtype=dtype
+        )(h)
+
+        def _dist_fn(t: TensorType) -> tfp.distributions.Distribution:
+            return tfp.distributions.Normal(t[..., :1], tf.math.softplus(t[..., 1:]))
+
+        outputs = []
+        for i, net in enumerate(self._networks):
+            params_i = tf_keras.layers.Lambda(
+                lambda x, idx=i: x[idx], name=f"split_{i}"
+            )(params)
+            dist_i = tfp.layers.DistributionLambda(
+                make_distribution_fn=_dist_fn,
+                convert_to_tensor_fn=tfp.distributions.Distribution.mean,
+                name=net.output_layer_name,
+                dtype=dtype,
+            )(params_i)
+            outputs.append(dist_i)
 
         return tf_keras.Model(inputs=inputs, outputs=outputs)
 
