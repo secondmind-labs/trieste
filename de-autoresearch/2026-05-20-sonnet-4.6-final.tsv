@@ -1,0 +1,9 @@
+Commit	Training Time	GPU Utilisation	GPU Memory	RMSE	NLPD	Status	Description
+706b3f24	58.20	40	10	1.008488	1.428758	Keep	Baseline: float32 data; original separate-branch Keras ensemble (same code as 8fc0b14d)
+4e0c00df	33.72	39	13	1.010532	1.430292	Keep	Vectorised ensemble in Keras: stack E inputs one batched matmul per layer split E outputs
+3eeb4848	35.68	45	16	1.008827	1.427411	Keep	Vectorised bootstrap sampling: one batched tf.gather per tensor instead of E separate calls
+c509aaf1	33.75	46	16	1.008290	1.427094	Keep	Pre-batch dataset: reshape [N,D] to [n_batches,B,D] before from_tensor_slices - O(1) slice vs stack-B-samples
+c5c8eac8	23.05	57	24	1.011880	1.432039	Keep	Single-input/output model: 1 stacked [E*D] input + 1 batched [batch,E,1] output reduces per-step tensor overhead 20→2
+f082e88d	25.63	57	24	1.007321	1.426168	Keep	Optimise bootstrap gather: transpose [E,N] indices to [N,E] for direct [N,E,D] gather (saves one 60MB alloc/transpose)
+304d5567	23.58	70	29	1.008455	1.427175	Keep	Maximise steps_per_execution to n_batches=625: Keras spe is a tf.Variable so no recompile; 63→1 Python dispatches/epoch
+60e2a9af	19.30	100	34	1.007812	1.426734	Keep	VEM make_train_function(jit_compile=False): eliminates 625 GPU→CPU syncs/epoch at cost of XLA fusion; GPU util 70→100%
