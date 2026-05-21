@@ -21,6 +21,11 @@ import tensorflow_probability as tfp
 from gpflow.keras import tf_keras
 
 from tests.util.misc import empty_dataset
+from tests.util.models.keras.ensemble_layers import (
+    expected_ensemble_layer_count,
+    is_vectorized_ensemble_model,
+    vectorized_hidden_layers,
+)
 from tests.util.models.keras.models import trieste_keras_ensemble_model
 from trieste.models.keras import (
     GaussianNetwork,
@@ -126,8 +131,14 @@ def test_keras_ensemble_build_ensemble_seems_correct(
     assert keras_ensemble.model.compiled_metrics is None
     assert keras_ensemble.model.optimizer is None
 
-    # check correct number of layers
-    assert len(keras_ensemble.model.layers) == 2 * ensemble_size + 3 * ensemble_size
+    # check correct number of layers (vectorized single-output vs per-member multi-output)
+    num_hidden_layers = 2
+    vectorized = is_vectorized_ensemble_model(keras_ensemble.model)
+    assert len(keras_ensemble.model.layers) == expected_ensemble_layer_count(
+        ensemble_size, num_hidden_layers, vectorized=vectorized
+    )
+    if vectorized:
+        assert len(vectorized_hidden_layers(keras_ensemble.model)) == num_hidden_layers
 
 
 def test_keras_ensemble_can_be_compiled() -> None:
