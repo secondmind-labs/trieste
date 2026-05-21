@@ -41,7 +41,7 @@ from tensorflow_probability.python.layers.distribution_layer import Distribution
 from trieste.types import TensorType
 
 
-class _GlorotUniformVectorized(tf_keras.initializers.Initializer):
+class _GlorotUniformVectorized(tf_keras.initializers.Initializer):  # type: ignore
     """Glorot uniform initialiser for [E, fan_in, fan_out] weight tensors.
 
     Applies the correct (fan_in, fan_out) scale to each ensemble member's slice
@@ -58,7 +58,7 @@ class _GlorotUniformVectorized(tf_keras.initializers.Initializer):
         return {}
 
 
-class VectorizedEnsembleDenseLayer(tf_keras.layers.Layer):
+class VectorizedEnsembleDenseLayer(tf_keras.layers.Layer):  # type: ignore
     """Dense layer that processes E ensemble members in parallel via a single batched matmul.
 
     Input shape:  ``[E, batch, fan_in]``
@@ -197,6 +197,8 @@ class KerasEnsemble:
         output into E separate Distribution outputs. The external interface (named inputs/outputs,
         loss and metric structure) is identical to the original functional model.
         """
+        assert all(isinstance(n, GaussianNetwork) for n in self._networks)
+
         E = len(self._networks)
         network = self._networks[0]
         dtype = network.input_tensor_spec.dtype.name
