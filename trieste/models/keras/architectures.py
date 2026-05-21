@@ -213,7 +213,7 @@ class KerasEnsemble:
         h = tf_keras.layers.Lambda(lambda x: tf.stack(x, axis=0), name="ensemble_stack")(inputs)
 
         # Vectorized hidden layers
-        for j, layer_args in enumerate(network._hidden_layer_args):
+        for j, layer_args in enumerate(network._hidden_layer_args):  # type: ignore
             h = VectorizedEnsembleDenseLayer(
                 E,
                 layer_args["units"],
