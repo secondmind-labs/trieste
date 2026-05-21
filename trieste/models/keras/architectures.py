@@ -182,8 +182,7 @@ class KerasEnsemble:
         :return: The Keras model.
         """
         if all(
-            isinstance(n, GaussianNetwork) and n.flattened_output_shape == 1
-            for n in self._networks
+            isinstance(n, GaussianNetwork) and n.flattened_output_shape == 1 for n in self._networks
         ):
             return self._build_vectorized_ensemble()
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
@@ -209,9 +208,7 @@ class KerasEnsemble:
         ]
 
         # Stack E inputs: [E, batch, input_dim]
-        h = tf_keras.layers.Lambda(
-            lambda x: tf.stack(x, axis=0), name="ensemble_stack"
-        )(inputs)
+        h = tf_keras.layers.Lambda(lambda x: tf.stack(x, axis=0), name="ensemble_stack")(inputs)
 
         # Vectorized hidden layers
         for j, layer_args in enumerate(network._hidden_layer_args):
@@ -224,18 +221,14 @@ class KerasEnsemble:
             )(h)
 
         # Output layer: 2 parameters per member (mean + softplus-scale for Normal)
-        params = VectorizedEnsembleDenseLayer(
-            E, 2, None, name="vec_params", dtype=dtype
-        )(h)
+        params = VectorizedEnsembleDenseLayer(E, 2, None, name="vec_params", dtype=dtype)(h)
 
         def _dist_fn(t: TensorType) -> tfp.distributions.Distribution:
             return tfp.distributions.Normal(t[..., :1], tf.math.softplus(t[..., 1:]))
 
         outputs = []
         for i, net in enumerate(self._networks):
-            params_i = tf_keras.layers.Lambda(
-                lambda x, idx=i: x[idx], name=f"split_{i}"
-            )(params)
+            params_i = tf_keras.layers.Lambda(lambda x, idx=i: x[idx], name=f"split_{i}")(params)
             dist_i = tfp.layers.DistributionLambda(
                 make_distribution_fn=_dist_fn,
                 convert_to_tensor_fn=tfp.distributions.Distribution.mean,
