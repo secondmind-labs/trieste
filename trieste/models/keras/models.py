@@ -43,6 +43,7 @@ from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
 from .utils import (
     aggregate_member_losses,
+    compile_metrics_for_ensemble,
     negative_log_likelihood,
     sample_model_index,
     sample_with_replacement,
@@ -171,10 +172,11 @@ class DeepEnsemble(
         n_outputs = len(model.model.outputs)
         if n_outputs == 1:
             compile_loss = aggregate_member_losses(base_loss)
-            compile_metrics = self.optimizer.metrics
         else:
             compile_loss = [base_loss] * n_outputs
-            compile_metrics = [self.optimizer.metrics] * n_outputs
+        compile_metrics = compile_metrics_for_ensemble(
+            n_outputs, self.optimizer.metrics, model.ensemble_size
+        )
 
         model.model.compile(
             optimizer=self.optimizer.optimizer,
@@ -760,10 +762,11 @@ class DeepEnsemble(
         n_outputs = len(self._model.model.outputs)
         if n_outputs == 1:
             compile_loss = aggregate_member_losses(base_loss)
-            compile_metrics = self.optimizer.metrics
         else:
             compile_loss = [base_loss] * self._model.ensemble_size
-            compile_metrics = [self.optimizer.metrics] * self._model.ensemble_size
+        compile_metrics = compile_metrics_for_ensemble(
+            n_outputs, self.optimizer.metrics, self._model.ensemble_size
+        )
         self.model.compile(
             self.optimizer.optimizer,
             loss=compile_loss,

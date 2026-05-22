@@ -14,10 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from ...data import Dataset
 from ...types import TensorType
@@ -173,3 +174,86 @@ def ensemble_negative_log_likelihood(
     :return: Scalar loss matching legacy ``loss=[negative_log_likelihood] * E`` compile.
     """
     return aggregate_member_losses(negative_log_likelihood)(y_true, y_pred)
+
+
+_STRING_METRIC_CLASSES: dict[str, type[tf_keras.metrics.Metric]] = {
+    "mse": tf_keras.metrics.MeanSquaredError,
+    "mae": tf_keras.metrics.MeanAbsoluteError,
+    "mape": tf_keras.metrics.MeanAbsolutePercentageError,
+    "msle": tf_keras.metrics.MeanSquaredLogarithmicError,
+}
+
+
+def _metric_with_unique_name(metric: Any, name: str) -> tf_keras.metrics.Metric:
+    if isinstance(metric, str):
+        metric_class = _STRING_METRIC_CLASSES.get(metric)
+        if metric_class is not None:
+            return metric_class(name=name)
+        resolved = tf_keras.metrics.get(metric)
+        if isinstance(resolved, type) and issubclass(resolved, tf_keras.metrics.Metric):
+            return resolved(name=name)
+        return tf_keras.metrics.MeanMetricWrapper(resolved, name=name)
+    if isinstance(metric, type) and issubclass(metric, tf_keras.metrics.Metric):
+        return metric(name=name)
+    if isinstance(metric, tf_keras.metrics.Metric):
+        return type(metric).from_config({**metric.get_config(), "name": name})
+    return tf_keras.metrics.MeanMetricWrapper(metric, name=name)
+
+
+def _default_vectorized_metric_name(metric: Any) -> str:
+    if isinstance(metric, str):
+        return f"ensemble_{metric}"
+    if isinstance(metric, tf_keras.metrics.Metric):
+        return f"ensemble_{metric.name}"
+    return "ensemble_metric"
+
+
+def compile_metrics_for_ensemble(
+    n_outputs: int,
+    metrics: Optional[Union[list[Any], Any]],
+    ensemble_size: Optional[int] = None,
+) -> Optional[Union[list[tf_keras.metrics.Metric], tf_keras.metrics.Metric]]:
+    """
+    Build Keras compile metrics with unique names for vectorized and legacy ensemble layouts.
+
+    Vectorized models use one output with shape ``[batch, E, ...]``; a single ``"mse"`` metric can
+    collide with per-member metrics when ``steps_per_execution`` > 1. Legacy multi-output models
+    need one uniquely named metric per output.
+
+    :param n_outputs: Number of Keras model outputs.
+    :param metrics: Metric(s) from :class:`~trieste.models.optimizer.KerasOptimizer`, or ``None``.
+    :param ensemble_size: Ensemble size for legacy multi-output models (defaults to ``n_outputs``).
+    :return: Metrics argument for :meth:`tf.keras.Model.compile`, or ``None``.
+    """
+    if metrics is None:
+        return None
+
+    if n_outputs == 1:
+        if isinstance(metrics, (list, tuple)):
+            if len(metrics) == 1:
+                return [_metric_with_unique_name(metrics[0], _default_vectorized_metric_name(metrics[0]))]
+            return [
+                _metric_with_unique_name(
+                    metric, f"{_default_vectorized_metric_name(metric)}_{index}"
+                )
+                for index, metric in enumerate(metrics)
+            ]
+        return [_metric_with_unique_name(metrics, _default_vectorized_metric_name(metrics))]
+
+    n_members = ensemble_size if ensemble_size is not None else n_outputs
+    if isinstance(metrics, (list, tuple)) and len(metrics) == n_members:
+        return [
+            _metric_with_unique_name(metric, f"{_metric_base_name(metric)}_{index}")
+            for index, metric in enumerate(metrics)
+        ]
+
+    base = metrics[0] if isinstance(metrics, (list, tuple)) and len(metrics) == 1 else metrics
+    return [_metric_with_unique_name(base, f"{_metric_base_name(base)}_{index}") for index in range(n_members)]
+
+
+def _metric_base_name(metric: Any) -> str:
+    if isinstance(metric, str):
+        return metric
+    if isinstance(metric, tf_keras.metrics.Metric):
+        return metric.name
+    return "metric"
