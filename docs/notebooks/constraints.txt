@@ -57,7 +57,7 @@ google-api-core==2.25.1
 google-auth==2.40.3
 google-pasta==0.2.0
 googleapis-common-protos==1.70.0
-gpflow==2.10.0
+gpflow==2.10.1
 gpflux==0.4.4
 graphemeu==0.7.2
 greenlet==3.2.4

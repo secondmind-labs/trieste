@@ -40,7 +40,7 @@ setup(
     install_requires=[
         "absl-py",
         "dill",
-        "gpflow>=2.9.2",
+        "gpflow>=2.10.1",
         "gpflux>=0.4.4",
         "numpy",
         "tensorflow>=2.5,<2.17; platform_system!='Darwin' or platform_machine!='arm64'",
