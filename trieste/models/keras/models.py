@@ -41,7 +41,12 @@ from ..utils import write_summary_data_based_metrics
 from .architectures import KerasEnsemble, MultivariateNormalTriL
 from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
-from .utils import negative_log_likelihood, sample_model_index, sample_with_replacement
+from .utils import (
+    aggregate_member_losses,
+    negative_log_likelihood,
+    sample_model_index,
+    sample_with_replacement,
+)
 
 
 class DeepEnsemble(
@@ -160,13 +165,15 @@ class DeepEnsemble(
         if self.optimizer.metrics is None:
             self.optimizer.metrics = ["mse"]
 
-        # Single-output vectorized models use one loss/metric instead of E copies.
+        # Single-output vectorized models: one loss/metric in compile, but aggregate over E so
+        # the scalar matches legacy sum of per-member batch-mean losses (not mean over E).
+        base_loss = self.optimizer.loss if self.optimizer.loss is not None else negative_log_likelihood
         n_outputs = len(model.model.outputs)
         if n_outputs == 1:
-            compile_loss = self.optimizer.loss
+            compile_loss = aggregate_member_losses(base_loss)
             compile_metrics = self.optimizer.metrics
         else:
-            compile_loss = [self.optimizer.loss] * n_outputs
+            compile_loss = [base_loss] * n_outputs
             compile_metrics = [self.optimizer.metrics] * n_outputs
 
         model.model.compile(
@@ -278,6 +285,17 @@ class DeepEnsemble(
 
         return inputs, outputs
 
+    def _stack_query_points_for_vectorized(self, query_points: TensorType) -> TensorType:
+        """Stack ``[..., D]`` query points into ``[..., E * D]`` for ``ensemble_input``."""
+        E = self.ensemble_size
+        qp = tf.convert_to_tensor(query_points)
+        if qp.shape.rank == 1:
+            qp = qp[..., tf.newaxis]
+        # [..., D] -> [..., E, D] -> [..., E * D]
+        stacked = tf.repeat(qp[..., tf.newaxis, :], repeats=E, axis=-2)
+        feature_dim = tf.shape(qp)[-1]
+        return tf.reshape(stacked, tf.concat([tf.shape(qp)[:-1], [E * feature_dim]], axis=0))
+
     def prepare_query_points(self, query_points: TensorType) -> Dict[str, TensorType]:
         """
         Transform ``query_points`` into inputs with correct names that can be used for
@@ -287,9 +305,11 @@ class DeepEnsemble(
         :return: A dictionary with query_points prepared for predictions.
         """
         if len(self.model.input_names) == 1:
-            # Single stacked input: tile query_points E times along the feature axis.
-            E = self.ensemble_size
-            return {self.model.input_names[0]: tf.tile(query_points, [1, E])}
+            return {
+                self.model.input_names[0]: self._stack_query_points_for_vectorized(
+                    query_points
+                )
+            }
 
         inputs = {}
         for index in range(self.ensemble_size):
@@ -437,10 +457,16 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        raw_input_shape = self.model.input_shape
-        first_input_shape = raw_input_shape[0] if isinstance(raw_input_shape, list) else raw_input_shape
-        input_dims = min(len(query_points.shape), len(first_input_shape))
-        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
+        member_input_shape = tuple(self.model.inputs[0].shape.as_list())
+        # flatten_leading_dims keeps the last (output_dims - 1) feature axes of each member input.
+        feature_rank = len(member_input_shape) - 1
+        flatten_output_dims = feature_rank + 1
+        query_points_tensor = tf.convert_to_tensor(query_points)
+        while query_points_tensor.shape.rank < flatten_output_dims:
+            query_points_tensor = query_points_tensor[..., tf.newaxis]
+        flat_x, unflatten = flatten_leading_dims(
+            query_points_tensor, output_dims=flatten_output_dims
+        )
         ensemble_distributions = self.ensemble_distributions(flat_x)
         predicted_means = tf.stack(
             [unflatten(dist.mean()) for dist in ensemble_distributions], axis=-3
@@ -728,10 +754,20 @@ class DeepEnsemble(
                 callback.set_model(model)
 
         # Recompile the model
+        base_loss = (
+            self.optimizer.loss if self.optimizer.loss is not None else negative_log_likelihood
+        )
+        n_outputs = len(self._model.model.outputs)
+        if n_outputs == 1:
+            compile_loss = aggregate_member_losses(base_loss)
+            compile_metrics = self.optimizer.metrics
+        else:
+            compile_loss = [base_loss] * self._model.ensemble_size
+            compile_metrics = [self.optimizer.metrics] * self._model.ensemble_size
         self.model.compile(
             self.optimizer.optimizer,
-            loss=[self.optimizer.loss] * self._model.ensemble_size,
-            metrics=[self.optimizer.metrics] * self._model.ensemble_size,
+            loss=compile_loss,
+            metrics=compile_metrics,
         )
 
         # recover optimization result if necessary (and possible)

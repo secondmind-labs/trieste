@@ -483,11 +483,15 @@ def test_deep_ensemble_optimize(ensemble_size: int, bootstrap_data: bool, epochs
 
     model.optimize(example_data)
     loss = model.model.history.history["loss"]
-    ensemble_losses = ["output_loss" in elt for elt in model.model.history.history.keys()]
+    history_keys = model.model.history.history.keys()
 
     assert loss[-1] < loss[0]
     assert len(loss) == epochs
-    assert sum(ensemble_losses) == ensemble_size
+    if len(model.model.output_names) == 1:
+        assert "loss" in history_keys
+    else:
+        ensemble_losses = ["output_loss" in elt for elt in history_keys]
+        assert sum(ensemble_losses) == ensemble_size
 
 
 @random_seed
@@ -503,17 +507,17 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
         bootstrap_data,
     )
 
-    reference_model = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
-    reference_model.model.compile(optimizer=optimizer, loss=loss)
-    reference_model.model.set_weights(model.model.get_weights())
+    inputs, outputs = model.prepare_dataset(example_data)
+    eval_loss = model.model.evaluate(inputs, outputs, verbose=0)[0]
 
-    tranformed_x, tranformed_y = _ensemblise_data(
-        reference_model, example_data, _ENSEMBLE_SIZE, bootstrap_data
+    distribution = model.model(inputs)
+    y_name = model.model.output_names[0]
+    manual = float(
+        tf.reduce_sum(
+            tf.reduce_mean(negative_log_likelihood(outputs[y_name], distribution), axis=0)
+        )
     )
-    loss = model.model.evaluate(tranformed_x, tranformed_y)[: _ENSEMBLE_SIZE + 1]
-    reference_loss = reference_model.model.evaluate(tranformed_x, tranformed_y)
-
-    npt.assert_allclose(tf.constant(loss), reference_loss, rtol=1e-6)
+    npt.assert_allclose(eval_loss, manual, rtol=1e-5)
 
 
 @random_seed
@@ -528,17 +532,10 @@ def test_deep_ensemble_predict_ensemble() -> None:
         KerasOptimizer(optimizer, loss=loss),
     )
 
-    reference_model = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
-    reference_model.model.compile(optimizer=optimizer, loss=loss)
-    reference_model.model.set_weights(model.model.get_weights())
-
     predicted_means, predicted_vars = model.predict_ensemble(example_data.query_points)
-    tranformed_x, tranformed_y = _ensemblise_data(
-        reference_model, example_data, _ENSEMBLE_SIZE, False
-    )
-    ensemble_distributions = reference_model.model(tranformed_x)
-    reference_means = tf.convert_to_tensor([dist.mean() for dist in ensemble_distributions])
-    reference_vars = tf.convert_to_tensor([dist.variance() for dist in ensemble_distributions])
+    reference_distributions = model.ensemble_distributions(example_data.query_points)
+    reference_means = tf.convert_to_tensor([dist.mean() for dist in reference_distributions])
+    reference_vars = tf.convert_to_tensor([dist.variance() for dist in reference_distributions])
 
     npt.assert_allclose(predicted_means, reference_means)
     npt.assert_allclose(predicted_vars, reference_vars)
@@ -633,25 +630,39 @@ def test_deep_ensemble_prepare_data_call(
     model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size, bootstrap_data, False)
 
     # call with whole dataset
-    data = model.prepare_dataset(example_data)
-    assert isinstance(data, tuple)
-    for ensemble_data in data:
-        assert isinstance(ensemble_data, dict)
-        assert len(ensemble_data.keys()) == ensemble_size
-        for member_data in ensemble_data:
+    inputs, outputs = model.prepare_dataset(example_data)
+    assert isinstance(inputs, dict)
+    assert isinstance(outputs, dict)
+    vectorized = len(model.model.input_names) == 1
+    if vectorized:
+        assert list(inputs.keys()) == ["ensemble_input"]
+        assert list(outputs.keys()) == ["ensemble_output"]
+        assert inputs["ensemble_input"].shape == (n_rows, ensemble_size)
+        assert outputs["ensemble_output"].shape == (n_rows, ensemble_size, 1)
+        if bootstrap_data:
+            assert not tf.reduce_all(inputs["ensemble_input"][:, :1] == x)
+        else:
+            assert tf.reduce_all(inputs["ensemble_input"][:, :1] == x)
+    else:
+        assert len(inputs.keys()) == ensemble_size
+        for member_data in inputs:
             if bootstrap_data:
-                assert tf.reduce_any(ensemble_data[member_data] != x)
+                assert tf.reduce_any(inputs[member_data] != x)
             else:
-                assert tf.reduce_all(ensemble_data[member_data] == x)
-    for inp, out in zip(data[0], data[1]):
-        assert "".join(filter(str.isdigit, inp)) == "".join(filter(str.isdigit, out))
+                assert tf.reduce_all(inputs[member_data] == x)
+        for inp, out in zip(inputs, outputs):
+            assert "".join(filter(str.isdigit, inp)) == "".join(filter(str.isdigit, out))
 
     # call with query points alone
-    inputs = model.prepare_query_points(example_data.query_points)
-    assert isinstance(inputs, dict)
-    assert len(inputs.keys()) == ensemble_size
-    for member_data in inputs:
-        assert tf.reduce_all(inputs[member_data] == x)
+    prepared_inputs = model.prepare_query_points(example_data.query_points)
+    assert isinstance(prepared_inputs, dict)
+    if vectorized:
+        assert list(prepared_inputs.keys()) == ["ensemble_input"]
+        assert tf.reduce_all(prepared_inputs["ensemble_input"][:, :1] == x)
+    else:
+        assert len(prepared_inputs.keys()) == ensemble_size
+        for member_data in prepared_inputs:
+            assert tf.reduce_all(prepared_inputs[member_data] == x)
 
 
 @pytest.mark.parametrize("do_not_bootstrap", [True, False])

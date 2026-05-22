@@ -25,4 +25,10 @@ from .builders import build_keras_ensemble
 from .interface import DeepEnsembleModel, KerasPredictor
 from .models import DeepEnsemble
 from .sampler import DeepEnsembleTrajectorySampler, deep_ensemble_trajectory
-from .utils import get_tensor_spec_from_data, negative_log_likelihood, sample_with_replacement
+from .utils import (
+    aggregate_member_losses,
+    ensemble_negative_log_likelihood,
+    get_tensor_spec_from_data,
+    negative_log_likelihood,
+    sample_with_replacement,
+)

@@ -39,7 +39,8 @@ def expected_ensemble_layer_count(
     :return: Expected ``len(model.layers)``.
     """
     if vectorized:
-        return 3 * ensemble_size + num_hidden_layers + 2
+        # input, reshape, H × vec_dense, vec_params, transpose, distribution
+        return num_hidden_layers + 5
     return num_hidden_layers * ensemble_size + 3 * ensemble_size
 
 

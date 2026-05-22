@@ -103,28 +103,44 @@ def test_keras_ensemble_build_ensemble_seems_correct(
     assert isinstance(keras_ensemble.model, tf_keras.Model)
     assert keras_ensemble.model.built
 
-    # check ensemble size
-    assert len(keras_ensemble.model.inputs) == ensemble_size
-    assert len(keras_ensemble.model.input_names) == ensemble_size
-    assert len(keras_ensemble.model.output_names) == ensemble_size
+    vectorized = is_vectorized_ensemble_model(keras_ensemble.model)
+    input_dim = int(np.prod(query_point_shape))
 
-    # check input shape
-    for shape in keras_ensemble.model.input_shape:
-        assert shape[1:] == tf.TensorShape(query_point_shape)
+    if vectorized:
+        assert len(keras_ensemble.model.inputs) == 1
+        assert keras_ensemble.model.input_names == ["ensemble_input"]
+        assert keras_ensemble.model.output_names == ["ensemble_output"]
+        assert keras_ensemble.model.input_shape == (None, ensemble_size * input_dim)
 
-    # testing output shape is more complex as probabilistic layers don't have some properties
-    # we make some predictions instead and then check the output is correct
-    predictions = keras_ensemble.model.predict([query_points] * ensemble_size)
-    assert len(predictions) == ensemble_size
-    for pred in predictions:
-        assert pred.shape == tf.TensorShape([n_obs] + observation_shape)
+        qp = query_points
+        if qp.shape.rank == 1:
+            qp = qp[..., tf.newaxis]
+        stacked = tf.reshape(
+            tf.repeat(qp[..., tf.newaxis, :], ensemble_size, axis=-2),
+            [n_obs, ensemble_size * int(np.prod(query_point_shape))],
+        )
+        predictions = keras_ensemble.model.predict(
+            {keras_ensemble.model.input_names[0]: stacked}, verbose=0
+        )
+        assert predictions.shape == tf.TensorShape([n_obs, ensemble_size] + observation_shape)
+    else:
+        assert len(keras_ensemble.model.inputs) == ensemble_size
+        assert len(keras_ensemble.model.input_names) == ensemble_size
+        assert len(keras_ensemble.model.output_names) == ensemble_size
 
-    # check input/output names
-    for ens in range(ensemble_size):
-        ins = ["model_" + str(ens) in i_name for i_name in keras_ensemble.model.input_names]
-        assert np.any(ins)
-        outs = ["model_" + str(ens) in o_name for o_name in keras_ensemble.model.output_names]
-        assert np.any(outs)
+        for shape in keras_ensemble.model.input_shape:
+            assert shape[1:] == tf.TensorShape(query_point_shape)
+
+        predictions = keras_ensemble.model.predict([query_points] * ensemble_size, verbose=0)
+        assert len(predictions) == ensemble_size
+        for pred in predictions:
+            assert pred.shape == tf.TensorShape([n_obs] + observation_shape)
+
+        for ens in range(ensemble_size):
+            ins = ["model_" + str(ens) in i_name for i_name in keras_ensemble.model.input_names]
+            assert np.any(ins)
+            outs = ["model_" + str(ens) in o_name for o_name in keras_ensemble.model.output_names]
+            assert np.any(outs)
 
     # check the model has not been compiled
     assert keras_ensemble.model.compiled_loss is None
@@ -133,7 +149,6 @@ def test_keras_ensemble_build_ensemble_seems_correct(
 
     # check correct number of layers (vectorized single-output vs per-member multi-output)
     num_hidden_layers = 2
-    vectorized = is_vectorized_ensemble_model(keras_ensemble.model)
     assert len(keras_ensemble.model.layers) == expected_ensemble_layer_count(
         ensemble_size, num_hidden_layers, vectorized=vectorized
     )

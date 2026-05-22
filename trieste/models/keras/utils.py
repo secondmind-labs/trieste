@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Callable, Optional
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -134,3 +134,42 @@ def negative_log_likelihood(
     :return: Negative log likelihood values.
     """
     return -y_pred.log_prob(y_true)
+
+
+def aggregate_member_losses(
+    loss_fn: Callable[[TensorType, Any], TensorType],
+) -> Callable[[TensorType, Any], TensorType]:
+    """
+    Wrap a per-sample loss so the compiled scalar matches legacy multi-output Keras ensembles.
+
+    Legacy models compile ``loss=[fn] * E``; Keras sums E batch-mean losses. Vectorized models
+    have one output with shape ``[batch, E, ...]``; default Keras reduction averages over all
+    axes, scaling gradients by about ``1/E``. This wrapper returns
+    ``sum_m mean_batch(loss[..., m, ...])`` instead.
+
+    :param loss_fn: Loss function, typically :func:`negative_log_likelihood`.
+    :return: Loss function returning a scalar for vectorized single-output models.
+    """
+
+    def aggregated(y_true: TensorType, y_pred: Any) -> TensorType:
+        values = loss_fn(y_true, y_pred)
+        if len(values.shape) == 0:
+            return values
+        if len(values.shape) >= 2:
+            return tf.reduce_sum(tf.reduce_mean(values, axis=0))
+        return tf.reduce_mean(values, axis=0)
+
+    return aggregated
+
+
+def ensemble_negative_log_likelihood(
+    y_true: TensorType, y_pred: tfp.distributions.Distribution
+) -> TensorType:
+    """
+    Negative log-likelihood for vectorized ensembles (sum of per-member batch-mean NLL).
+
+    :param y_true: Observations, shape ``[batch, E, ...]``.
+    :param y_pred: Distribution with batch shape ``[batch, E, ...]``.
+    :return: Scalar loss matching legacy ``loss=[negative_log_likelihood] * E`` compile.
+    """
+    return aggregate_member_losses(negative_log_likelihood)(y_true, y_pred)
