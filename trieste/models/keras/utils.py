@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Union
+from typing import Any, Callable, Mapping, Optional, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
@@ -212,6 +212,7 @@ def compile_metrics_for_ensemble(
     n_outputs: int,
     metrics: Optional[Union[list[Any], Any]],
     ensemble_size: Optional[int] = None,
+    compile_args: Optional[Mapping[str, Any]] = None,
 ) -> Optional[Union[list[tf_keras.metrics.Metric], tf_keras.metrics.Metric]]:
     """
     Build Keras compile metrics with unique names for vectorized and legacy ensemble layouts.
@@ -223,9 +224,17 @@ def compile_metrics_for_ensemble(
     :param n_outputs: Number of Keras model outputs.
     :param metrics: Metric(s) from :class:`~trieste.models.optimizer.KerasOptimizer`, or ``None``.
     :param ensemble_size: Ensemble size for legacy multi-output models (defaults to ``n_outputs``).
+    :param compile_args: Optional compile kwargs; when ``steps_per_execution`` > 1 on a
+        vectorized model, returns ``None`` because some Keras builds duplicate ``mse`` names.
     :return: Metrics argument for :meth:`tf.keras.Model.compile`, or ``None``.
     """
     if metrics is None:
+        return None
+
+    steps_per_execution = 1
+    if compile_args is not None:
+        steps_per_execution = int(compile_args.get("steps_per_execution", 1) or 1)
+    if n_outputs == 1 and steps_per_execution > 1:
         return None
 
     if n_outputs == 1:

@@ -163,9 +163,6 @@ class DeepEnsemble(
         if self.optimizer.loss is None:
             self.optimizer.loss = negative_log_likelihood
 
-        if self.optimizer.metrics is None:
-            self.optimizer.metrics = ["mse"]
-
         # Single-output vectorized models: one loss/metric in compile, but aggregate over E so
         # the scalar matches legacy sum of per-member batch-mean losses (not mean over E).
         base_loss = self.optimizer.loss if self.optimizer.loss is not None else negative_log_likelihood
@@ -174,15 +171,19 @@ class DeepEnsemble(
             compile_loss = aggregate_member_losses(base_loss)
         else:
             compile_loss = [base_loss] * n_outputs
+        self._compile_args = dict(compile_args)
         compile_metrics = compile_metrics_for_ensemble(
-            n_outputs, self.optimizer.metrics, model.ensemble_size
+            n_outputs,
+            self.optimizer.metrics,
+            model.ensemble_size,
+            compile_args=self._compile_args,
         )
 
         model.model.compile(
             optimizer=self.optimizer.optimizer,
             loss=compile_loss,
             metrics=compile_metrics,
-            **compile_args,
+            **self._compile_args,
         )
 
         if not isinstance(
@@ -764,13 +765,18 @@ class DeepEnsemble(
             compile_loss = aggregate_member_losses(base_loss)
         else:
             compile_loss = [base_loss] * self._model.ensemble_size
+        compile_args = getattr(self, "_compile_args", {})
         compile_metrics = compile_metrics_for_ensemble(
-            n_outputs, self.optimizer.metrics, self._model.ensemble_size
+            n_outputs,
+            self.optimizer.metrics,
+            self._model.ensemble_size,
+            compile_args=compile_args,
         )
         self.model.compile(
             self.optimizer.optimizer,
             loss=compile_loss,
             metrics=compile_metrics,
+            **compile_args,
         )
 
         # recover optimization result if necessary (and possible)

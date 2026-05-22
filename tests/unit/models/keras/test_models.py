@@ -508,7 +508,8 @@ def test_deep_ensemble_loss(bootstrap_data: bool) -> None:
     )
 
     inputs, outputs = model.prepare_dataset(example_data)
-    eval_loss = model.model.evaluate(inputs, outputs, verbose=0)[0]
+    eval_result = model.model.evaluate(inputs, outputs, verbose=0)
+    eval_loss = eval_result if isinstance(eval_result, float) else eval_result[0]
 
     distribution = model.model(inputs)
     y_name = model.model.output_names[0]

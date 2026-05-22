@@ -25,7 +25,7 @@ from gpflow.keras import tf_keras
 from tests.util.misc import hartmann_6_dataset, random_seed
 from tests.util.models.keras.models import trieste_keras_ensemble_model
 from trieste.models.keras import DeepEnsemble, build_keras_ensemble, negative_log_likelihood
-from trieste.models.keras.utils import ensemble_negative_log_likelihood
+from trieste.models.keras.utils import compile_metrics_for_ensemble, ensemble_negative_log_likelihood
 from trieste.models.optimizer import KerasOptimizer
 
 
@@ -74,7 +74,8 @@ def test_deep_ensemble_compile_uses_aggregated_loss() -> None:
         False,
     )
     inputs, outputs = model.prepare_dataset(example_data)
-    eval_loss = model.model.evaluate(inputs, outputs, verbose=0)[0]
+    eval_result = model.model.evaluate(inputs, outputs, verbose=0)
+    eval_loss = eval_result if isinstance(eval_result, float) else eval_result[0]
 
     distribution = model.model(inputs)
     manual = float(
@@ -126,5 +127,20 @@ def test_vectorized_ensemble_fit_with_jit_compile_and_steps_per_execution() -> N
     )
     model.optimize(example_data)
     assert model.model.history is not None
-    assert "loss" in model.model.history.history
+    history_keys = model.model.history.history.keys()
+    assert "loss" in history_keys
+    assert "mse" not in history_keys
     assert len(model.model.history.history["loss"]) == 2
+
+
+def test_compile_metrics_skipped_when_steps_per_execution_gt_one() -> None:
+    """Vectorized ensembles with spe>1 must not register duplicate Keras ``mse`` metrics."""
+    assert (
+        compile_metrics_for_ensemble(
+            1,
+            ["mse"],
+            ensemble_size=10,
+            compile_args={"steps_per_execution": 10},
+        )
+        is None
+    )
