@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pickle
 from typing import Any, List, Tuple
 
 import numpy as np
@@ -30,6 +31,7 @@ from tests.util.models.keras.models import trieste_keras_ensemble_model
 from trieste.models.keras import (
     GaussianNetwork,
     KerasEnsembleNetwork,
+    build_keras_ensemble,
     get_tensor_spec_from_data,
     negative_log_likelihood,
 )
@@ -165,6 +167,19 @@ def test_keras_ensemble_can_be_compiled() -> None:
     assert keras_ensemble.model.compiled_loss is not None
     assert keras_ensemble.model.compiled_metrics is not None
     assert keras_ensemble.model.optimizer is not None
+
+
+def test_vectorized_keras_ensemble_pickles() -> None:
+    """Pickle round-trip must restore ``VectorizedEnsembleDenseLayer`` (e.g. for model export)."""
+    example_data = empty_dataset([2], [1])
+    keras_ensemble = build_keras_ensemble(example_data, _ENSEMBLE_SIZE, 1, 10, "relu", False)
+    assert is_vectorized_ensemble_model(keras_ensemble.model)
+
+    restored = pickle.loads(pickle.dumps(keras_ensemble))
+
+    assert is_vectorized_ensemble_model(restored.model)
+    assert len(vectorized_hidden_layers(restored.model)) == 1
+    assert len(restored.model.get_weights()) == len(keras_ensemble.model.get_weights())
 
 
 class _DummyKerasEnsembleNetwork(KerasEnsembleNetwork):

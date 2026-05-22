@@ -38,7 +38,7 @@ from ..interfaces import (
 )
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
-from .architectures import KerasEnsemble, MultivariateNormalTriL
+from .architectures import KerasEnsemble, keras_ensemble_custom_objects
 from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
 from .utils import (
@@ -751,7 +751,7 @@ class DeepEnsemble(
                 model_json, weights = callback.model
                 model = tf_keras.models.model_from_json(
                     model_json,
-                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                    custom_objects=keras_ensemble_custom_objects(),
                 )
                 model.set_weights(weights)
                 callback.set_model(model)

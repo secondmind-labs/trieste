@@ -279,7 +279,7 @@ class KerasEnsemble:
         # unfortunately, tfp.layers.DistributionLambda uses lambdas
         with SafeModeScope(False):
             self._model = tf_keras.models.model_from_json(
-                state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
+                state["_model"], custom_objects=keras_ensemble_custom_objects()
             )
         self._model.set_weights(state["_weights"])
 
@@ -292,7 +292,7 @@ class KerasEnsemble:
                 model_json, weights = self._model.history.model
                 model = tf_keras.models.model_from_json(
                     model_json,
-                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                    custom_objects=keras_ensemble_custom_objects(),
                 )
                 model.set_weights(weights)
                 self._model.history.set_model(model)
@@ -384,6 +384,22 @@ class MultivariateNormalTriL(tfp.layers.MultivariateNormalTriL):  # type: ignore
         # seem to work in TF2.4.
         base_config = super(DistributionLambda, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+
+def keras_ensemble_custom_objects() -> dict[str, Any]:
+    """
+    Custom Keras objects required to deserialize vectorized ensemble models from JSON.
+
+    Used when unpickling :class:`KerasEnsemble` and when restoring callback models on
+    :class:`DeepEnsemble`.
+
+    :return: Mapping of class names to layer/initializer classes for ``model_from_json``.
+    """
+    return {
+        "MultivariateNormalTriL": MultivariateNormalTriL,
+        "VectorizedEnsembleDenseLayer": VectorizedEnsembleDenseLayer,
+        "_GlorotUniformVectorized": _GlorotUniformVectorized,
+    }
 
 
 class GaussianNetwork(KerasEnsembleNetwork):
