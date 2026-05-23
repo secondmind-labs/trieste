@@ -46,7 +46,6 @@ from .utils import (
     compile_metrics_for_ensemble,
     negative_log_likelihood,
     sample_model_index,
-    sample_with_replacement,
 )
 
 
