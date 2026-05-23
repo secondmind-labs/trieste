@@ -16,9 +16,7 @@
 
 from __future__ import annotations
 
-import numpy as np
 import numpy.testing as npt
-import pytest
 import tensorflow as tf
 from gpflow.keras import tf_keras
 
@@ -45,7 +43,6 @@ def test_aggregate_member_loss_scales_with_ensemble_size() -> None:
         False,
     )
     inputs, outputs = deep_ensemble.prepare_dataset(example_data)
-    x_name, y_name = keras_ensemble.model.input_names[0], keras_ensemble.model.output_names[0]
 
     mean_model = tf_keras.models.clone_model(keras_ensemble.model)
     mean_model.set_weights(keras_ensemble.model.get_weights())
