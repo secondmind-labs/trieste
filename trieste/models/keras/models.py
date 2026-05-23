@@ -171,7 +171,7 @@ class DeepEnsemble(
         if n_outputs == 1:
             compile_loss = aggregate_member_losses(base_loss)
         else:
-            compile_loss = [base_loss] * n_outputs
+            compile_loss = [base_loss] * n_outputs  # type: ignore
         self._compile_args = dict(compile_args)
         compile_metrics = compile_metrics_for_ensemble(
             n_outputs,
@@ -760,7 +760,7 @@ class DeepEnsemble(
         if n_outputs == 1:
             compile_loss = aggregate_member_losses(base_loss)
         else:
-            compile_loss = [base_loss] * self._model.ensemble_size
+            compile_loss = [base_loss] * self._model.ensemble_size  # type: ignore
         compile_args = getattr(self, "_compile_args", {})
         compile_metrics = compile_metrics_for_ensemble(
             n_outputs,
