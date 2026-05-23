@@ -165,7 +165,9 @@ class DeepEnsemble(
 
         # Single-output vectorized models: one loss/metric in compile, but aggregate over E so
         # the scalar matches legacy sum of per-member batch-mean losses (not mean over E).
-        base_loss = self.optimizer.loss if self.optimizer.loss is not None else negative_log_likelihood
+        base_loss = (
+            self.optimizer.loss if self.optimizer.loss is not None else negative_log_likelihood
+        )
         n_outputs = len(model.model.outputs)
         if n_outputs == 1:
             compile_loss = aggregate_member_losses(base_loss)
@@ -247,9 +249,7 @@ class DeepEnsemble(
             # Single stacked input/output model: pack all E members' data into one tensor.
             n_rows = dataset.observations.shape[0]
             if self._bootstrap and not do_not_bootstrap:
-                all_indices = tf.random.uniform(
-                    (E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32
-                )
+                all_indices = tf.random.uniform((E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32)
                 all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
                 all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
             else:
@@ -272,9 +272,7 @@ class DeepEnsemble(
         if self._bootstrap and not do_not_bootstrap:
             # Generate all E bootstrap index sets in one call, then gather once per tensor.
             n_rows = dataset.observations.shape[0]
-            all_indices = tf.random.uniform(
-                (E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32
-            )
+            all_indices = tf.random.uniform((E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32)
             all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
             all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
             for index in range(E):
@@ -309,9 +307,7 @@ class DeepEnsemble(
         """
         if len(self.model.input_names) == 1:
             return {
-                self.model.input_names[0]: self._stack_query_points_for_vectorized(
-                    query_points
-                )
+                self.model.input_names[0]: self._stack_query_points_for_vectorized(query_points)
             }
 
         inputs = {}
@@ -334,9 +330,7 @@ class DeepEnsemble(
             # Single batched output from the vectorized model: batch_shape [N, E, 1].
             # Split into a tuple of E Normal distributions with batch_shape [N, 1].
             E = self.ensemble_size
-            return tuple(
-                tfd.Normal(result.loc[:, i, :], result.scale[:, i, :]) for i in range(E)
-            )
+            return tuple(tfd.Normal(result.loc[:, i, :], result.scale[:, i, :]) for i in range(E))
         return result
 
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
@@ -605,7 +599,10 @@ class DeepEnsemble(
         # When batch_size is known and N is exactly divisible, pre-batch the tensors so that
         # each Dataset element is already a full batch. This replaces the stack-B-samples
         # operation in tf.data.batch() with a single O(1) slice per step.
-        if "steps_per_epoch" not in self.optimizer.fit_args and "batch_size" in self.optimizer.fit_args:
+        if (
+            "steps_per_epoch" not in self.optimizer.fit_args
+            and "batch_size" in self.optimizer.fit_args
+        ):
             batch_size = self.optimizer.fit_args["batch_size"]
             n = next(iter(x.values())).shape[0]
             if n is not None and n > 0 and n % batch_size == 0:

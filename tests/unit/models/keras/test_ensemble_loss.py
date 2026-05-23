@@ -25,7 +25,10 @@ from gpflow.keras import tf_keras
 from tests.util.misc import hartmann_6_dataset, random_seed
 from tests.util.models.keras.models import trieste_keras_ensemble_model
 from trieste.models.keras import DeepEnsemble, build_keras_ensemble, negative_log_likelihood
-from trieste.models.keras.utils import compile_metrics_for_ensemble, ensemble_negative_log_likelihood
+from trieste.models.keras.utils import (
+    compile_metrics_for_ensemble,
+    ensemble_negative_log_likelihood,
+)
 from trieste.models.optimizer import KerasOptimizer
 
 
@@ -81,7 +84,9 @@ def test_deep_ensemble_compile_uses_aggregated_loss() -> None:
     manual = float(
         tf.reduce_sum(
             tf.reduce_mean(
-                negative_log_likelihood(outputs[keras_ensemble.model.output_names[0]], distribution),
+                negative_log_likelihood(
+                    outputs[keras_ensemble.model.output_names[0]], distribution
+                ),
                 axis=0,
             )
         )

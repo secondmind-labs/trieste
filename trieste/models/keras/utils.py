@@ -240,7 +240,11 @@ def compile_metrics_for_ensemble(
     if n_outputs == 1:
         if isinstance(metrics, (list, tuple)):
             if len(metrics) == 1:
-                return [_metric_with_unique_name(metrics[0], _default_vectorized_metric_name(metrics[0]))]
+                return [
+                    _metric_with_unique_name(
+                        metrics[0], _default_vectorized_metric_name(metrics[0])
+                    )
+                ]
             return [
                 _metric_with_unique_name(
                     metric, f"{_default_vectorized_metric_name(metric)}_{index}"
@@ -257,7 +261,10 @@ def compile_metrics_for_ensemble(
         ]
 
     base = metrics[0] if isinstance(metrics, (list, tuple)) and len(metrics) == 1 else metrics
-    return [_metric_with_unique_name(base, f"{_metric_base_name(base)}_{index}") for index in range(n_members)]
+    return [
+        _metric_with_unique_name(base, f"{_metric_base_name(base)}_{index}")
+        for index in range(n_members)
+    ]
 
 
 def _metric_base_name(metric: Any) -> str:

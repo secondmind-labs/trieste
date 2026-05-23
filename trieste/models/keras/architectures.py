@@ -209,9 +209,7 @@ class KerasEnsemble:
         input_dim = int(np.prod(network.input_tensor_spec.shape))
 
         # Single stacked input: [batch, E * input_dim]
-        stacked_input = tf_keras.Input(
-            shape=(E * input_dim,), dtype=dtype, name="ensemble_input"
-        )
+        stacked_input = tf_keras.Input(shape=(E * input_dim,), dtype=dtype, name="ensemble_input")
 
         # Reshape to [E, batch, input_dim] for vectorized layers
         h = tf_keras.layers.Lambda(
