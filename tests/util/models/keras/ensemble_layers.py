@@ -18,8 +18,6 @@ from typing import Any, Union
 
 from gpflow.keras import tf_keras
 
-from trieste.models.keras.architectures import VectorizedEnsembleDenseLayer
-
 
 def is_vectorized_ensemble_dense_layer(layer: Any) -> bool:
     """True for vectorized dense layers from either ``tf_keras`` or ``tensorflow.keras`` builds."""
