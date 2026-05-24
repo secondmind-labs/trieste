@@ -745,9 +745,13 @@ class DeepEnsemble(
                 callback.set_model(self.model)
             elif callback.model:
                 model_json, weights = callback.model
-                model = tf_keras.models.model_from_json(
+                use_tensorflow_keras = self._model._vectorized_uses_tensorflow_keras
+                keras_models = tf.keras.models if use_tensorflow_keras else tf_keras.models
+                model = keras_models.model_from_json(
                     model_json,
-                    custom_objects=keras_ensemble_custom_objects(),
+                    custom_objects=keras_ensemble_custom_objects(
+                        use_tensorflow_keras=use_tensorflow_keras
+                    ),
                 )
                 model.set_weights(weights)
                 callback.set_model(model)

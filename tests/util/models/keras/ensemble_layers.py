@@ -21,9 +21,14 @@ from gpflow.keras import tf_keras
 from trieste.models.keras.architectures import VectorizedEnsembleDenseLayer
 
 
+def is_vectorized_ensemble_dense_layer(layer: Any) -> bool:
+    """True for vectorized dense layers from either ``tf_keras`` or ``tensorflow.keras`` builds."""
+    return layer.__class__.__name__ == "VectorizedEnsembleDenseLayer"
+
+
 def is_vectorized_ensemble_model(model: tf_keras.Model) -> bool:
     """Return True if the model was built via the vectorized ensemble path."""
-    return any(isinstance(layer, VectorizedEnsembleDenseLayer) for layer in model.layers)
+    return any(is_vectorized_ensemble_dense_layer(layer) for layer in model.layers)
 
 
 def expected_ensemble_layer_count(
@@ -44,12 +49,12 @@ def expected_ensemble_layer_count(
     return num_hidden_layers * ensemble_size + 3 * ensemble_size
 
 
-def vectorized_hidden_layers(model: tf_keras.Model) -> list[VectorizedEnsembleDenseLayer]:
+def vectorized_hidden_layers(model: tf_keras.Model) -> list[Any]:
     """Hidden ``VectorizedEnsembleDenseLayer`` instances (excludes ``vec_params``)."""
     return [
         layer
         for layer in model.layers
-        if isinstance(layer, VectorizedEnsembleDenseLayer) and layer.name.startswith("vec_dense_")
+        if is_vectorized_ensemble_dense_layer(layer) and layer.name.startswith("vec_dense_")
     ]
 
 
@@ -65,11 +70,11 @@ def per_member_hidden_layers(
 
 
 def activation_matches(
-    layer: Union[tf_keras.layers.Dense, VectorizedEnsembleDenseLayer],
+    layer: Any,
     activation: Union[str, tf_keras.layers.Activation],
 ) -> bool:
     """Check layer activation matches the requested activation (string or callable)."""
-    if isinstance(layer, VectorizedEnsembleDenseLayer):
+    if is_vectorized_ensemble_dense_layer(layer):
         layer_activation: Any = layer._activation
     else:
         layer_activation = layer.activation
