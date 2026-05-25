@@ -17,9 +17,10 @@ pytest
 PyYAML
 
 # pin to older version of TF (for now)
-tensorflow ~= 2.8.0
-tensorflow-probability ~= 0.13.0
+tensorflow ~= 2.11.0
+tensorflow-probability ~= 0.19.0
 
-# tensorflow-probability 0.13 depends on np.bool which is deprecated
-numpy < 1.22.0
-scipy < 1.8
+# tensorflow-probability requires >= 1.13, tf2.11 requires < 2
+numpy < 2
+# tests_old runs on Python 3.9 (see tox.ini)
+scipy < 1.11

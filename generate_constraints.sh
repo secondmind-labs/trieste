@@ -35,17 +35,37 @@ generate_for_env () {
       pip install -e .[qhsri]
   fi
   pip install -r $1/requirements.txt
+  # gpflow's TFP extra can pull tf-keras; incompatible with tests/old TF 2.11 pins
+  if [ "$1" == "tests/old" ] && pip show tf-keras >/dev/null 2>&1; then
+      pip uninstall -y tf-keras
+  fi
   pip freeze --exclude-editable trieste > $1/constraints.txt
   deactivate
 }
 
-generate_for_env docs false
-generate_for_env common_build/format false
-generate_for_env common_build/taskipy false
-generate_for_env common_build/types false
-generate_for_env notebooks true
-generate_for_env tests/old true
-generate_for_env tests/prod true
-generate_for_env tests/latest true
+DEFAULT_ENVS=(
+  docs
+  common_build/format
+  common_build/taskipy
+  common_build/types
+  notebooks
+  tests/old
+  tests/prod
+  tests/latest
+)
+
+if [ "$#" -gt 0 ]; then
+  ENVS=("$@")
+else
+  ENVS=("${DEFAULT_ENVS[@]}")
+fi
+
+for env in "${ENVS[@]}"; do
+  install_trieste=false
+  if [ "$env" == "notebooks" ] || [ "$env" == "tests/old" ] || [ "$env" == "tests/prod" ] || [ "$env" == "tests/latest" ]; then
+    install_trieste=true
+  fi
+  generate_for_env "$env" "$install_trieste"
+done
 
 rm -rf $VENV_DIR
