@@ -560,7 +560,8 @@ def test_bayesian_optimizer_with_deep_ensemble_finds_minima_of_scaled_branin(
     [
         pytest.param(5, lambda: EfficientGlobalOptimization(), id="EfficientGlobalOptimization"),
         # 12 steps: vectorized ensemble + some CI CPUs need margin over 10 for DTS float64.
-        pytest.param(12, lambda: DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
+        # TF 2.8 requires 15 steps
+        pytest.param(15, lambda: DiscreteThompsonSampling(1000, 1), id="DiscreteThompsonSampling"),
         pytest.param(
             5,
             lambda: DiscreteThompsonSampling(
@@ -809,7 +810,7 @@ def _test_optimizer_finds_minimum(
                     assert best_y.dtype is test_dtype
 
                     minimizer_err = tf.abs((best_x - minimizers) / minimizers)
-                    assert tf.reduce_any(tf.reduce_all(minimizer_err <= 0.057, axis=-1), axis=0)
+                    assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
                     npt.assert_allclose(best_y, minima, rtol=rtol_level)
 
                 if isinstance(acquisition_rule, EfficientGlobalOptimization):
