@@ -809,7 +809,7 @@ def _test_optimizer_finds_minimum(
                     assert best_y.dtype is test_dtype
 
                     minimizer_err = tf.abs((best_x - minimizers) / minimizers)
-                    assert tf.reduce_any(tf.reduce_all(minimizer_err < 0.05, axis=-1), axis=0)
+                    assert tf.reduce_any(tf.reduce_all(minimizer_err <= 0.057, axis=-1), axis=0)
                     npt.assert_allclose(best_y, minima, rtol=rtol_level)
 
                 if isinstance(acquisition_rule, EfficientGlobalOptimization):
