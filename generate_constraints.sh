@@ -35,10 +35,6 @@ generate_for_env () {
       pip install -e .[qhsri]
   fi
   pip install -r $1/requirements.txt
-  # gpflow's TFP extra can pull tf-keras; incompatible with tests/old TF 2.11 pins
-  if [ "$1" == "tests/old" ] && pip show tf-keras >/dev/null 2>&1; then
-      pip uninstall -y tf-keras
-  fi
   pip freeze --exclude-editable trieste > $1/constraints.txt
   deactivate
 }
