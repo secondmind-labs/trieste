@@ -734,7 +734,7 @@ def _test_optimizer_finds_minimum(
             keras_ensemble = build_keras_ensemble(initial_data, 5, 3, 25, "selu")
             fit_args = {
                 "batch_size": 20,
-                "epochs": 300,
+                "epochs": 200,
                 "callbacks": [
                     tf_keras.callbacks.EarlyStopping(
                         monitor="loss", patience=25, restore_best_weights=True
