@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import operator
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from functools import reduce
 from itertools import chain
 from itertools import product as itertools_product
@@ -1489,8 +1488,10 @@ def hierarchy_node_from_tags(
     :param name: Human-readable label for the node (also the kernel-association
         identifier downstream).
     :param subspace_tags: Tags of non-indicator subspaces owned by this node. Each
-        tag must be a key of ``subspaces``. Each subspace contributes one column
-        per dimension, in the order it appears in ``subspaces``.
+        tag must be a key of ``subspaces`` and must define numerical bounds (e.g.
+        :class:`Box`); categorical non-indicator subspaces are not supported. Each
+        subspace contributes one column per dimension, in the order it appears in
+        ``subspaces``. Must not contain duplicates.
     :param activity_condition_tags: ``{indicator_tag: required_value}`` for the
         indicators that gate this node. Each key must be a value in
         ``indicator_tags`` (its position is the indicator-local index used by
@@ -1504,6 +1505,15 @@ def hierarchy_node_from_tags(
         ``__post_init__`` performs node-local validation (uniqueness of
         ``feature_dims``, non-negativity of required values, ...).
     """
+    # Reject duplicate tags: duplicate ``subspace_tags`` would yield duplicate
+    # ``feature_dims`` (rejected by GPflow downstream, but with an opaque message),
+    # and duplicate ``indicator_tags`` would corrupt the indicator-local indexing.
+    for seq_name, seq in (("subspace_tags", subspace_tags), ("indicator_tags", indicator_tags)):
+        seq_list = list(seq)
+        if len(seq_list) != len(set(seq_list)):
+            duplicates = sorted({t for t in seq_list if seq_list.count(t) > 1})
+            raise ValueError(f"`{seq_name}` contains duplicate tags: {duplicates}.")
+
     # Build a tag -> [columns] map from the subspaces mapping (insertion order).
     tag_to_columns: Dict[str, List[int]] = {}
     cursor = 0
@@ -1572,6 +1582,22 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
     Points are represented as flat vectors concatenated in the iteration order
     of ``subspaces`` (a ``dict`` preserves insertion order in Python 3.7+), the
     same convention as :class:`TaggedProductSearchSpace`.
+
+    .. note::
+        ``sample`` and ``contains`` operate on the full flat vector and do **not**
+        enforce "active-branch" semantics: every subspace always contributes its
+        columns regardless of the indicator values, and inactive-branch columns are
+        neither masked nor ignored. This matches the flat-vector convention expected
+        by the hierarchical GP kernel, which reads the indicator columns itself to
+        decide which features are active. Use :meth:`active_subspace_tags` /
+        :meth:`is_active` to reason about which subspaces a given indicator
+        configuration activates.
+
+    .. note::
+        Non-indicator subspaces must define numerical bounds (e.g. :class:`Box`).
+        Categorical (non-indicator) subspaces are not supported, since the hierarchy
+        encodes each non-indicator dimension as a ``(lower, upper)`` bound and there
+        is no one-hot handling here; constructing such a space raises ``ValueError``.
 
     Example::
 
@@ -1654,6 +1680,14 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
     def _validate(self) -> None:
         all_tags = set(self.subspace_tags)
 
+        # indicator_tags must not contain duplicates; a repeated tag would corrupt
+        # the indicator-local indexing used by ActivityCondition.
+        if len(self._indicator_tags) != len(set(self._indicator_tags)):
+            duplicates = sorted(
+                {t for t in self._indicator_tags if self._indicator_tags.count(t) > 1}
+            )
+            raise ValueError(f"`indicator_tags` contains duplicate tags: {duplicates}.")
+
         # indicator_tags must exist and reference a BooleanSearchSpace or a 1-D
         # CategoricalSearchSpace; record each indicator's permitted value set.
         for itag in self._indicator_tags:
@@ -1676,6 +1710,21 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                 raise ValueError(
                     f"Indicator tag '{itag}' must reference a BooleanSearchSpace or a "
                     f"dimension-1 CategoricalSearchSpace, got {type(sub).__name__}."
+                )
+
+        # Non-indicator subspaces must expose numerical bounds: the hierarchy
+        # encodes each as a (lower, upper) ``feature_bounds`` row, which requires
+        # ``lower``/``upper`` to be defined. Categorical (non-indicator) subspaces
+        # have no numerical bounds (``has_bounds`` is False) and no one-hot
+        # handling here, so reject them with a clear error rather than letting
+        # ``sub.lower``/``sub.upper`` raise an opaque ``AttributeError`` later.
+        for ntag in self.non_indicator_tags:
+            if not self.get_subspace(ntag).has_bounds:
+                raise ValueError(
+                    f"Non-indicator subspace '{ntag}' "
+                    f"({type(self.get_subspace(ntag)).__name__}) has no numerical "
+                    f"bounds and is not supported in a HierarchicalSearchSpace. "
+                    f"Non-indicator subspaces must define numerical bounds (e.g. Box)."
                 )
 
         # Set of flat-vector columns occupied by indicators (forbidden in
@@ -1734,13 +1783,15 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                     )
 
             # ActivityCondition requirements keys must be valid local indices
-            # and values must be in the indicator's permitted set.
+            # and values must be in the indicator's permitted set. Guard the lower
+            # bound too: a negative index would silently wrap around when used to
+            # index ``self._indicator_tags`` below.
             for local_index, required in node.activity_condition.requirements.items():
-                if local_index >= num_indicators:
+                if local_index < 0 or local_index >= num_indicators:
                     raise ValueError(
                         f"HierarchyNode '{node.name}' activity_condition references "
-                        f"indicator local index {local_index} but only {num_indicators} "
-                        f"indicators were declared."
+                        f"indicator local index {local_index} outside the valid range "
+                        f"[0, {num_indicators}); {num_indicators} indicators were declared."
                     )
                 ind_tag = self._indicator_tags[local_index]
                 permitted = self._indicator_value_sets[ind_tag]
@@ -1772,6 +1823,51 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                 f"Indicator tags {unused_tags} are unused: they do not appear as a key "
                 f"in any HierarchyNode.activity_condition.requirements."
             )
+
+    @staticmethod
+    def _nodes_equal(left: Sequence[HierarchyNode], right: Sequence[HierarchyNode]) -> bool:
+        """Compare two hierarchies by value. ``HierarchyNode`` is a frozen dataclass,
+        but its ``feature_bounds`` is a tensor, so the auto-generated ``__eq__`` would
+        compare tensors elementwise (and fail ``bool()``); compare field by field
+        instead, using ``np.array_equal`` for the bounds."""
+        if len(left) != len(right):
+            return False
+        for a, b in zip(left, right):
+            if a.name != b.name:
+                return False
+            if list(a.feature_dims) != list(b.feature_dims):
+                return False
+            if dict(a.activity_condition.requirements) != dict(b.activity_condition.requirements):
+                return False
+            if not np.array_equal(
+                tf.convert_to_tensor(a.feature_bounds, dtype=tf.float64).numpy(),
+                tf.convert_to_tensor(b.feature_bounds, dtype=tf.float64).numpy(),
+            ):
+                return False
+        return True
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one, including its
+            hierarchy and indicator tags (the base-class comparison only covers the
+            subspaces and their tags).
+        """
+        if not isinstance(other, HierarchicalSearchSpace):
+            return NotImplemented
+        if super().__eq__(other) is not True:
+            return False
+        return self._indicator_tags == other._indicator_tags and self._nodes_equal(
+            self._hierarchy, other._hierarchy
+        )
+
+    def __repr__(self) -> str:
+        return f"""{self.__class__.__name__}(spaces =
+                {[self.get_subspace(tag) for tag in self.subspace_tags]},
+                tags = {self.subspace_tags},
+                hierarchy = {list(self._hierarchy)},
+                indicator_tags = {list(self._indicator_tags)})
+                """
 
     @property
     def hierarchy(self) -> tuple[HierarchyNode, ...]:
@@ -1836,11 +1932,19 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
 
     @check_shapes("return: [num_samples, D]")
     def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
-        """Sample from the space by sampling each subspace and concatenating."""
+        """Sample from the space by sampling each subspace and concatenating.
+
+        Every subspace is sampled and contributes its columns; this does **not**
+        enforce active-branch semantics (inactive-branch columns are still filled).
+        See the class docstring.
+        """
         subspace_samples = self.subspace_sample(num_samples, seed)
         return tf.concat(subspace_samples, -1)
 
     def _contains(self, value: TensorType) -> TensorType:
+        # Membership requires every subspace component to be in bounds; this does
+        # not enforce active-branch semantics (inactive-branch columns are still
+        # checked against their subspace). See the class docstring.
         in_each_subspace = [
             self._spaces[tag].contains(self.get_subspace_component(tag, value))
             for tag in self._tags
