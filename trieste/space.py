@@ -506,6 +506,39 @@ class DiscreteSearchSpace(GeneralDiscreteSearchSpace):
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
 
 
+class BooleanSearchSpace(DiscreteSearchSpace):
+    r"""
+    A 1-D :class:`DiscreteSearchSpace` restricted to :math:`\{0, 1\}`, representing a single
+    Boolean indicator variable from the GDP formulation. Provides a distinct type for
+    dispatch in validation and downstream consumers (e.g. GA bitflip mutation, kernel
+    active/inactive checks).
+
+    Example:
+
+        >>> space = BooleanSearchSpace()
+        >>> assert space.dimension == 1
+        >>> assert tf.constant([0.0], dtype=tf.float64) in space
+        >>> assert tf.constant([1.0], dtype=tf.float64) in space
+        >>> assert tf.constant([2.0], dtype=tf.float64) not in space
+
+    """
+
+    def __init__(self, dtype: tf.DType = DEFAULT_DTYPE) -> None:
+        """
+        :param dtype: The dtype of the points. Defaults to :data:`DEFAULT_DTYPE`.
+        """
+        super().__init__(points=tf.constant([[0], [1]], dtype=dtype))
+
+    def __repr__(self) -> str:
+        """"""
+        return f"BooleanSearchSpace({self.points.dtype!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BooleanSearchSpace):
+            return NotImplemented
+        return self.points.dtype == other.points.dtype
+
+
 @runtime_checkable
 class HasOneHotEncoder(Protocol):
     """A categorical search space that contains default logic for one-hot encoding."""

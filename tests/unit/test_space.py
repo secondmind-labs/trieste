@@ -27,6 +27,7 @@ from typing_extensions import Final
 
 from tests.util.misc import TF_DEBUGGING_ERROR_TYPES, ShapeLike, various_shapes
 from trieste.space import (
+    BooleanSearchSpace,
     Box,
     CategoricalSearchSpace,
     CollectionSearchSpace,
@@ -1926,3 +1927,67 @@ def test_cast_encoder(input_dtype: Optional[tf.DType], output_dtype: Optional[tf
     points = encoder(query_points)
     assert points.dtype is (output_dtype or input_dtype or tf.int32)
     npt.assert_array_equal(tf.cast(query_points + 1, points.dtype), points)
+
+
+# ===== BooleanSearchSpace tests =====
+
+
+def test_boolean_search_space_has_dimension_one() -> None:
+    space = BooleanSearchSpace()
+    assert space.dimension == 1
+
+
+@pytest.mark.parametrize("dtype", [tf.float64, tf.float32, tf.int32])
+def test_boolean_search_space_contains_zero_and_one(dtype: tf.DType) -> None:
+    space = BooleanSearchSpace(dtype)
+    assert tf.constant([0], dtype=dtype) in space
+    assert tf.constant([1], dtype=dtype) in space
+
+
+def test_boolean_search_space_does_not_contain_other_values() -> None:
+    space = BooleanSearchSpace()
+    assert tf.constant([2.0], dtype=tf.float64) not in space
+    assert tf.constant([-1.0], dtype=tf.float64) not in space
+    assert tf.constant([0.5], dtype=tf.float64) not in space
+
+
+def test_boolean_search_space_sample_returns_valid_points() -> None:
+    space = BooleanSearchSpace()
+    samples = space.sample(10)
+    assert samples.shape == (10, 1)
+    assert samples.dtype == space.points.dtype
+    for s in samples:
+        assert s in space
+
+
+@pytest.mark.parametrize("dtype", [tf.float64, tf.float32, tf.int32])
+def test_boolean_search_space_sample_honours_dtype(dtype: tf.DType) -> None:
+    samples = BooleanSearchSpace(dtype).sample(5)
+    assert samples.dtype == dtype
+
+
+def test_boolean_search_space_bounds() -> None:
+    space = BooleanSearchSpace()
+    npt.assert_array_equal(space.lower, [0.0])
+    npt.assert_array_equal(space.upper, [1.0])
+
+
+def test_boolean_search_space_repr() -> None:
+    assert repr(BooleanSearchSpace()) == "BooleanSearchSpace(tf.float64)"
+    assert repr(BooleanSearchSpace(tf.float32)) == "BooleanSearchSpace(tf.float32)"
+
+
+def test_boolean_search_space_equality() -> None:
+    assert BooleanSearchSpace() == BooleanSearchSpace()
+    assert BooleanSearchSpace(tf.float64) == BooleanSearchSpace(tf.float64)
+
+
+def test_boolean_search_space_inequality() -> None:
+    # Differing dtype, and a different search-space type, are both not equal.
+    assert BooleanSearchSpace(tf.float64) != BooleanSearchSpace(tf.float32)
+    assert BooleanSearchSpace() != Box([0.0], [1.0])
+
+
+def test_boolean_search_space_dtype() -> None:
+    space32 = BooleanSearchSpace(tf.float32)
+    assert space32.points.dtype == tf.float32
