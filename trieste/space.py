@@ -16,16 +16,28 @@ from __future__ import annotations
 
 import operator
 from abc import ABC, abstractmethod
+from collections import Counter
 from functools import reduce
 from itertools import chain
-from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
+from typing import (
+    Callable,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
+import gpflow.kernels
 import numpy as np
 import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import check_shapes
 from gpflow.keras import tf_keras
+from gpflow.kernels import ActivityCondition, HierarchyNode
 from typing_extensions import Protocol, runtime_checkable
 
 from .types import TensorType
@@ -1445,6 +1457,153 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
             return tf.concat(components, axis=-1)
 
         return encoder
+
+
+def _reject_duplicate_tags(seq_name: str, tags: Sequence[str]) -> None:
+    """Raise ``ValueError`` if ``tags`` contains duplicates (shared by the hierarchy helper and
+    :class:`HierarchicalSearchSpace`)."""
+    duplicates = sorted(t for t, count in Counter(tags).items() if count > 1)
+    if duplicates:
+        raise ValueError(f"`{seq_name}` contains duplicate tags: {duplicates}.")
+
+
+def _build_tag_to_columns_map(tag_sizes: Sequence[tuple[str, int]]) -> dict[str, list[int]]:
+    """Lay tags out in order along the flat vector, each occupying ``size`` consecutive columns.
+
+    :param tag_sizes: ``(tag, dimension)`` pairs in flat-vector order.
+    :return: a mapping from tag to its flat-vector column indices.
+    """
+    tag_to_columns: dict[str, list[int]] = {}
+    cursor = 0
+    for tag, size in tag_sizes:
+        tag_to_columns[tag] = list(range(cursor, cursor + size))
+        cursor += size
+    return tag_to_columns
+
+
+def hierarchy_node_from_tags(
+    name: str,
+    *,
+    subspace_tags: Sequence[str],
+    activity_condition_tags: Mapping[str, int] | None = None,
+    subspaces: Mapping[str, SearchSpace],
+    indicator_tags: set[str] | None = None,
+) -> HierarchyNode:
+    """Construct a :class:`gpflow.kernels.HierarchyNode` from tag-based inputs.
+
+    The GPflow type is keyed on integer column indices (``feature_dims``) and an
+    :class:`ActivityCondition` whose keys are also flat-vector column indices --
+    the global column of the gating indicator, in the same coordinate system as
+    ``feature_dims``. This helper accepts the user-facing tag form and resolves it
+    against a ``subspaces`` mapping whose iteration order defines the flat-vector
+    layout (one column per dimension of each subspace, in insertion order).
+
+    :param name: Human-readable label for the node (also the kernel-association
+        identifier downstream).
+    :param subspace_tags: Tags of non-indicator subspaces owned by this node. Each
+        tag must be a key of ``subspaces`` and must define numerical bounds (e.g.
+        :class:`Box`); categorical non-indicator subspaces are not supported. Each
+        subspace contributes one column per dimension, in the order it appears in
+        ``subspaces``. Must not contain duplicates.
+    :param activity_condition_tags: ``{indicator_tag: required_value}`` for the
+        indicators that gate this node. Each key must be a key of ``subspaces``; it
+        is resolved to that indicator's global flat-vector column, which is the key
+        stored in :class:`gpflow.kernels.ActivityCondition`. The default of ``None``
+        means the node is unconditionally active.
+    :param subspaces: Tag-keyed mapping of subspaces; its iteration order
+        defines the flat-vector column layout.
+    :param indicator_tags: Optional cross-check: when given, every
+        ``activity_condition_tags`` key must appear here (catches typos). May be
+        omitted, in which case any valid ``subspaces`` tag is accepted as an
+        indicator.
+    :return: An assembled :class:`gpflow.kernels.HierarchyNode`. GPflow
+        performs node-local validation (uniqueness of ``feature_dims``,
+        non-negativity of required values, ...).
+    """
+    activity_condition_tags = activity_condition_tags or {}
+    indicator_tags = set(indicator_tags or ())
+
+    if not subspace_tags:
+        raise ValueError(
+            "`subspace_tags` must be non-empty; every node must own at least one "
+            "(feature) subspace."
+        )
+
+    # Reject duplicate ``subspace_tags``: they would yield duplicate ``feature_dims``
+    # (rejected by GPflow downstream, but with an opaque message). ``indicator_tags`` is a
+    # set, so it cannot contain duplicates.
+    _reject_duplicate_tags("subspace_tags", subspace_tags)
+
+    # A tag cannot be both an owned (feature) subspace and an indicator.
+    tag_overlap = set(subspace_tags) & set(indicator_tags)
+    if tag_overlap:
+        raise ValueError(
+            f"`subspace_tags` and `indicator_tags` must be disjoint; overlapping tags: "
+            f"{sorted(tag_overlap)}."
+        )
+
+    # Build a tag -> [columns] map from the subspaces mapping (insertion order).
+    tag_to_columns = _build_tag_to_columns_map(
+        [(tag, int(sub.dimension)) for tag, sub in subspaces.items()]
+    )
+
+    feature_dims: list[int] = []
+    bounds_rows: list[tuple[float, float]] = []
+    for stag in subspace_tags:
+        if stag not in tag_to_columns:
+            raise ValueError(
+                f"subspace_tag '{stag}' is not a key of `subspaces` " f"{list(tag_to_columns)}."
+            )
+        sub = subspaces[stag]
+        # Non-indicator subspaces are encoded as (lower, upper) feature bounds, so they must
+        # expose numerical bounds. Box and the discrete spaces qualify; categorical subspaces
+        # (``has_bounds`` is False) are rejected here with a clear message rather than letting
+        # ``sub.lower`` raise an opaque AttributeError downstream.
+        if not sub.has_bounds:
+            raise ValueError(
+                f"subspace_tag '{stag}' refers to a {type(sub).__name__} without numerical "
+                f"bounds; non-indicator subspaces must define bounds (e.g. a Box or a discrete "
+                f"space)."
+            )
+        lower = tf.cast(sub.lower, dtype=tf.float64).numpy().tolist()
+        upper = tf.cast(sub.upper, dtype=tf.float64).numpy().tolist()
+        for col, lo, hi in zip(tag_to_columns[stag], lower, upper):
+            feature_dims.append(col)
+            bounds_rows.append((float(lo), float(hi)))
+
+    # Translate indicator-tag keys to global flat-vector columns (the same
+    # coordinate system as ``feature_dims``, matching gpflow's convention) and
+    # coerce values to int so K-ary categorical category indices survive without
+    # bool-coercion.
+    requirements: dict[int, int] = {}
+    for ind_tag, required in activity_condition_tags.items():
+        # An activity-condition key is an indicator by definition; resolve its column from
+        # ``subspaces``. ``indicator_tags`` is an optional cross-check: when supplied, the key
+        # must be one of the declared indicators (catches typos); when omitted, any valid
+        # subspace tag is accepted.
+        if ind_tag not in tag_to_columns:
+            raise ValueError(
+                f"activity_condition_tags key '{ind_tag}' is not a key of `subspaces` "
+                f"{list(tag_to_columns)}."
+            )
+        if indicator_tags and ind_tag not in indicator_tags:
+            raise ValueError(
+                f"activity_condition_tags key '{ind_tag}' is not in "
+                f"indicator_tags {sorted(indicator_tags)}."
+            )
+        if len(tag_to_columns[ind_tag]) != 1:
+            raise ValueError(
+                f"Indicator '{ind_tag}' must be 1-dimensional, got "
+                f"{len(tag_to_columns[ind_tag])} columns."
+            )
+        requirements[tag_to_columns[ind_tag][0]] = int(required)
+
+    return HierarchyNode(
+        name=name,
+        feature_dims=feature_dims,
+        feature_bounds=tf.constant(bounds_rows, dtype=tf.float64),
+        activity_condition=ActivityCondition(requirements=requirements),
+    )
 
 
 class TaggedMultiSearchSpace(CollectionSearchSpace):
