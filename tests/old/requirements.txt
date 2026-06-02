@@ -17,9 +17,5 @@ pytest
 PyYAML
 
 # pin to older version of TF (for now)
-tensorflow ~= 2.8.0
-tensorflow-probability ~= 0.13.0
-
-# tensorflow-probability 0.13 depends on np.bool which is deprecated
-numpy < 1.22.0
-scipy < 1.8
+tensorflow ~= 2.11.0
+tensorflow-probability ~= 0.19.0
