@@ -618,6 +618,87 @@ def test_categorical_hss_active_subspaces() -> None:
     assert set(space.active_subspace_tags({"y1": 2})) == {"x1", "x3"}
 
 
+# ===== product =====
+
+
+def _make_second_hss() -> HierarchicalSearchSpace:
+    """A second, disjoint hierarchical space (tags z1/w1/z2) for product tests.
+
+    Columns: z1 (uncond), w1 (Boolean indicator), z2 gated by w1=1.
+    """
+    subspaces = {
+        "z1": Box([0.0], [1.0]),
+        "w1": BooleanSearchSpace(),
+        "z2": Box([0.0], [2.0]),
+    }
+    hierarchy = [
+        hierarchy_node_from_tags(
+            "z_shared",
+            subspace_tags=["z1"],
+            subspaces=subspaces,
+            indicator_tags=["w1"],
+        ),
+        hierarchy_node_from_tags(
+            "z_branch",
+            subspace_tags=["z2"],
+            activity_condition_tags={"w1": 1},
+            subspaces=subspaces,
+            indicator_tags=["w1"],
+        ),
+    ]
+    return HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["w1"])
+
+
+def test_hss_product_combines_tags_dimension_and_indicators() -> None:
+    combined = _make_worked_example_hss().product(_make_second_hss())
+    assert combined.subspace_tags == ("x1", "y1", "x2", "x4", "x3", "z1", "w1", "z2")
+    assert int(combined.dimension) == 8
+    assert combined.indicator_tags == ("y1", "w1")
+    # y1 is column 1, w1 is column 6 in the combined flat vector.
+    assert combined.indicator_dims == [1, 6]
+
+
+def test_hss_product_is_order_dependent() -> None:
+    # product concatenates self's layout then other's, so A x B != B x A.
+    a, b = _make_worked_example_hss(), _make_second_hss()
+    ab = a.product(b)
+    ba = b.product(a)
+    assert ab.subspace_tags == ("x1", "y1", "x2", "x4", "x3", "z1", "w1", "z2")
+    assert ba.subspace_tags == ("z1", "w1", "z2", "x1", "y1", "x2", "x4", "x3")
+
+
+def test_hss_product_shifts_other_feature_dims_and_requirements() -> None:
+    combined = _make_worked_example_hss().product(_make_second_hss())
+    # ``other``'s node feature_dims and activity_condition requirement columns are
+    # both shifted by self.dimension (5): z2 -> column 7, and w1 (other column 1)
+    # -> combined column 6.
+    z_branch = next(node for node in combined.hierarchy if node.name == "z_branch")
+    assert list(z_branch.feature_dims) == [7]
+    assert dict(z_branch.activity_condition.requirements) == {6: 1}
+    # feature_bounds describe values, not columns, so they are carried over unshifted.
+    assert z_branch.feature_bounds.numpy().tolist() == [[0.0, 2.0]]
+
+
+def test_hss_product_active_subspaces_and_is_active() -> None:
+    combined = _make_worked_example_hss().product(_make_second_hss())
+    assert set(combined.active_subspace_tags({"y1": 1, "w1": 1})) == {
+        "x1",
+        "x2",
+        "x4",
+        "z1",
+        "z2",
+    }
+    assert set(combined.active_subspace_tags({"y1": 0, "w1": 0})) == {"x1", "x3", "z1"}
+    assert combined.is_active("z2", {"y1": 0, "w1": 1})
+    assert not combined.is_active("z2", {"y1": 0, "w1": 0})
+
+
+def test_hss_product_raises_on_overlapping_tags() -> None:
+    space = _make_worked_example_hss()
+    with pytest.raises(ValueError, match="overlapping tags"):
+        space.product(space)
+
+
 # ===== additional validation =====
 
 

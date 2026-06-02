@@ -1932,15 +1932,6 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             f"indicator_tags={list(self._indicator_tags)})"
         )
 
-    def product(self, other: HierarchicalSearchSpace) -> HierarchicalSearchSpace:
-        """A same-type Cartesian product is not supported here; :meth:`__mul__` falls back to a
-        :class:`TaggedProductSearchSpace`.
-
-        :param other: Another :class:`HierarchicalSearchSpace`.
-        :raises NotImplementedError: Always.
-        """
-        raise NotImplementedError
-
     @property
     def hierarchy(self) -> tuple[HierarchyNode, ...]:
         """The hierarchy specification."""
@@ -2123,6 +2114,47 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                 f"`indicator_config` must provide a value for every indicator "
                 f"{list(self._indicator_tags)}; missing: {missing}."
             )
+
+    def product(self, other: HierarchicalSearchSpace) -> HierarchicalSearchSpace:
+        """
+        Return a new :class:`HierarchicalSearchSpace` that is the combination of this space and
+        ``other``. Tags in the two spaces must be disjoint. The hierarchy nodes are
+        concatenated; both the node ``feature_dims`` and the ``activity_condition``
+        requirement columns in ``other`` are shifted by ``self.dimension`` so they index the
+        combined flat-vector layout.
+
+        :param other: Another :class:`HierarchicalSearchSpace`.
+        :return: The combined hierarchical space.
+        :raises ValueError: If the two spaces share any tags.
+        """
+        overlap = set(self.subspace_tags) & set(other.subspace_tags)
+        if overlap:
+            raise ValueError(f"Cannot combine spaces with overlapping tags: {overlap}")
+        combined_subspaces: dict[str, SearchSpace] = {
+            **{tag: self.get_subspace(tag) for tag in self.subspace_tags},
+            **{tag: other.get_subspace(tag) for tag in other.subspace_tags},
+        }
+        offset = int(self.dimension)
+        shifted_other_hierarchy: list[HierarchyNode] = []
+        for node in other.hierarchy:
+            shifted_other_hierarchy.append(
+                HierarchyNode(
+                    name=node.name,
+                    feature_dims=[int(c) + offset for c in node.feature_dims],
+                    feature_bounds=node.feature_bounds,
+                    activity_condition=ActivityCondition(
+                        # requirement keys are global indicator columns; shift them
+                        # into the combined layout by the same offset as feature_dims.
+                        requirements={
+                            k + offset: v
+                            for k, v in node.activity_condition.requirements.items()
+                        }
+                    ),
+                )
+            )
+        hierarchy = list(self.hierarchy) + shifted_other_hierarchy
+        indicator_tags = list(self.indicator_tags) + list(other.indicator_tags)
+        return HierarchicalSearchSpace(combined_subspaces, hierarchy, indicator_tags)
 
     def _node_is_active(self, node: HierarchyNode, indicator_config: Mapping[str, int]) -> bool:
         """Check whether a node's activity_condition.requirements (keyed by indicator global
