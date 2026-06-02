@@ -349,6 +349,111 @@ def test_hss_get_subspace_component() -> None:
     npt.assert_array_almost_equal(space.get_subspace_component("x3", point), [[-0.5]])
 
 
+# ===== Hierarchy queries =====
+
+
+def test_hss_active_subspace_tags_y1_true() -> None:
+    space = _make_worked_example_hss()
+    active = space.active_subspace_tags({"y1": 1})
+    assert set(active) == {"x1", "x2", "x4"}
+
+
+def test_hss_active_subspace_tags_y1_false() -> None:
+    space = _make_worked_example_hss()
+    active = space.active_subspace_tags({"y1": 0})
+    assert set(active) == {"x1", "x3"}
+
+
+def test_hss_active_subspace_tags_with_bool_input() -> None:
+    """Boolean indicator values are accepted and compared as 1/0, since ``bool`` is a
+    subtype of ``int`` in Python (``True == 1``, ``False == 0``)."""
+    space = _make_worked_example_hss()
+    assert set(space.active_subspace_tags({"y1": True})) == {"x1", "x2", "x4"}
+    assert set(space.active_subspace_tags({"y1": False})) == {"x1", "x3"}
+
+
+def test_hss_enumerate_tasks_boolean() -> None:
+    space = _make_worked_example_hss()
+    tasks = space.enumerate_tasks()
+    assert len(tasks) == 2
+    assert {"y1": 0} in tasks
+    assert {"y1": 1} in tasks
+
+
+def test_hss_enumerate_tasks_no_indicators() -> None:
+    # A space with no indicators has a single (empty) task.
+    subspaces = {"x1": Box([0.0], [1.0])}
+    hierarchy = [hierarchy_node_from_tags("only", subspace_tags=["x1"], subspaces=subspaces)]
+    space = HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=[])
+    assert space.enumerate_tasks() == [{}]
+
+
+def test_hss_enumerate_tasks_two_indicators() -> None:
+    subspaces = {
+        "x1": Box([0.0], [1.0]),
+        "y1": BooleanSearchSpace(),
+        "y2": BooleanSearchSpace(),
+        "x2": Box([0.0], [1.0]),
+        "x3": Box([0.0], [1.0]),
+    }
+    hierarchy = [
+        hierarchy_node_from_tags(
+            "shared",
+            subspace_tags=["x1"],
+            subspaces=subspaces,
+            indicator_tags=["y1", "y2"],
+        ),
+        hierarchy_node_from_tags(
+            "a",
+            subspace_tags=["x2"],
+            activity_condition_tags={"y1": 1},
+            subspaces=subspaces,
+            indicator_tags=["y1", "y2"],
+        ),
+        hierarchy_node_from_tags(
+            "b",
+            subspace_tags=["x3"],
+            activity_condition_tags={"y2": 1},
+            subspaces=subspaces,
+            indicator_tags=["y1", "y2"],
+        ),
+    ]
+    space = HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1", "y2"])
+    assert len(space.enumerate_tasks()) == 4
+
+
+def test_hss_is_active() -> None:
+    space = _make_worked_example_hss()
+    assert space.is_active("x1", {"y1": 1})
+    assert space.is_active("x1", {"y1": 0})
+    assert space.is_active("x2", {"y1": 1})
+    assert not space.is_active("x2", {"y1": 0})
+    assert space.is_active("x4", {"y1": 1})
+    assert not space.is_active("x4", {"y1": 0})
+    assert space.is_active("x3", {"y1": 0})
+    assert not space.is_active("x3", {"y1": 1})
+
+
+def test_hss_active_subspace_tags_requires_complete_config() -> None:
+    # A partial config (an indicator omitted) is rejected rather than silently treated as off.
+    space = _make_worked_example_hss()  # one indicator: y1
+    with pytest.raises(ValueError, match="every indicator"):
+        space.active_subspace_tags({})
+    with pytest.raises(ValueError, match="every indicator"):
+        space.is_active("x2", {})
+
+
+def test_hss_node_for_subspace_shared_branch() -> None:
+    space = _make_worked_example_hss()
+    nodes_x1 = space.node_for_subspace("x1")
+    assert [n.name for n in nodes_x1] == ["shared"]
+    nodes_x2 = space.node_for_subspace("x2")
+    assert [n.name for n in nodes_x2] == ["branch_A"]
+    # branch_A also owns x4 — same node should come back.
+    nodes_x4 = space.node_for_subspace("x4")
+    assert [n.name for n in nodes_x4] == ["branch_A"]
+
+
 # ===== Validation =====
 
 
@@ -464,6 +569,53 @@ def test_hss_raises_if_unused_indicator() -> None:
     ]
     with pytest.raises(ValueError, match="unused"):
         HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1", "y2"])
+
+
+# ===== Categorical-indicator variant =====
+
+
+def _make_categorical_hss() -> HierarchicalSearchSpace:
+    subspaces = {
+        "x1": Box([0.0], [1.0]),
+        "y1": CategoricalSearchSpace(3),
+        "x2": Box([0.0], [5.0]),
+        "x3": Box([-1.0], [1.0]),
+    }
+    hierarchy = [
+        hierarchy_node_from_tags(
+            "shared",
+            subspace_tags=["x1"],
+            subspaces=subspaces,
+            indicator_tags=["y1"],
+        ),
+        hierarchy_node_from_tags(
+            "branch_A",
+            subspace_tags=["x2"],
+            activity_condition_tags={"y1": 1},
+            subspaces=subspaces,
+            indicator_tags=["y1"],
+        ),
+        hierarchy_node_from_tags(
+            "branch_B",
+            subspace_tags=["x3"],
+            activity_condition_tags={"y1": 2},
+            subspaces=subspaces,
+            indicator_tags=["y1"],
+        ),
+    ]
+    return HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1"])
+
+
+def test_categorical_hss_enumerate_tasks_three_configs() -> None:
+    tasks = _make_categorical_hss().enumerate_tasks()
+    assert tasks == [{"y1": 0}, {"y1": 1}, {"y1": 2}]
+
+
+def test_categorical_hss_active_subspaces() -> None:
+    space = _make_categorical_hss()
+    assert space.active_subspace_tags({"y1": 0}) == ["x1"]
+    assert set(space.active_subspace_tags({"y1": 1})) == {"x1", "x2"}
+    assert set(space.active_subspace_tags({"y1": 2})) == {"x1", "x3"}
 
 
 # ===== additional validation =====

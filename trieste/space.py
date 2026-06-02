@@ -19,6 +19,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from functools import reduce
 from itertools import chain
+from itertools import product as itertools_product
 from typing import (
     Callable,
     Mapping,
@@ -2033,6 +2034,107 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         start = self._subspace_starting_indices[tag]
         end = start + self._subspace_sizes_by_tag[tag]
         return values[..., start:end]
+
+    def _node_subspace_tags(self, node: HierarchyNode) -> list[str]:
+        """Translate a node's ``feature_dims`` to the (unique, ordered) list of
+        non-indicator subspace tags it owns."""
+        seen: list[str] = []
+        for col in node.feature_dims:
+            tag = self._column_to_tag.get(int(col))
+            if tag is not None and tag not in seen:
+                seen.append(tag)
+        return seen
+
+    def active_subspace_tags(self, indicator_config: Mapping[str, int]) -> list[str]:
+        """
+        Return the non-indicator subspace tags that are active for a given indicator
+        configuration.
+
+        :param indicator_config: A mapping ``{indicator_tag: value}`` providing a value for
+            every indicator of this space. Extra keys are ignored.
+        :return: List of active non-indicator subspace tags.
+        :raise ValueError: If ``indicator_config`` omits any indicator.
+        """
+        self._require_complete_config(indicator_config)
+        active: list[str] = []
+        for node in self._hierarchy:
+            if self._node_is_active(node, indicator_config):
+                for stag in self._node_subspace_tags(node):
+                    if stag not in active:
+                        active.append(stag)
+        return active
+
+    def enumerate_tasks(self) -> list[dict[str, int]]:
+        """
+        Return every indicator configuration as the Cartesian product of each indicator's
+        permitted value set.
+
+        Both Boolean and ``K``-ary categorical indicators contribute the integer values
+        ``[0, 1, ..., K-1]`` (with ``K = 2`` for Boolean indicators); the total number of
+        configurations equals :math:`\\prod_k |\\mathcal{C}_k|`.
+
+        :return: A list of ``{indicator_tag: value}`` dictionaries, one per task.
+        """
+        if not self._indicator_tags:
+            return [{}]
+        per_indicator_values: list[Sequence[int]] = [
+            list(self._indicator_value_sets[t]) for t in self._indicator_tags
+        ]
+        return [
+            dict(zip(self._indicator_tags, combo))
+            for combo in itertools_product(*per_indicator_values)
+        ]
+
+    def is_active(self, tag: str, indicator_config: Mapping[str, int]) -> bool:
+        """
+        Check whether a non-indicator subspace is active for a given indicator configuration.
+
+        :param tag: A non-indicator subspace tag.
+        :param indicator_config: A mapping ``{indicator_tag: value}`` providing a value for
+            every indicator of this space. Extra keys are ignored.
+        :return: True if the subspace is active.
+        :raise ValueError: If ``indicator_config`` omits any indicator.
+        """
+        self._require_complete_config(indicator_config)
+        for node in self._hierarchy:
+            if tag in self._node_subspace_tags(node) and self._node_is_active(
+                node, indicator_config
+            ):
+                return True
+        return False
+
+    def node_for_subspace(self, tag: str) -> list[HierarchyNode]:
+        """
+        Return the :class:`HierarchyNode` objects whose ``feature_dims`` include any column
+        belonging to the given subspace tag.
+
+        :param tag: A non-indicator subspace tag.
+        :return: List of nodes containing this tag.
+        """
+        return [node for node in self._hierarchy if tag in self._node_subspace_tags(node)]
+
+    def _require_complete_config(self, indicator_config: Mapping[str, int]) -> None:
+        """Reject a partial configuration: ``indicator_config`` must provide a value for every
+        indicator of this space (extra keys are ignored). Catches forgotten or mistyped
+        indicator keys, which would otherwise be silently treated as unsatisfied."""
+        missing = [tag for tag in self._indicator_tags if tag not in indicator_config]
+        if missing:
+            raise ValueError(
+                f"`indicator_config` must provide a value for every indicator "
+                f"{list(self._indicator_tags)}; missing: {missing}."
+            )
+
+    def _node_is_active(self, node: HierarchyNode, indicator_config: Mapping[str, int]) -> bool:
+        """Check whether a node's activity_condition.requirements (keyed by indicator global
+        column) are all satisfied by ``indicator_config`` (keyed by indicator tag). Uses
+        integer equality so that K-ary categorical indicators are compared exactly rather
+        than via Boolean truthiness. Assumes a complete config (see
+        :meth:`_require_complete_config`, enforced by the public callers)."""
+        for indicator_col, required in node.activity_condition.requirements.items():
+            ind_tag = self._column_to_tag[indicator_col]
+            if int(indicator_config[ind_tag]) != int(required):
+                return False
+        return True
 
 
 class TaggedMultiSearchSpace(CollectionSearchSpace):
