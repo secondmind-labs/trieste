@@ -218,6 +218,50 @@ Constraint = Union[LinearConstraint, NonlinearConstraint]
 """ Type alias for constraints. """
 
 
+def _embed_constraint(
+    constraint: Constraint, offset: int, part_dim: int, combined_dim: int
+) -> Constraint:
+    """Re-express a constraint defined on a ``part_dim``-wide sub-vector so it applies to a wider
+    ``combined_dim``-wide flat vector, with the sub-vector occupying columns
+    ``[offset, offset + part_dim)`` and all other columns ignored.
+
+    Used to carry a search space's (positional) constraints through a Cartesian product, where the
+    space's columns are relocated to a contiguous block of the combined flat vector.
+
+    :param constraint: A :class:`LinearConstraint` or :class:`NonlinearConstraint` over the
+        ``part_dim``-wide sub-vector.
+    :param offset: Index of the sub-vector's first column in the combined vector.
+    :param part_dim: Width of the sub-vector the constraint was defined on.
+    :param combined_dim: Width of the combined vector.
+    :return: An equivalent constraint over the combined vector.
+    :raises NotImplementedError: For an unsupported constraint type.
+    """
+    if isinstance(constraint, LinearConstraint):
+        A = tf.convert_to_tensor(constraint.A)
+        if int(A.shape[-1]) != part_dim:
+            raise ValueError(
+                f"LinearConstraint matrix A has {int(A.shape[-1])} columns but the space it "
+                f"constrains has dimension {part_dim}; global constraints must span the full "
+                f"flat vector."
+            )
+        padded = tf.pad(A, [[0, 0], [offset, combined_dim - offset - part_dim]])
+        return LinearConstraint(padded, constraint.lb, constraint.ub, constraint.keep_feasible)
+    if isinstance(constraint, NonlinearConstraint):
+        orig_fun = constraint._orig_fun
+
+        def shifted_fun(
+            x: TensorType, _fun: Callable = orig_fun, _o: int = offset, _w: int = part_dim
+        ) -> TensorType:
+            return _fun(x[..., _o : _o + _w])
+
+        return NonlinearConstraint(
+            shifted_fun, constraint.lb, constraint.ub, constraint.keep_feasible
+        )
+    raise NotImplementedError(
+        f"Cannot embed constraint of type {type(constraint).__name__} into a wider space."
+    )
+
+
 class SearchSpace(ABC):
     """
     A :class:`SearchSpace` represents the domain over which an objective function is optimized.
@@ -322,7 +366,8 @@ class SearchSpace(ABC):
         """
         :param other: A search space.
         :return: The Cartesian product of this search space with the ``other``.
-            If both spaces are of the same type then this calls the :meth:`product` method.
+            If both spaces are of the same type (and have no constraints)
+            then this calls the :meth:`product` method.
             Otherwise, it generates a :class:`TaggedProductSearchSpace`.
         """
         # If the search space has any constraints, always return a tagged product search space.
@@ -1687,6 +1732,8 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         subspaces: Mapping[str, SearchSpace],
         hierarchy: Sequence[HierarchyNode],
         indicator_tags: Optional[Sequence[str]] = None,
+        constraints: Optional[Sequence[Constraint]] = None,
+        ctol: float | TensorType = 1e-7,
     ) -> None:
         """
         :param subspaces: Tag-keyed mapping of subspaces; iteration order
@@ -1703,12 +1750,21 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             ``activity_condition`` keys in ``hierarchy`` (in subspace order).
             Pass it explicitly to disambiguate a Boolean intended as a plain
             feature, or to have an ungated indicator flagged as an error.
+        :param constraints: Optional explicit constraints enforced on the full
+            flat-vector representation, following the same ``constraints``
+            contract as :class:`Box`. Consumed by :meth:`constraints_residuals`
+            and :meth:`is_feasible`, so a constrained space plugs into the usual
+            Bayesian optimization machinery unchanged.
+        :param ctol: Tolerance used by :meth:`is_feasible` when checking that
+            residuals are non-negative.
         :raises ValueError: If any validation rule is violated.
         """
         subspaces = dict(subspaces)  # decouple from caller, preserve order
         super().__init__(list(subspaces.values()), list(subspaces.keys()))
         self._hierarchy = tuple(hierarchy)
         self._indicator_value_sets: dict[str, tuple[int, ...]] = {}
+        self._constraints: Sequence[Constraint] = [] if constraints is None else list(constraints)
+        self._ctol = ctol
 
         subspace_sizes = self.subspace_dimension
         self._subspace_sizes_by_tag: dict[str, TensorType] = dict(zip(self._tags, subspace_sizes))
@@ -1919,8 +1975,10 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             return NotImplemented
         if not super().__eq__(other):
             return False
-        return self._indicator_tags == other._indicator_tags and self._nodes_equal(
-            self._hierarchy, other._hierarchy
+        return (
+            self._indicator_tags == other._indicator_tags
+            and self._constraints == other._constraints
+            and self._nodes_equal(self._hierarchy, other._hierarchy)
         )
 
     def __repr__(self) -> str:
@@ -1929,7 +1987,9 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             f"spaces={[self.get_subspace(tag) for tag in self.subspace_tags]}, "
             f"tags={list(self.subspace_tags)}, "
             f"hierarchy={list(self._hierarchy)}, "
-            f"indicator_tags={list(self._indicator_tags)})"
+            f"indicator_tags={list(self._indicator_tags)}, "
+            f"constraints={self._constraints!r}, "
+            f"ctol={self._ctol!r})"
         )
 
     @property
@@ -1964,6 +2024,50 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         """All subspace tags that are not indicators, in tag order."""
         indicator_set = set(self._indicator_tags)
         return tuple(t for t in self.subspace_tags if t not in indicator_set)
+
+    @property
+    def constraints(self) -> Sequence[Constraint]:
+        """The explicit constraints enforced on the full flat-vector representation."""
+        return self._constraints
+
+    @property
+    def ctol(self) -> float | TensorType:
+        """The tolerance applied when checking the explicit constraints."""
+        return self._ctol
+
+    @property
+    def has_constraints(self) -> bool:
+        """Returns ``True`` if this search space has any explicit constraints specified."""
+        return len(self._constraints) > 0
+
+    def constraints_residuals(self, points: TensorType) -> TensorType:
+        """
+        Return residuals for all explicit constraints in this search space, evaluated on the
+        full flat-vector representation.
+
+        :param points: The points to get the residuals for, with shape ``[..., D]``.
+        :return: A tensor of all the residuals with shape ``[..., C]``, where ``C`` is the
+            total number of constraint residual columns.
+        :raise NotImplementedError: If this search space has no constraints.
+        """
+        if not self._constraints:
+            raise NotImplementedError(
+                "No constraints to compute residuals for in this search space."
+            )
+        residuals = [constraint.residual(points) for constraint in self._constraints]
+        return tf.concat(residuals, axis=-1)
+
+    def is_feasible(self, points: TensorType) -> TensorType:
+        """
+        Check whether points satisfy the explicit constraints of this search space. Note that
+        membership of the space (the conditional activity structure) is not checked here.
+
+        :param points: The points to check, with shape ``[..., D]``.
+        :return: A boolean tensor of shape ``[...]``, ``True`` where the point is feasible.
+        """
+        if not self.has_constraints:
+            return tf.cast(tf.ones(tf.shape(points)[:-1]), dtype=bool)
+        return tf.math.reduce_all(self.constraints_residuals(points) >= -self._ctol, axis=-1)
 
     @property
     @check_shapes("return: []")
@@ -2123,6 +2227,11 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         requirement columns in ``other`` are shifted by ``self.dimension`` so they index the
         combined flat-vector layout.
 
+        Global (positional) constraints are remapped into the combined layout via
+        :func:`_embed_constraint`: ``self``'s constraints keep columns ``[0, D_self)`` and
+        ``other``'s are shifted to ``[D_self, D_self + D_other)``. The combined space takes the
+        tighter (minimum) of the two operands' constraint tolerances.
+
         :param other: Another :class:`HierarchicalSearchSpace`.
         :return: The combined hierarchical space.
         :raises ValueError: If the two spaces share any tags.
@@ -2135,6 +2244,13 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             **{tag: other.get_subspace(tag) for tag in other.subspace_tags},
         }
         offset = int(self.dimension)
+        combined_dim = int(self.dimension) + int(other.dimension)
+        constraints = [
+            _embed_constraint(c, 0, int(self.dimension), combined_dim) for c in self._constraints
+        ] + [
+            _embed_constraint(c, offset, int(other.dimension), combined_dim)
+            for c in other._constraints
+        ]
         shifted_other_hierarchy: list[HierarchyNode] = []
         for node in other.hierarchy:
             shifted_other_hierarchy.append(
@@ -2154,7 +2270,13 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             )
         hierarchy = list(self.hierarchy) + shifted_other_hierarchy
         indicator_tags = list(self.indicator_tags) + list(other.indicator_tags)
-        return HierarchicalSearchSpace(combined_subspaces, hierarchy, indicator_tags)
+        return HierarchicalSearchSpace(
+            combined_subspaces,
+            hierarchy,
+            indicator_tags,
+            constraints=constraints,
+            ctol=min(self.ctol, other.ctol),
+        )
 
     def _node_is_active(self, node: HierarchyNode, indicator_config: Mapping[str, int]) -> bool:
         """Check whether a node's activity_condition.requirements (keyed by indicator global

@@ -27,6 +27,8 @@ from trieste.space import (
     DiscreteSearchSpace,
     HierarchicalSearchSpace,
     HierarchyNode,
+    LinearConstraint,
+    NonlinearConstraint,
     SearchSpace,
     hierarchy_node_from_tags,
 )
@@ -621,10 +623,11 @@ def test_categorical_hss_active_subspaces() -> None:
 # ===== product =====
 
 
-def _make_second_hss() -> HierarchicalSearchSpace:
+def _make_second_hss(**kwargs) -> HierarchicalSearchSpace:
     """A second, disjoint hierarchical space (tags z1/w1/z2) for product tests.
 
-    Columns: z1 (uncond), w1 (Boolean indicator), z2 gated by w1=1.
+    Columns: z1 (uncond), w1 (Boolean indicator), z2 gated by w1=1. Extra keyword
+    arguments (e.g. ``constraints=``) are forwarded to the constructor.
     """
     subspaces = {
         "z1": Box([0.0], [1.0]),
@@ -646,7 +649,7 @@ def _make_second_hss() -> HierarchicalSearchSpace:
             indicator_tags=["w1"],
         ),
     ]
-    return HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["w1"])
+    return HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["w1"], **kwargs)
 
 
 def test_hss_product_combines_tags_dimension_and_indicators() -> None:
@@ -864,6 +867,8 @@ def test_hss_repr_includes_hierarchy_and_indicator_tags() -> None:
     assert "hierarchy" in text
     assert "indicator_tags" in text
     assert "y1" in text
+    assert "constraints" in text
+    assert "ctol" in text
 
 
 # ===== gpflow kernel integration =====
@@ -898,3 +903,127 @@ def test_hss_hierarchy_is_directly_consumable_by_arc_hierarchical() -> None:
     )
     cov = kernel.K(x).numpy()
     assert cov[0, 1] < cov[0, 0]
+
+
+# ===== global constraints (standard SearchSpace contract) =====
+
+
+def _make_constrained_hss(constraints, ctol: float = 1e-7) -> HierarchicalSearchSpace:
+    subspaces = _worked_example_subspaces()
+    return HierarchicalSearchSpace(
+        subspaces,
+        _worked_example_hierarchy(subspaces),
+        indicator_tags=["y1"],
+        constraints=constraints,
+        ctol=ctol,
+    )
+
+
+def test_hss_has_no_constraints_by_default() -> None:
+    space = _make_worked_example_hss()
+    assert space.has_constraints is False
+    assert list(space.constraints) == []
+    # With no constraints every point is feasible, and residuals are unavailable.
+    pts = tf.constant([[0.5, 1.0, 2.0, 0.0, 0.0]], dtype=tf.float64)
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True])
+    with pytest.raises(NotImplementedError):
+        space.constraints_residuals(pts)
+
+
+def test_hss_global_linear_constraint_residuals_and_feasibility() -> None:
+    # 0.3 <= x1 <= 0.8, where x1 is flat-vector column 0.
+    A = tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64)
+    space = _make_constrained_hss([LinearConstraint(A=A, lb=[0.3], ub=[0.8])])
+    assert space.has_constraints is True
+    pts = tf.constant(
+        [
+            [0.5, 1.0, 2.0, 0.0, 0.0],  # x1 = 0.5 -> feasible
+            [0.1, 0.0, 2.0, 0.0, 0.0],  # x1 = 0.1 < 0.3 -> infeasible
+            [0.9, 1.0, 2.0, 0.0, 0.0],  # x1 = 0.9 > 0.8 -> infeasible
+        ],
+        dtype=tf.float64,
+    )
+    residuals = space.constraints_residuals(pts).numpy()
+    # residual = [x1 - lb, ub - x1]
+    npt.assert_allclose(residuals, [[0.2, 0.3], [-0.2, 0.7], [0.6, -0.1]])
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True, False, False])
+
+
+def test_hss_global_nonlinear_constraint_feasibility() -> None:
+    # 0 <= x1**2 <= 0.5.
+    space = _make_constrained_hss(
+        [
+            NonlinearConstraint(
+                lambda x: tf.reduce_sum(x[..., :1] ** 2, axis=-1, keepdims=True),
+                lb=0.0,
+                ub=0.5,
+            )
+        ]
+    )
+    pts = tf.constant(
+        [
+            [0.5, 1.0, 2.0, 0.0, 0.0],  # 0.25 in [0, 0.5] -> feasible
+            [0.9, 0.0, 2.0, 0.0, 0.0],  # 0.81 > 0.5 -> infeasible
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True, False])
+
+
+def test_hss_product_combines_global_linear_constraints() -> None:
+    # self (dim 5, cols [x1,y1,x2,x4,x3]) constrains 0.3 <= x1 <= 0.8 (col 0).
+    self_space = _make_constrained_hss(
+        [LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.3], ub=[0.8])]
+    )
+    # other (dim 3, cols [z1,w1,z2]) constrains 0.0 <= z1 <= 0.5 (its col 0 -> combined col 5).
+    other = _make_second_hss(
+        constraints=[LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.0], ub=[0.5])]
+    )
+    combined = self_space.product(other)
+    assert int(combined.dimension) == 8
+    assert len(combined.constraints) == 2
+
+    # combined columns: [x1, y1, x2, x4, x3, z1, w1, z2]
+    pts = tf.constant(
+        [
+            [0.5, 1.0, 2.0, 0.0, 0.0, 0.3, 1.0, 1.0],  # x1 & z1 ok -> feasible
+            [0.1, 1.0, 2.0, 0.0, 0.0, 0.3, 1.0, 1.0],  # x1 = 0.1 < 0.3 -> infeasible
+            [0.5, 1.0, 2.0, 0.0, 0.0, 0.7, 1.0, 1.0],  # z1 = 0.7 > 0.5 -> infeasible
+        ],
+        dtype=tf.float64,
+    )
+    assert combined.constraints_residuals(pts).shape == (3, 4)  # 2 linear constraints x [lo, hi]
+    npt.assert_array_equal(combined.is_feasible(pts).numpy(), [True, False, False])
+
+
+def test_hss_product_embeds_nonlinear_constraint_on_correct_block() -> None:
+    # other constrains z1**2 <= 0.25 on its own column 0 (-> combined column 5).
+    other = _make_second_hss(
+        constraints=[
+            NonlinearConstraint(
+                lambda x: tf.reduce_sum(x[..., :1] ** 2, axis=-1, keepdims=True), lb=0.0, ub=0.25
+            )
+        ]
+    )
+    combined = _make_worked_example_hss().product(other)
+    base = tf.constant([[0.5, 1.0, 2.0, 0.0, 0.0, 0.3, 1.0, 1.0]], dtype=tf.float64)  # z1=0.3
+    bad_z1 = tf.constant([[0.5, 1.0, 2.0, 0.0, 0.0, 0.9, 1.0, 1.0]], dtype=tf.float64)  # z1=0.9
+    moved_x1 = tf.constant([[0.9, 1.0, 4.0, 1.0, 0.5, 0.3, 0.0, 1.5]], dtype=tf.float64)  # z1 unchanged
+
+    npt.assert_array_equal(combined.is_feasible(base).numpy(), [True])  # 0.09 in [0, 0.25]
+    npt.assert_array_equal(combined.is_feasible(bad_z1).numpy(), [False])  # 0.81 > 0.25
+    # The embedded constraint reads only the z1 block: changing x-columns leaves the residual fixed.
+    npt.assert_allclose(
+        combined.constraints_residuals(base).numpy(), combined.constraints_residuals(moved_x1).numpy()
+    )
+
+
+def test_hss_product_uses_min_ctol() -> None:
+    # The combined space takes the tighter (minimum) tolerance, regardless of operand order.
+    constrained = _make_constrained_hss(
+        [LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.3], ub=[0.8])],
+        ctol=1e-3,
+    )
+    other = _make_second_hss()  # default ctol 1e-7 (tighter)
+    assert constrained.product(other).ctol == 1e-7
+    assert other.product(constrained).ctol == 1e-7
