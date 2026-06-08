@@ -17,6 +17,7 @@ from __future__ import annotations
 import operator
 from abc import ABC, abstractmethod
 from collections import Counter
+from dataclasses import dataclass
 from functools import reduce
 from itertools import chain
 from itertools import product as itertools_product
@@ -1659,6 +1660,62 @@ def hierarchy_node_from_tags(
     )
 
 
+INACTIVE_CONSTRAINT_RESIDUAL: float = 1e10
+"""Large positive residual returned for an inactive :class:`ConditionalConstraint`, so the
+point is trivially feasible with respect to that constraint. This is the "big-M" sentinel of
+the MI(N)LP reformulation of a generalized disjunctive program: it keeps the residual smooth
+and feasible-with-huge-margin on the inactive branch, so gradient-based polish never has to
+cross the indicator discontinuity."""
+
+
+@dataclass(frozen=True)
+class ConditionalConstraint:
+    r"""A disjunctive constraint :math:`h(x) \leq 0` enforced only when a set of indicator
+    variables take specified values.
+
+    When the ``indicator_conditions`` all hold for a point, the wrapped ``constraint`` is
+    evaluated on the slice of that point identified by ``active_subspace_tags`` (concatenated in
+    the given order). When they do not hold, the residual is set to
+    :data:`INACTIVE_CONSTRAINT_RESIDUAL`, making the point feasible with respect to this
+    constraint. References are by tag, so a conditional constraint survives
+    :meth:`HierarchicalSearchSpace.product` unchanged.
+
+    :param constraint: The underlying :class:`LinearConstraint` / :class:`NonlinearConstraint`,
+        defined on the concatenated ``active_subspace_tags`` slice.
+    :param indicator_conditions: ``{indicator_tag: required_value}`` gating the constraint.
+    :param active_subspace_tags: Non-indicator subspace tags whose columns the constraint reads.
+    """
+
+    constraint: Constraint
+    indicator_conditions: Mapping[str, int]
+    active_subspace_tags: Sequence[str]
+
+    def residual(self, points: TensorType, space: HierarchicalSearchSpace) -> TensorType:
+        """Constraint residuals, big-M where the indicator conditions are not met.
+
+        :param points: Points in the flat-vector representation, shape ``[..., D]``.
+        :param space: The owning :class:`HierarchicalSearchSpace` (provides tag slicing).
+        :return: Residuals with shape ``[..., C]`` matching the wrapped constraint.
+        """
+        active = tf.ones(tf.shape(points)[:-1], dtype=tf.bool)
+        for ind_tag, required in self.indicator_conditions.items():
+            ind_vals = space.get_subspace_component(ind_tag, points)  # [..., 1]
+            target = tf.cast(int(required), ind_vals.dtype)
+            active = active & (tf.abs(ind_vals[..., 0] - target) < 0.5)
+
+        sub_points = tf.concat(
+            [space.get_subspace_component(tag, points) for tag in self.active_subspace_tags],
+            axis=-1,
+        )
+        real_residual = self.constraint.residual(sub_points)  # [..., C]
+        inactive_residual = tf.fill(
+            tf.shape(real_residual),
+            tf.constant(INACTIVE_CONSTRAINT_RESIDUAL, dtype=real_residual.dtype),
+        )
+        mask = tf.broadcast_to(active[..., None], tf.shape(real_residual))
+        return tf.where(mask, real_residual, inactive_residual)
+
+
 class HierarchicalSearchSpace(CollectionSearchSpace):
     r"""
     A :class:`SearchSpace` that extends :class:`CollectionSearchSpace` with a hierarchy
@@ -1733,6 +1790,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         hierarchy: Sequence[HierarchyNode],
         indicator_tags: Optional[Sequence[str]] = None,
         constraints: Optional[Sequence[Constraint]] = None,
+        conditional_constraints: Sequence[ConditionalConstraint] = (),
         ctol: float | TensorType = 1e-7,
     ) -> None:
         """
@@ -1750,11 +1808,14 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             ``activity_condition`` keys in ``hierarchy`` (in subspace order).
             Pass it explicitly to disambiguate a Boolean intended as a plain
             feature, or to have an ungated indicator flagged as an error.
-        :param constraints: Optional explicit constraints enforced on the full
-            flat-vector representation, following the same ``constraints``
+        :param constraints: Optional explicit (global) constraints enforced on the
+            full flat-vector representation, following the same ``constraints``
             contract as :class:`Box`. Consumed by :meth:`constraints_residuals`
             and :meth:`is_feasible`, so a constrained space plugs into the usual
             Bayesian optimization machinery unchanged.
+        :param conditional_constraints: Disjunctive constraints, each enforced only
+            when its indicator conditions hold (see :class:`ConditionalConstraint`);
+            inactive rows contribute :data:`INACTIVE_CONSTRAINT_RESIDUAL`.
         :param ctol: Tolerance used by :meth:`is_feasible` when checking that
             residuals are non-negative.
         :raises ValueError: If any validation rule is violated.
@@ -1764,6 +1825,9 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         self._hierarchy = tuple(hierarchy)
         self._indicator_value_sets: dict[str, tuple[int, ...]] = {}
         self._constraints: Sequence[Constraint] = [] if constraints is None else list(constraints)
+        self._conditional_constraints: tuple[ConditionalConstraint, ...] = tuple(
+            conditional_constraints
+        )
         self._ctol = ctol
 
         subspace_sizes = self.subspace_dimension
@@ -1942,6 +2006,34 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                 f"in any HierarchyNode.activity_condition.requirements."
             )
 
+        # Conditional constraints: indicator conditions must reference declared indicators
+        # with permitted values, and active_subspace_tags must be existing non-indicators.
+        indicator_set = set(self._indicator_tags)
+        for i, cc in enumerate(self._conditional_constraints):
+            for ind_tag, required in cc.indicator_conditions.items():
+                if ind_tag not in indicator_set:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] references indicator '{ind_tag}', "
+                        f"which is not a declared indicator tag {sorted(indicator_set)}."
+                    )
+                permitted = self._indicator_value_sets[ind_tag]
+                if int(required) not in permitted:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] requires indicator '{ind_tag}' = "
+                        f"{required!r}, which is not in its permitted set {list(permitted)}."
+                    )
+            for tag in cc.active_subspace_tags:
+                if tag not in all_tags:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] active_subspace_tag '{tag}' is not a "
+                        f"key of `subspaces` {sorted(all_tags)}."
+                    )
+                if tag in indicator_set:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] active_subspace_tag '{tag}' is an "
+                        f"indicator; constraints operate on the non-indicator slice only."
+                    )
+
     @staticmethod
     def _nodes_equal(left: Sequence[HierarchyNode], right: Sequence[HierarchyNode]) -> bool:
         """Compare two hierarchies by value. ``HierarchyNode`` is a frozen dataclass,
@@ -1978,6 +2070,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         return (
             self._indicator_tags == other._indicator_tags
             and self._constraints == other._constraints
+            and self._conditional_constraints == other._conditional_constraints
             and self._nodes_equal(self._hierarchy, other._hierarchy)
         )
 
@@ -2027,7 +2120,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
 
     @property
     def constraints(self) -> Sequence[Constraint]:
-        """The explicit constraints enforced on the full flat-vector representation."""
+        """The explicit (global) constraints enforced on the full flat-vector representation."""
         return self._constraints
 
     @property
@@ -2036,25 +2129,34 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         return self._ctol
 
     @property
+    def conditional_constraints(self) -> tuple[ConditionalConstraint, ...]:
+        """The disjunctive constraints gated by indicator conditions."""
+        return self._conditional_constraints
+
+    @property
     def has_constraints(self) -> bool:
-        """Returns ``True`` if this search space has any explicit constraints specified."""
-        return len(self._constraints) > 0
+        """Returns ``True`` if this search space has any global or conditional constraints."""
+        return bool(self._constraints or self._conditional_constraints)
 
     def constraints_residuals(self, points: TensorType) -> TensorType:
         """
-        Return residuals for all explicit constraints in this search space, evaluated on the
-        full flat-vector representation.
+        Return residuals for all global and conditional constraints in this search space.
+        Global constraints are evaluated on the full flat vector; conditional constraints
+        return :data:`INACTIVE_CONSTRAINT_RESIDUAL` on rows where their indicator conditions
+        do not hold.
 
         :param points: The points to get the residuals for, with shape ``[..., D]``.
         :return: A tensor of all the residuals with shape ``[..., C]``, where ``C`` is the
             total number of constraint residual columns.
-        :raise NotImplementedError: If this search space has no constraints.
+        :raise NotImplementedError: If this search space has no global or conditional
+            constraints.
         """
-        if not self._constraints:
+        residuals = [constraint.residual(points) for constraint in self._constraints]
+        residuals += [cc.residual(points, self) for cc in self._conditional_constraints]
+        if not residuals:
             raise NotImplementedError(
                 "No constraints to compute residuals for in this search space."
             )
-        residuals = [constraint.residual(points) for constraint in self._constraints]
         return tf.concat(residuals, axis=-1)
 
     def is_feasible(self, points: TensorType) -> TensorType:
@@ -2227,10 +2329,12 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         requirement columns in ``other`` are shifted by ``self.dimension`` so they index the
         combined flat-vector layout.
 
-        Global (positional) constraints are remapped into the combined layout via
-        :func:`_embed_constraint`: ``self``'s constraints keep columns ``[0, D_self)`` and
-        ``other``'s are shifted to ``[D_self, D_self + D_other)``. The combined space takes the
-        tighter (minimum) of the two operands' constraint tolerances.
+        Conditional constraints reference subspaces and indicators by tag, so they compose
+        across the disjoint-tag product unchanged and are concatenated. Global (positional)
+        constraints are remapped into the combined layout via :func:`_embed_constraint`:
+        ``self``'s constraints keep columns ``[0, D_self)`` and ``other``'s are shifted to
+        ``[D_self, D_self + D_other)``. The combined space takes the tighter (minimum) of the
+        two operands' constraint tolerances.
 
         :param other: Another :class:`HierarchicalSearchSpace`.
         :return: The combined hierarchical space.
@@ -2270,11 +2374,15 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             )
         hierarchy = list(self.hierarchy) + shifted_other_hierarchy
         indicator_tags = list(self.indicator_tags) + list(other.indicator_tags)
+        conditional_constraints = list(self._conditional_constraints) + list(
+            other._conditional_constraints
+        )
         return HierarchicalSearchSpace(
             combined_subspaces,
             hierarchy,
             indicator_tags,
             constraints=constraints,
+            conditional_constraints=conditional_constraints,
             ctol=min(self.ctol, other.ctol),
         )
 

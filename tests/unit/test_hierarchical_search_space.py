@@ -20,10 +20,12 @@ import pytest
 import tensorflow as tf
 
 from trieste.space import (
+    INACTIVE_CONSTRAINT_RESIDUAL,
     ActivityCondition,
     BooleanSearchSpace,
     Box,
     CategoricalSearchSpace,
+    ConditionalConstraint,
     DiscreteSearchSpace,
     HierarchicalSearchSpace,
     HierarchyNode,
@@ -1027,3 +1029,244 @@ def test_hss_product_uses_min_ctol() -> None:
     other = _make_second_hss()  # default ctol 1e-7 (tighter)
     assert constrained.product(other).ctol == 1e-7
     assert other.product(constrained).ctol == 1e-7
+
+
+# ===== conditional (disjunctive) constraints =====
+
+
+def _hss_with_conditional(cc: ConditionalConstraint) -> HierarchicalSearchSpace:
+    subspaces = _worked_example_subspaces()
+    return HierarchicalSearchSpace(
+        subspaces,
+        _worked_example_hierarchy(subspaces),
+        indicator_tags=["y1"],
+        conditional_constraints=[cc],
+    )
+
+
+def _x3_in_unit_when_y1_zero() -> ConditionalConstraint:
+    # -0.5 <= x3 <= 1.0, enforced only when y1 == 0.
+    return ConditionalConstraint(
+        constraint=LinearConstraint(A=tf.constant([[1.0]], dtype=tf.float64), lb=[-0.5], ub=[1.0]),
+        indicator_conditions={"y1": 0},
+        active_subspace_tags=["x3"],
+    )
+
+
+def test_conditional_constraint_active_returns_real_residual() -> None:
+    space = _hss_with_conditional(_x3_in_unit_when_y1_zero())
+    # y1 = 0 (active), x3 = 0.0 -> residual = [x3 - (-0.5), 1.0 - x3] = [0.5, 1.0]
+    pts = tf.constant([[0.5, 0.0, 2.0, 0.0, 0.0]], dtype=tf.float64)
+    npt.assert_allclose(space.constraints_residuals(pts).numpy(), [[0.5, 1.0]])
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True])
+
+
+def test_conditional_constraint_inactive_returns_big_m() -> None:
+    space = _hss_with_conditional(_x3_in_unit_when_y1_zero())
+    # y1 = 1 (inactive): x3 = -0.8 would violate, but the constraint does not apply.
+    pts = tf.constant([[0.5, 1.0, 2.0, 0.0, -0.8]], dtype=tf.float64)
+    residuals = space.constraints_residuals(pts).numpy()
+    npt.assert_array_equal(residuals, [[INACTIVE_CONSTRAINT_RESIDUAL] * 2])
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True])
+
+
+def test_conditional_constraint_mixed_batch_feasibility() -> None:
+    space = _hss_with_conditional(_x3_in_unit_when_y1_zero())
+    pts = tf.constant(
+        [
+            [0.5, 0.0, 2.0, 0.0, 0.0],   # y1=0 active, x3=0.0 -> feasible
+            [0.5, 0.0, 2.0, 0.0, -0.8],  # y1=0 active, x3=-0.8 -> infeasible
+            [0.5, 1.0, 2.0, 0.0, -0.8],  # y1=1 inactive -> feasible (big-M)
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True, False, True])
+
+
+def test_conditional_constraint_categorical_indicator_matches_only_target() -> None:
+    subspaces = {
+        "x1": Box([0.0], [1.0]),
+        "y1": CategoricalSearchSpace(3),  # column 1
+        "x2": Box([-1.0], [1.0]),  # column 2
+    }
+    hierarchy = [
+        hierarchy_node_from_tags("shared", subspace_tags=["x1"], subspaces=subspaces, indicator_tags=["y1"]),
+        hierarchy_node_from_tags(
+            "branch", subspace_tags=["x2"], activity_condition_tags={"y1": 2},
+            subspaces=subspaces, indicator_tags=["y1"],
+        ),
+    ]
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[1.0]),
+        indicator_conditions={"y1": 2},
+        active_subspace_tags=["x2"],
+    )
+    space = HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1"], conditional_constraints=[cc])
+    pts = tf.constant(
+        [
+            [0.5, 2.0, -0.8],  # y1=2 active, x2=-0.8 < 0 -> infeasible
+            [0.5, 1.0, -0.8],  # y1=1 inactive -> feasible
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [False, True])
+
+
+def test_conditional_constraint_nonlinear_inner() -> None:
+    cc = ConditionalConstraint(
+        constraint=NonlinearConstraint(
+            lambda x: tf.reduce_sum(x ** 2, axis=-1, keepdims=True), lb=0.0, ub=0.25
+        ),
+        indicator_conditions={"y1": 0},
+        active_subspace_tags=["x3"],
+    )
+    space = _hss_with_conditional(cc)
+    pts = tf.constant(
+        [
+            [0.5, 0.0, 2.0, 0.0, 0.3],  # y1=0 active, 0.09 in [0,0.25] -> feasible
+            [0.5, 0.0, 2.0, 0.0, 0.9],  # y1=0 active, 0.81 > 0.25 -> infeasible
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True, False])
+
+
+def test_hss_raises_if_conditional_constraint_unknown_indicator() -> None:
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[1.0]),
+        indicator_conditions={"nope": 0},
+        active_subspace_tags=["x3"],
+    )
+    with pytest.raises(ValueError, match="not a declared indicator"):
+        _hss_with_conditional(cc)
+
+
+def test_hss_raises_if_conditional_constraint_value_out_of_permitted_set() -> None:
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[1.0]),
+        indicator_conditions={"y1": 5},  # Boolean indicator only permits {0, 1}
+        active_subspace_tags=["x3"],
+    )
+    with pytest.raises(ValueError, match="permitted set"):
+        _hss_with_conditional(cc)
+
+
+def test_hss_raises_if_conditional_constraint_unknown_active_subspace_tag() -> None:
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[1.0]),
+        indicator_conditions={"y1": 0},
+        active_subspace_tags=["does_not_exist"],
+    )
+    with pytest.raises(ValueError, match="not a key of"):
+        _hss_with_conditional(cc)
+
+
+def test_hss_raises_if_conditional_constraint_active_subspace_tag_is_indicator() -> None:
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[1.0]),
+        indicator_conditions={"y1": 0},
+        active_subspace_tags=["y1"],  # an indicator
+    )
+    with pytest.raises(ValueError, match="is an indicator"):
+        _hss_with_conditional(cc)
+
+
+def test_hss_product_propagates_conditional_constraints() -> None:
+    space = _hss_with_conditional(_x3_in_unit_when_y1_zero())
+    combined = space.product(_make_second_hss())
+    assert len(combined.conditional_constraints) == 1
+    assert combined.has_constraints is True
+    # The conditional still evaluates on the combined 8-D layout (tag references survive product):
+    # combined columns are [x1=0, y1=1, x2=2, x4=3, x3=4, z1=5, w1=6, z2=7].
+    active_pt = tf.constant([[0.5, 0.0, 2.0, 0.0, 0.0, 0.5, 0.0, 0.5]], dtype=tf.float64)
+    npt.assert_allclose(combined.constraints_residuals(active_pt).numpy(), [[0.5, 1.0]])
+    npt.assert_array_equal(combined.is_feasible(active_pt).numpy(), [True])
+    inactive_pt = tf.constant([[0.5, 1.0, 2.0, 0.0, -0.8, 0.5, 0.0, 0.5]], dtype=tf.float64)
+    npt.assert_array_equal(
+        combined.constraints_residuals(inactive_pt).numpy(), [[INACTIVE_CONSTRAINT_RESIDUAL] * 2]
+    )
+
+
+def test_conditional_constraint_residuals_are_differentiable() -> None:
+    # The big-M reformulation exists so gradient-based polish can flow through the residual; verify
+    # constraints_residuals is differentiable w.r.t. x on the active branch (d/dx3 of [x3+0.5,
+    # 1.0-x3] is [+1, -1]).
+    space = _hss_with_conditional(_x3_in_unit_when_y1_zero())
+    x = tf.Variable([[0.5, 0.0, 2.0, 0.0, 0.0]], dtype=tf.float64)  # y1 = 0 -> active
+    with tf.GradientTape() as tape:
+        residuals = space.constraints_residuals(x)  # shape [1, 2]
+    jac = tape.jacobian(residuals, x)
+    assert jac is not None
+    npt.assert_allclose(jac.numpy()[0, :, 0, 4], [1.0, -1.0])
+    # Inactive branch: finite big-M residual and a defined (zero) gradient, no NaN/None.
+    x_inactive = tf.Variable([[0.5, 1.0, 2.0, 0.0, 0.0]], dtype=tf.float64)  # y1 = 1 -> inactive
+    with tf.GradientTape() as tape:
+        residuals = space.constraints_residuals(x_inactive)
+    jac_inactive = tape.jacobian(residuals, x_inactive)
+    assert jac_inactive is not None
+    npt.assert_array_equal(jac_inactive.numpy()[0, :, 0, 4], [0.0, 0.0])
+
+
+def _two_indicator_subspaces() -> dict[str, SearchSpace]:
+    # Columns: [x1=0, y1=1, y2=2, x2=3]; y1, y2 Boolean indicators.
+    return {
+        "x1": Box([0.0], [1.0]),
+        "y1": BooleanSearchSpace(),
+        "y2": BooleanSearchSpace(),
+        "x2": Box([-1.0], [1.0]),
+    }
+
+
+def _two_indicator_hierarchy(subspaces: dict[str, SearchSpace]) -> list[HierarchyNode]:
+    # x2 is active (and both y1, y2 are thereby gated) only when y1 == 0 AND y2 == 1.
+    return [
+        hierarchy_node_from_tags(
+            "shared", subspace_tags=["x1"], subspaces=subspaces, indicator_tags=["y1", "y2"]
+        ),
+        hierarchy_node_from_tags(
+            "branch",
+            subspace_tags=["x2"],
+            activity_condition_tags={"y1": 0, "y2": 1},
+            subspaces=subspaces,
+            indicator_tags=["y1", "y2"],
+        ),
+    ]
+
+
+def test_hss_is_active_multi_indicator_node() -> None:
+    # A node gated on two indicators is active only when BOTH conditions hold (logical AND).
+    subspaces = _two_indicator_subspaces()
+    space = HierarchicalSearchSpace(
+        subspaces, _two_indicator_hierarchy(subspaces), indicator_tags=["y1", "y2"]
+    )
+    assert space.is_active("x2", {"y1": 0, "y2": 1})
+    assert not space.is_active("x2", {"y1": 0, "y2": 0})
+    assert not space.is_active("x2", {"y1": 1, "y2": 1})
+    assert set(space.active_subspace_tags({"y1": 0, "y2": 1})) == {"x1", "x2"}
+    assert set(space.active_subspace_tags({"y1": 0, "y2": 0})) == {"x1"}
+
+
+def test_conditional_constraint_multiple_indicator_conditions() -> None:
+    # A conditional constraint gated on two indicators is active only when BOTH hold.
+    subspaces = _two_indicator_subspaces()
+    cc = ConditionalConstraint(
+        constraint=LinearConstraint(A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[1.0]),
+        indicator_conditions={"y1": 0, "y2": 1},
+        active_subspace_tags=["x2"],
+    )
+    space = HierarchicalSearchSpace(
+        subspaces,
+        _two_indicator_hierarchy(subspaces),
+        indicator_tags=["y1", "y2"],
+        conditional_constraints=[cc],
+    )
+    # columns: [x1=0, y1=1, y2=2, x2=3]; x2 < 0 violates 0 <= x2 <= 1 only when active.
+    pts = tf.constant(
+        [
+            [0.5, 0.0, 1.0, -0.8],  # y1=0, y2=1 active, x2=-0.8 -> infeasible
+            [0.5, 0.0, 0.0, -0.8],  # y2 != 1 -> inactive -> feasible
+            [0.5, 1.0, 1.0, -0.8],  # y1 != 0 -> inactive -> feasible
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [False, True, True])
