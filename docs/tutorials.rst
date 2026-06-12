@@ -45,6 +45,7 @@ The following tutorials illustrate solving different types of optimization probl
    notebooks/mixed_search_spaces
    notebooks/hierarchical_search_space
    notebooks/hierarchical_search_space_gpflow_kernel
+   notebooks/hierarchical_search_space_constraints
 
 Frequently asked questions
 --------------------------
