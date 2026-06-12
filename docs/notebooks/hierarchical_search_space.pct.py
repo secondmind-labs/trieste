@@ -165,9 +165,7 @@ hierarchy_c = [
         activity_condition_tags={"y1": 2},
     ),
 ]
-space_c = HierarchicalSearchSpace(
-    subspaces_c, hierarchy_c
-)
+space_c = HierarchicalSearchSpace(subspaces_c, hierarchy_c)
 
 print("indicator_value_sets:", space_c.indicator_value_sets)
 print("enumerate_tasks:", space_c.enumerate_tasks())
@@ -200,9 +198,7 @@ hierarchy_mix = [
         activity_condition_tags={"y1": 1, "y2": 2},
     ),
 ]
-space_mix = HierarchicalSearchSpace(
-    subspaces_mix, hierarchy_mix
-)
+space_mix = HierarchicalSearchSpace(subspaces_mix, hierarchy_mix)
 tasks = space_mix.enumerate_tasks()
 print(f"number of tasks: {len(tasks)}")
 for t in tasks:

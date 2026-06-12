@@ -80,10 +80,14 @@ subspaces = {
 hierarchy = [
     HierarchyNode("shared", subspace_tags=["x1"]),
     HierarchyNode(
-        "branch_A", subspace_tags=["x2"], activity_condition_tags={"y1": 1},
+        "branch_A",
+        subspace_tags=["x2"],
+        activity_condition_tags={"y1": 1},
     ),
     HierarchyNode(
-        "branch_B", subspace_tags=["x3"], activity_condition_tags={"y1": 0},
+        "branch_B",
+        subspace_tags=["x3"],
+        activity_condition_tags={"y1": 0},
     ),
 ]
 
@@ -96,7 +100,9 @@ global_constraint = LinearConstraint(
 # Conditional: x3 >= -0.5 only when y1 == 0.
 conditional_constraint = ConditionalConstraint(
     constraint=LinearConstraint(
-        A=tf.constant([[1.0]], dtype=tf.float64), lb=[-0.5], ub=[INACTIVE_CONSTRAINT_RESIDUAL]
+        A=tf.constant([[1.0]], dtype=tf.float64),
+        lb=[-0.5],
+        ub=[INACTIVE_CONSTRAINT_RESIDUAL],
     ),
     indicator_conditions={"y1": 0},
     active_subspace_tags=["x3"],
@@ -123,9 +129,24 @@ print("has_constraints:", space.has_constraints)
 # differ only in the conditional constraint.
 demo = tf.constant(
     [
-        [0.3, 0.0, 0.4, 0.2],   # y1=0: conditional active (x3=0.2 >= -0.5 ok) -> feasible
-        [0.3, 0.0, 0.4, -0.8],  # y1=0: conditional active (x3=-0.8 violates) -> infeasible
-        [0.3, 1.0, 0.4, -0.8],  # y1=1: conditional inactive -> big-M -> feasible
+        [
+            0.3,
+            0.0,
+            0.4,
+            0.2,
+        ],  # y1=0: conditional active (x3=0.2 >= -0.5 ok) -> feasible
+        [
+            0.3,
+            0.0,
+            0.4,
+            -0.8,
+        ],  # y1=0: conditional active (x3=-0.8 violates) -> infeasible
+        [
+            0.3,
+            1.0,
+            0.4,
+            -0.8,
+        ],  # y1=1: conditional inactive -> big-M -> feasible
     ],
     dtype=tf.float64,
 )
@@ -151,7 +172,9 @@ subspaces_2 = {
 hierarchy_2 = [
     HierarchyNode("shared", subspace_tags=["x1"]),
     HierarchyNode(
-        "branch", subspace_tags=["x2"], activity_condition_tags={"y1": 1, "y2": 1},
+        "branch",
+        subspace_tags=["x2"],
+        activity_condition_tags={"y1": 1, "y2": 1},
     ),
 ]
 space_2 = HierarchicalSearchSpace(
@@ -160,7 +183,8 @@ space_2 = HierarchicalSearchSpace(
     logical_propositions=[
         LogicalProposition(
             fun=lambda ind: tf.logical_or(
-                tf.not_equal(ind["y2"][..., 0], 1.0), tf.equal(ind["y1"][..., 0], 1.0)
+                tf.not_equal(ind["y2"][..., 0], 1.0),
+                tf.equal(ind["y1"][..., 0], 1.0),
             ),
             name="y2_implies_y1",
         )
@@ -196,7 +220,9 @@ print("logical is_feasible:", space_2.is_feasible(pts_2).numpy())
 def objective(X):
     X = np.asarray(X)
     x1, y1, x2, x3 = X[:, 0], X[:, 1], X[:, 2], X[:, 3]
-    branch_a = y1.round().astype(bool)  # y1 == 1 branch (x2 active) vs y1 == 0 branch (x3 active)
+    branch_a = y1.round().astype(
+        bool
+    )  # y1 == 1 branch (x2 active) vs y1 == 0 branch (x3 active)
     y = (
         np.sin(2.0 * np.pi * x1)
         + np.where(branch_a, 0.5 * np.cos(np.pi * x2 / 5.0), 0.5 * x3)
@@ -209,7 +235,9 @@ def feasible_sample(n, max_tries=100):
     kept, tries = [], 0
     while sum(len(k) for k in kept) < n:
         if tries >= max_tries:
-            raise RuntimeError(f"Could not draw {n} feasible points in {max_tries} tries.")
+            raise RuntimeError(
+                f"Could not draw {n} feasible points in {max_tries} tries."
+            )
         pool = space.sample(4 * n)
         kept.append(tf.boolean_mask(pool, space.is_feasible(pool)).numpy())
         tries += 1
@@ -219,22 +247,30 @@ def feasible_sample(n, max_tries=100):
 def feasible_acquisition_optimizer(space, target_func):
     """Maximise the acquisition over a pool of rejection-sampled feasible candidates."""
     # ``EfficientGlobalOptimization`` may pass ``(function, vectorization)``; we use one point.
-    target_func = target_func[0] if isinstance(target_func, tuple) else target_func
-    candidates = tf.convert_to_tensor(feasible_sample(200), dtype=tf.float64)  # [N, D]
+    target_func = (
+        target_func[0] if isinstance(target_func, tuple) else target_func
+    )
+    candidates = tf.convert_to_tensor(
+        feasible_sample(200), dtype=tf.float64
+    )  # [N, D]
     acquisition = target_func(candidates[:, None, :])  # [N, 1]
     return candidates[int(tf.argmax(acquisition[:, 0]))][None]  # [1, D]
 
 
 observer = mk_observer(objective)
 active_dims = list(range(int(space.dimension)))
-initial_data = observer(tf.convert_to_tensor(feasible_sample(15), dtype=tf.float64))
+initial_data = observer(
+    tf.convert_to_tensor(feasible_sample(15), dtype=tf.float64)
+)
 
 # Wrap a GPflow ArcHierarchical GPR as a trieste model.
 kernel = gpflow.kernels.Constant() * ArcHierarchical(
     space.to_gpflow_hierarchy(), active_dims=active_dims
 )
 gpr = gpflow.models.GPR(
-    (initial_data.query_points, initial_data.observations), kernel=kernel, noise_variance=0.01
+    (initial_data.query_points, initial_data.observations),
+    kernel=kernel,
+    noise_variance=0.01,
 )
 # num_kernel_samples=0: skip the random-restart hyperparameter sampling, which doesn't support
 # ArcHierarchical's vector-valued ``angle`` parameter; we just optimise from the default init.
@@ -243,10 +279,15 @@ model = GaussianProcessRegression(gpr, num_kernel_samples=0)
 rule = EfficientGlobalOptimization(
     builder=ExpectedImprovement(), optimizer=feasible_acquisition_optimizer
 )
-result = BayesianOptimizer(observer, space).optimize(3, initial_data, model, rule)
+n_bo_steps = 3
+result = BayesianOptimizer(observer, space).optimize(
+    n_bo_steps, initial_data, model, rule
+)
 
 final_data = result.try_get_final_dataset()
-print(f"best feasible objective = {float(tf.reduce_min(final_data.observations)):+.3f}")
+print(
+    f"best feasible objective = {float(tf.reduce_min(final_data.observations)):+.3f}"
+)
 
 # %% [markdown]
 # ## What this shows
