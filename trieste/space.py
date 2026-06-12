@@ -1716,6 +1716,25 @@ class ConditionalConstraint:
         return tf.where(mask, real_residual, inactive_residual)
 
 
+@dataclass(frozen=True)
+class LogicalProposition:
+    r"""A feasibility constraint on the indicator variables alone, :math:`\Omega(Y)`.
+
+    ``fun`` receives ``{indicator_tag: values}`` where each value has shape ``[..., 1]`` (values
+    in the indicator's permitted set) and must return a boolean tensor of shape ``[...]``.
+    Logical propositions are checked by :meth:`HierarchicalSearchSpace.is_feasible` but are
+    **not** included in :meth:`HierarchicalSearchSpace.constraints_residuals`, as they have no
+    useful gradient for continuous optimizers. They reference indicators by tag, so they survive
+    :meth:`HierarchicalSearchSpace.product` unchanged.
+
+    :param fun: Maps ``{indicator_tag: [..., 1]}`` to a boolean feasibility tensor ``[...]``.
+    :param name: Optional human-readable label.
+    """
+
+    fun: Callable[[Mapping[str, TensorType]], TensorType]
+    name: str = ""
+
+
 class HierarchicalSearchSpace(CollectionSearchSpace):
     r"""
     A :class:`SearchSpace` that extends :class:`CollectionSearchSpace` with a hierarchy
@@ -1791,6 +1810,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         indicator_tags: Optional[Sequence[str]] = None,
         constraints: Optional[Sequence[Constraint]] = None,
         conditional_constraints: Sequence[ConditionalConstraint] = (),
+        logical_propositions: Sequence[LogicalProposition] = (),
         ctol: float | TensorType = 1e-7,
     ) -> None:
         """
@@ -1816,6 +1836,9 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         :param conditional_constraints: Disjunctive constraints, each enforced only
             when its indicator conditions hold (see :class:`ConditionalConstraint`);
             inactive rows contribute :data:`INACTIVE_CONSTRAINT_RESIDUAL`.
+        :param logical_propositions: Indicator-only feasibility constraints (see
+            :class:`LogicalProposition`); applied in :meth:`is_feasible` but excluded
+            from :meth:`constraints_residuals` (no continuous gradient).
         :param ctol: Tolerance used by :meth:`is_feasible` when checking that
             residuals are non-negative.
         :raises ValueError: If any validation rule is violated.
@@ -1828,6 +1851,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         self._conditional_constraints: tuple[ConditionalConstraint, ...] = tuple(
             conditional_constraints
         )
+        self._logical_propositions: tuple[LogicalProposition, ...] = tuple(logical_propositions)
         self._ctol = ctol
 
         subspace_sizes = self.subspace_dimension
@@ -2071,6 +2095,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             self._indicator_tags == other._indicator_tags
             and self._constraints == other._constraints
             and self._conditional_constraints == other._conditional_constraints
+            and self._logical_propositions == other._logical_propositions
             and self._nodes_equal(self._hierarchy, other._hierarchy)
         )
 
@@ -2134,16 +2159,24 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         return self._conditional_constraints
 
     @property
+    def logical_propositions(self) -> tuple[LogicalProposition, ...]:
+        """The indicator-only feasibility constraints."""
+        return self._logical_propositions
+
+    @property
     def has_constraints(self) -> bool:
-        """Returns ``True`` if this search space has any global or conditional constraints."""
-        return bool(self._constraints or self._conditional_constraints)
+        """``True`` if any global, conditional, or logical constraints are present."""
+        return bool(
+            self._constraints or self._conditional_constraints or self._logical_propositions
+        )
 
     def constraints_residuals(self, points: TensorType) -> TensorType:
         """
         Return residuals for all global and conditional constraints in this search space.
         Global constraints are evaluated on the full flat vector; conditional constraints
         return :data:`INACTIVE_CONSTRAINT_RESIDUAL` on rows where their indicator conditions
-        do not hold.
+        do not hold. Logical propositions are excluded (no continuous gradient); use
+        :meth:`is_feasible` to account for them.
 
         :param points: The points to get the residuals for, with shape ``[..., D]``.
         :return: A tensor of all the residuals with shape ``[..., C]``, where ``C`` is the
@@ -2161,15 +2194,26 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
 
     def is_feasible(self, points: TensorType) -> TensorType:
         """
-        Check whether points satisfy the explicit constraints of this search space. Note that
-        membership of the space (the conditional activity structure) is not checked here.
+        Check whether points satisfy all constraints of this search space — global and
+        conditional (via residuals) and logical propositions. Note that membership of the space
+        (the conditional activity structure) is not checked here.
 
         :param points: The points to check, with shape ``[..., D]``.
         :return: A boolean tensor of shape ``[...]``, ``True`` where the point is feasible.
         """
-        if not self.has_constraints:
-            return tf.cast(tf.ones(tf.shape(points)[:-1]), dtype=bool)
-        return tf.math.reduce_all(self.constraints_residuals(points) >= -self._ctol, axis=-1)
+        if self._constraints or self._conditional_constraints:
+            feasible = tf.math.reduce_all(self.constraints_residuals(points) >= -self._ctol, axis=-1)
+        else:
+            feasible = tf.cast(tf.ones(tf.shape(points)[:-1]), dtype=bool)
+
+        if self._logical_propositions:
+            indicator_values = {
+                tag: self.get_subspace_component(tag, points) for tag in self._indicator_tags
+            }
+            for proposition in self._logical_propositions:
+                feasible = tf.logical_and(feasible, proposition.fun(indicator_values))
+
+        return feasible
 
     @property
     @check_shapes("return: []")
@@ -2261,15 +2305,19 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                         active.append(stag)
         return active
 
-    def enumerate_tasks(self) -> list[dict[str, int]]:
+    def enumerate_tasks(self, feasible_only: bool = False) -> list[dict[str, int]]:
         """
-        Return every indicator configuration as the Cartesian product of each indicator's
+        Return indicator configurations as the Cartesian product of each indicator's
         permitted value set.
 
         Both Boolean and ``K``-ary categorical indicators contribute the integer values
         ``[0, 1, ..., K-1]`` (with ``K = 2`` for Boolean indicators); the total number of
         configurations equals :math:`\\prod_k |\\mathcal{C}_k|`.
 
+        :param feasible_only: By default the full Cartesian product is returned, ignoring any
+            :class:`LogicalProposition`\\ s. When ``True``, configurations that violate any logical
+            proposition are dropped (global/conditional constraints, which involve the continuous
+            variables, are not considered here).
         :return: A list of ``{indicator_tag: value}`` dictionaries, one per task.
         """
         if not self._indicator_tags:
@@ -2277,10 +2325,22 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         per_indicator_values: list[Sequence[int]] = [
             list(self._indicator_value_sets[t]) for t in self._indicator_tags
         ]
-        return [
+        tasks = [
             dict(zip(self._indicator_tags, combo))
             for combo in itertools_product(*per_indicator_values)
         ]
+        if feasible_only and self._logical_propositions:
+            # Evaluate the propositions on all configs at once, reusing the ``{tag: [N, 1]}`` input
+            # shape that ``is_feasible`` builds from the flat vector.
+            indicator_values = {
+                tag: tf.constant([[task[tag]] for task in tasks], dtype=DEFAULT_DTYPE)
+                for tag in self._indicator_tags
+            }
+            feasible = tf.ones(len(tasks), dtype=bool)
+            for proposition in self._logical_propositions:
+                feasible = tf.logical_and(feasible, proposition.fun(indicator_values))
+            tasks = [task for task, ok in zip(tasks, feasible.numpy()) if ok]
+        return tasks
 
     def is_active(self, tag: str, indicator_config: Mapping[str, int]) -> bool:
         """
@@ -2377,12 +2437,16 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         conditional_constraints = list(self._conditional_constraints) + list(
             other._conditional_constraints
         )
+        logical_propositions = list(self._logical_propositions) + list(
+            other._logical_propositions
+        )
         return HierarchicalSearchSpace(
             combined_subspaces,
             hierarchy,
             indicator_tags,
             constraints=constraints,
             conditional_constraints=conditional_constraints,
+            logical_propositions=logical_propositions,
             ctol=min(self.ctol, other.ctol),
         )
 

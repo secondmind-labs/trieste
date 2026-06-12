@@ -30,6 +30,7 @@ from trieste.space import (
     HierarchicalSearchSpace,
     HierarchyNode,
     LinearConstraint,
+    LogicalProposition,
     NonlinearConstraint,
     SearchSpace,
     hierarchy_node_from_tags,
@@ -1270,3 +1271,160 @@ def test_conditional_constraint_multiple_indicator_conditions() -> None:
         dtype=tf.float64,
     )
     npt.assert_array_equal(space.is_feasible(pts).numpy(), [False, True, True])
+
+
+# ===== logical propositions =====
+
+
+def _implies_proposition() -> LogicalProposition:
+    # "y2 = 1 implies y1 = 1", i.e. feasible unless (y2 == 1 and y1 == 0).
+    return LogicalProposition(
+        fun=lambda ind: tf.logical_or(
+            tf.not_equal(ind["y2"][..., 0], 1.0), tf.equal(ind["y1"][..., 0], 1.0)
+        ),
+        name="y2_implies_y1",
+    )
+
+
+def _two_indicator_hss(**kwargs) -> HierarchicalSearchSpace:
+    # Columns: x1(0), y1(1), y2(2), x2(3).
+    subspaces = {
+        "x1": Box([0.0], [1.0]),
+        "y1": BooleanSearchSpace(),
+        "y2": BooleanSearchSpace(),
+        "x2": Box([0.0], [1.0]),
+    }
+    hierarchy = [
+        hierarchy_node_from_tags(
+            "shared", subspace_tags=["x1"], subspaces=subspaces, indicator_tags=["y1", "y2"]
+        ),
+        hierarchy_node_from_tags(
+            "branch", subspace_tags=["x2"], activity_condition_tags={"y1": 1, "y2": 1},
+            subspaces=subspaces, indicator_tags=["y1", "y2"],
+        ),
+    ]
+    return HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1", "y2"], **kwargs)
+
+
+def test_logical_proposition_filters_violating_points() -> None:
+    space = _two_indicator_hss(logical_propositions=[_implies_proposition()])
+    pts = tf.constant(
+        [
+            [0.5, 1.0, 1.0, 0.5],  # y2=1, y1=1 -> ok
+            [0.5, 0.0, 1.0, 0.5],  # y2=1, y1=0 -> violates implication
+            [0.5, 0.0, 0.0, 0.5],  # y2=0 -> ok
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True, False, True])
+
+
+def test_logical_proposition_only_has_constraints_but_no_residuals() -> None:
+    space = _two_indicator_hss(logical_propositions=[_implies_proposition()])
+    assert space.has_constraints is True
+    # No gradient-compatible constraints -> residuals are unavailable.
+    pts = tf.constant([[0.5, 1.0, 1.0, 0.5]], dtype=tf.float64)
+    with pytest.raises(NotImplementedError):
+        space.constraints_residuals(pts)
+
+
+def test_constraints_residuals_excludes_logical_propositions() -> None:
+    # A global constraint plus a logical proposition: residuals reflect only the global one.
+    A = tf.constant([[1.0, 0.0, 0.0, 0.0]], dtype=tf.float64)
+    space = _two_indicator_hss(
+        constraints=[LinearConstraint(A=A, lb=[0.3], ub=[0.8])],
+        logical_propositions=[_implies_proposition()],
+    )
+    pts = tf.constant([[0.5, 0.0, 1.0, 0.5]], dtype=tf.float64)  # global ok, proposition violated
+    # residual columns come only from the global constraint (shape [N, 2]).
+    assert space.constraints_residuals(pts).shape == (1, 2)
+    # is_feasible still folds the proposition in and rejects the point.
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [False])
+
+
+def test_is_feasible_conjunction_across_all_sources() -> None:
+    A = tf.constant([[1.0, 0.0, 0.0, 0.0]], dtype=tf.float64)
+    space = _two_indicator_hss(
+        constraints=[LinearConstraint(A=A, lb=[0.3], ub=[0.8])],
+        conditional_constraints=[
+            ConditionalConstraint(
+                constraint=LinearConstraint(
+                    A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[0.6]
+                ),
+                indicator_conditions={"y1": 1, "y2": 1},
+                active_subspace_tags=["x2"],
+            )
+        ],
+        logical_propositions=[_implies_proposition()],
+    )
+    pts = tf.constant(
+        [
+            [0.5, 1.0, 1.0, 0.5],  # global ok, conditional active & ok, proposition ok -> True
+            [0.1, 1.0, 1.0, 0.5],  # global x1=0.1<0.3 -> False
+            [0.5, 1.0, 1.0, 0.9],  # conditional active, x2=0.9>0.6 -> False
+            [0.5, 0.0, 1.0, 0.5],  # proposition violated (y2=1,y1=0) -> False
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(space.is_feasible(pts).numpy(), [True, False, False, False])
+
+
+def test_hss_product_propagates_logical_propositions() -> None:
+    space = _two_indicator_hss(logical_propositions=[_implies_proposition()])
+    other = _make_second_hss()  # disjoint tags z1/w1/z2
+    combined = space.product(other)
+    assert len(combined.logical_propositions) == 1
+    assert combined.has_constraints is True
+
+
+def test_hss_enumerate_tasks_feasible_only_filters_propositions() -> None:
+    # "y2 = 1 implies y1 = 1" makes {"y1": 0, "y2": 1} infeasible.
+    space = _two_indicator_hss(logical_propositions=[_implies_proposition()])
+    assert len(space.enumerate_tasks()) == 4  # default: full product, propositions ignored
+    feasible = space.enumerate_tasks(feasible_only=True)
+    assert {"y1": 0, "y2": 1} not in feasible
+    assert len(feasible) == 3
+    assert all(not (t["y2"] == 1 and t["y1"] == 0) for t in feasible)
+
+
+def test_hss_product_combines_all_constraint_sources() -> None:
+    # self (cols [x1, y1, y2, x2]) carries a global, a conditional, and a logical constraint.
+    self_space = _two_indicator_hss(
+        constraints=[
+            LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.0], ub=[0.8])
+        ],
+        conditional_constraints=[
+            ConditionalConstraint(
+                constraint=LinearConstraint(
+                    A=tf.constant([[1.0]], dtype=tf.float64), lb=[0.0], ub=[0.6]
+                ),
+                indicator_conditions={"y1": 1, "y2": 1},
+                active_subspace_tags=["x2"],
+            )
+        ],
+        logical_propositions=[_implies_proposition()],
+    )
+    # other (cols [z1, w1, z2]) carries a global constraint (z1 -> combined col 4).
+    other = _make_second_hss(
+        constraints=[
+            LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.0], ub=[0.5])
+        ]
+    )
+    combined = self_space.product(other)
+
+    # combined columns: [x1, y1, y2, x2, z1, w1, z2]
+    assert int(combined.dimension) == 7
+    assert len(combined.constraints) == 2  # self x1 + other z1, embedded into the wide vector
+    assert len(combined.conditional_constraints) == 1
+    assert len(combined.logical_propositions) == 1
+
+    pts = tf.constant(
+        [
+            [0.5, 1.0, 1.0, 0.5, 0.3, 1.0, 1.0],  # every source satisfied -> feasible
+            [0.5, 0.0, 1.0, 0.5, 0.3, 1.0, 1.0],  # logical violated (y2=1, y1=0) -> infeasible
+            [0.5, 1.0, 1.0, 0.5, 0.7, 1.0, 1.0],  # other global z1=0.7 > 0.5 -> infeasible
+            [0.5, 1.0, 1.0, 0.9, 0.3, 1.0, 1.0],  # conditional active, x2=0.9 > 0.6 -> infeasible
+        ],
+        dtype=tf.float64,
+    )
+    npt.assert_array_equal(combined.is_feasible(pts).numpy(), [True, False, False, False])
