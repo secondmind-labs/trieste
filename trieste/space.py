@@ -1834,19 +1834,15 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         self._validate()
 
     def _validate(self) -> None:
-        all_tags = set(self.subspace_tags)
+        # Node-shape and tag-existence checks already ran during resolution to the gpflow
+        # representation (see ``_resolve_node``): every ``subspace_tags`` / ``activity_condition``
+        # key exists, is bounded where required, and indicators are single-column. This method
+        # adds the space-level semantics. Indicators are inferred (by role) from the unique
+        # subspace tags, so they cannot be duplicated or unknown.
 
-        # indicator_tags must not contain duplicates; a repeated tag would corrupt
-        # the indicator column lookup used by ActivityCondition.
-        _reject_duplicate_tags("indicator_tags", self._indicator_tags)
-
-        # indicator_tags must exist and reference a BooleanSearchSpace or a 1-D
-        # CategoricalSearchSpace; record each indicator's permitted value set.
+        # Indicators must reference a BooleanSearchSpace or a 1-D CategoricalSearchSpace;
+        # record each indicator's permitted value set.
         for itag in self._indicator_tags:
-            if itag not in all_tags:
-                raise ValueError(
-                    f"Indicator tag '{itag}' is not a key of `subspaces` {sorted(all_tags)}."
-                )
             sub = self.get_subspace(itag)
             if isinstance(sub, BooleanSearchSpace):
                 self._indicator_value_sets[itag] = (0, 1)
@@ -1879,102 +1875,36 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
                     f"Non-indicator subspaces must define numerical bounds (e.g. Box)."
                 )
 
-        # Set of flat-vector columns occupied by indicators (forbidden in
-        # feature_dims) and by non-indicator subspaces (must each be covered).
-        indicator_columns: set[int] = set()
-        for itag in self._indicator_tags:
-            indicator_columns.update(self._tag_to_columns[itag])
-        non_indicator_columns: set[int] = set(range(self._total_columns)) - indicator_columns
-
-        covered_non_indicator_columns: set[int] = set()
-        used_indicator_columns: set[int] = set()
-
-        for node in self._gpflow_hierarchy:
-            node_feature_dims = list(node.feature_dims)
-            node_bounds = tf.convert_to_tensor(node.feature_bounds, dtype=tf.float64)
-
-            # feature_dims must be in range and not point at indicator columns
-            for col in node_feature_dims:
-                if col < 0 or col >= self._total_columns:
-                    raise ValueError(
-                        f"HierarchyNode '{node.name}' has feature_dims column {col} "
-                        f"out of range [0, {self._total_columns - 1}]."
-                    )
-                if col in indicator_columns:
-                    raise ValueError(
-                        f"HierarchyNode '{node.name}' feature_dims column {col} points "
-                        f"at an indicator column."
-                    )
-                covered_non_indicator_columns.add(col)
-
-            # feature_bounds rows must match the underlying subspace bounds
-            for row_index, col in enumerate(node_feature_dims):
-                owning_tag = self._column_to_tag[col]
-                owning_sub = self.get_subspace(owning_tag)
-                col_within_sub = self._tag_to_columns[owning_tag].index(col)
-                expected_lower = float(
-                    tf.cast(owning_sub.lower, tf.float64).numpy()[col_within_sub]
+        all_tags = set(self.subspace_tags)
+        indicator_set = set(self._indicator_tags)
+        for node in self._hierarchy:
+            # A tag cannot be both an owned feature and an indicator.
+            owned_indicators = [t for t in node.subspace_tags if t in indicator_set]
+            if owned_indicators:
+                raise ValueError(
+                    f"HierarchyNode '{node.name}' lists indicator tag(s) {owned_indicators} in "
+                    f"`subspace_tags`; an indicator cannot be owned as a feature."
                 )
-                expected_upper = float(
-                    tf.cast(owning_sub.upper, tf.float64).numpy()[col_within_sub]
-                )
-                actual_lower = float(node_bounds[row_index, 0].numpy())
-                actual_upper = float(node_bounds[row_index, 1].numpy())
-                if not (
-                    np.isclose(expected_lower, actual_lower)
-                    and np.isclose(expected_upper, actual_upper)
-                ):
-                    raise ValueError(
-                        f"HierarchyNode '{node.name}' feature_bounds row {row_index} "
-                        f"= ({actual_lower}, {actual_upper}) disagrees with the "
-                        f"underlying subspace bounds ({expected_lower}, "
-                        f"{expected_upper}) at column {col} (tag '{owning_tag}')."
-                    )
-
-            # ActivityCondition requirements keys are the global flat-vector
-            # columns of the gating indicators (gpflow's convention, the same
-            # coordinate system as feature_dims). Each must be an indicator column
-            # and its required value must be in that indicator's permitted set.
-            for indicator_col, required in node.activity_condition.requirements.items():
-                if indicator_col not in indicator_columns:
-                    raise ValueError(
-                        f"HierarchyNode '{node.name}' activity_condition references "
-                        f"column {indicator_col}, which is not an indicator column "
-                        f"(indicators are at columns {sorted(indicator_columns)})."
-                    )
-                ind_tag = self._column_to_tag[indicator_col]
+            # Each required value must be in the gating indicator's permitted set.
+            for ind_tag, required in node.activity_condition_tags.items():
                 permitted = self._indicator_value_sets[ind_tag]
                 if int(required) not in permitted:
                     raise ValueError(
-                        f"HierarchyNode '{node.name}' activity_condition required value "
-                        f"{required!r} for indicator '{ind_tag}' (column "
-                        f"{indicator_col}) is not in the indicator's permitted set "
-                        f"{list(permitted)}."
+                        f"HierarchyNode '{node.name}' requires value {required!r} for indicator "
+                        f"'{ind_tag}', which is not in its permitted set {list(permitted)}."
                     )
-                used_indicator_columns.add(indicator_col)
 
-        # Every non-indicator column must be covered by some node.feature_dims
-        orphan_columns = non_indicator_columns - covered_non_indicator_columns
-        if orphan_columns:
-            orphan_tags = sorted({self._column_to_tag[c] for c in orphan_columns})
+        # Every non-indicator subspace must be owned by some node.
+        covered = {tag for node in self._hierarchy for tag in node.subspace_tags}
+        orphans = sorted(set(self.non_indicator_tags) - covered)
+        if orphans:
             raise ValueError(
-                f"Non-indicator subspace tags {orphan_tags} have orphan columns "
-                f"{sorted(orphan_columns)} that do not appear in any "
-                f"HierarchyNode.feature_dims."
-            )
-
-        # Every indicator column must appear as an activity_condition key somewhere
-        unused = indicator_columns - used_indicator_columns
-        if unused:
-            unused_tags = sorted({self._column_to_tag[c] for c in unused})
-            raise ValueError(
-                f"Indicator tags {unused_tags} are unused: they do not appear as a key "
-                f"in any HierarchyNode.activity_condition.requirements."
+                f"Non-indicator subspace tags {orphans} are orphaned: they do not appear in "
+                f"any HierarchyNode.subspace_tags."
             )
 
         # Conditional constraints: indicator conditions must reference declared indicators
         # with permitted values, and active_subspace_tags must be existing non-indicators.
-        indicator_set = set(self._indicator_tags)
         for i, cc in enumerate(self._conditional_constraints):
             for ind_tag, required in cc.indicator_conditions.items():
                 if ind_tag not in indicator_set:
