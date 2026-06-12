@@ -43,7 +43,7 @@ from trieste.space import (
     BooleanSearchSpace,
     Box,
     HierarchicalSearchSpace,
-    hierarchy_node_from_tags,
+    HierarchyNode,
 )
 
 np.random.seed(1793)
@@ -84,22 +84,19 @@ subspaces = {
     "x3": Box([-1.0], [1.0]),  # active when y1 = 0
 }
 hierarchy = [
-    hierarchy_node_from_tags(
+    HierarchyNode(
         "shared",
         subspace_tags=["x1"],
-        subspaces=subspaces,
     ),
-    hierarchy_node_from_tags(
+    HierarchyNode(
         "branch_A",
         subspace_tags=["x2"],
         activity_condition_tags={"y1": 1},
-        subspaces=subspaces,
     ),
-    hierarchy_node_from_tags(
+    HierarchyNode(
         "branch_B",
         subspace_tags=["x3"],
         activity_condition_tags={"y1": 0},
-        subspaces=subspaces,
     ),
 ]
 space = HierarchicalSearchSpace(subspaces, hierarchy)
@@ -124,17 +121,18 @@ print("indicator_dims:", space.indicator_dims)
 # `active_dims`, and validates that the feature columns and the inferred
 # indicator columns together tile the sliced vector contiguously.
 #
-# `HierarchicalSearchSpace.hierarchy` exposes exactly these `HierarchyNode`
-# objects: Trieste keys both `feature_dims` and the `requirements` map by global
-# flat-vector column (the same convention the kernel uses), so the nodes can be
-# passed straight to `ArcHierarchical` — no adapter needed. Since every column of
+# `HierarchicalSearchSpace.to_gpflow_hierarchy()` resolves the tag-based nodes to
+# exactly these `gpflow.kernels.HierarchyNode` objects: Trieste keys both
+# `feature_dims` and the `requirements` map by global flat-vector column (the same
+# convention the kernel uses), so the nodes can be passed straight to
+# `ArcHierarchical` — no adapter needed. Since every column of
 # an HSS flat vector is either a feature or an indicator, we slice on **all**
 # columns — `active_dims = range(dimension)` — so the sliced and global
 # coordinate systems coincide.
 
 # %%
 active_dims = list(range(int(space.dimension)))
-for node in space.hierarchy:
+for node in space.to_gpflow_hierarchy():
     print(
         f"{node.name:9s} feature_dims={list(node.feature_dims)} "
         f"requirements={dict(node.activity_condition.requirements)}"
@@ -149,7 +147,7 @@ print("active_dims:", active_dims)
 # constructing one emits a `UserWarning` — that is expected.)
 
 # %%
-arc = ArcHierarchical(list(space.hierarchy), active_dims=active_dims)
+arc = ArcHierarchical(space.to_gpflow_hierarchy(), active_dims=active_dims)
 print(type(arc).__name__, "built over active_dims", active_dims)
 
 # %% [markdown]
@@ -203,7 +201,7 @@ Y_train = objective(X_train) + 0.05 * np.random.randn(40, 1)
 
 # Wrap in a Constant() factor so the GP can learn an overall variance.
 kernel = gpflow.kernels.Constant() * ArcHierarchical(
-    list(space.hierarchy), active_dims=active_dims
+    space.to_gpflow_hierarchy(), active_dims=active_dims
 )
 gpr = gpflow.models.GPR(
     data=(X_train, Y_train), kernel=kernel, noise_variance=0.05
@@ -248,7 +246,7 @@ for x, m, v, t in zip(X_test, mean.numpy().ravel(), var.numpy().ravel(), truth):
 # expects near disjunction boundaries.
 
 # %%
-wedge = WedgeHierarchical(list(space.hierarchy), active_dims=active_dims)
+wedge = WedgeHierarchical(space.to_gpflow_hierarchy(), active_dims=active_dims)
 print("Wedge kernel matrix on demo points:")
 print(wedge.K(X_demo).numpy())
 
@@ -258,8 +256,8 @@ print(wedge.K(X_demo).numpy())
 # A conditional GP over a disjunctive space needs only:
 #
 # * `BooleanSearchSpace`, `Box`, `HierarchicalSearchSpace`,
-#   `hierarchy_node_from_tags` from `trieste.space` to describe the structure;
-# * `list(space.hierarchy)` passed straight to the kernel — Trieste keys the
+#   `HierarchyNode` from `trieste.space` to describe the structure;
+# * `space.to_gpflow_hierarchy()` passed straight to the kernel — Trieste keys the
 #   hierarchy in GPflow's column convention, so no adapter is needed;
 # * `gpflow.kernels.ArcHierarchical` (or `WedgeHierarchical`) for the covariance.
 #
