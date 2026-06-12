@@ -88,24 +88,21 @@ hierarchy = [
         "shared",
         subspace_tags=["x1"],
         subspaces=subspaces,
-        indicator_tags=["y1"],
     ),
     hierarchy_node_from_tags(
         "branch_A",
         subspace_tags=["x2"],
         activity_condition_tags={"y1": 1},
         subspaces=subspaces,
-        indicator_tags=["y1"],
     ),
     hierarchy_node_from_tags(
         "branch_B",
         subspace_tags=["x3"],
         activity_condition_tags={"y1": 0},
         subspaces=subspaces,
-        indicator_tags=["y1"],
     ),
 ]
-space = HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1"])
+space = HierarchicalSearchSpace(subspaces, hierarchy)
 print("dimension:     ", int(space.dimension))
 print("indicator_tags:", space.indicator_tags)
 print("indicator_dims:", space.indicator_dims)

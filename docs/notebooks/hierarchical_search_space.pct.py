@@ -80,24 +80,21 @@ hierarchy = [
         "shared",
         subspace_tags=["x1"],
         subspaces=subspaces,
-        indicator_tags=["y1"],
     ),
     hierarchy_node_from_tags(
         "branch_A",
         subspace_tags=["x2"],
         activity_condition_tags={"y1": 1},
         subspaces=subspaces,
-        indicator_tags=["y1"],
     ),
     hierarchy_node_from_tags(
         "branch_B",
         subspace_tags=["x3"],
         activity_condition_tags={"y1": 0},
         subspaces=subspaces,
-        indicator_tags=["y1"],
     ),
 ]
-space = HierarchicalSearchSpace(subspaces, hierarchy, indicator_tags=["y1"])
+space = HierarchicalSearchSpace(subspaces, hierarchy)
 
 print("dimension:", int(space.dimension))
 print("indicator_tags:", space.indicator_tags)
@@ -162,25 +159,22 @@ hierarchy_c = [
         "shared",
         subspace_tags=["x1"],
         subspaces=subspaces_c,
-        indicator_tags=["y1"],
     ),
     hierarchy_node_from_tags(
         "branch_A",
         subspace_tags=["x2"],
         activity_condition_tags={"y1": 1},
         subspaces=subspaces_c,
-        indicator_tags=["y1"],
     ),
     hierarchy_node_from_tags(
         "branch_B",
         subspace_tags=["x3"],
         activity_condition_tags={"y1": 2},
         subspaces=subspaces_c,
-        indicator_tags=["y1"],
     ),
 ]
 space_c = HierarchicalSearchSpace(
-    subspaces_c, hierarchy_c, indicator_tags=["y1"]
+    subspaces_c, hierarchy_c
 )
 
 print("indicator_value_sets:", space_c.indicator_value_sets)
@@ -208,18 +202,16 @@ hierarchy_mix = [
         "shared",
         subspace_tags=["x1"],
         subspaces=subspaces_mix,
-        indicator_tags=["y1", "y2"],
     ),
     hierarchy_node_from_tags(
         "branch",
         subspace_tags=["x2"],
         activity_condition_tags={"y1": 1, "y2": 2},
         subspaces=subspaces_mix,
-        indicator_tags=["y1", "y2"],
     ),
 ]
 space_mix = HierarchicalSearchSpace(
-    subspaces_mix, hierarchy_mix, indicator_tags=["y1", "y2"]
+    subspaces_mix, hierarchy_mix
 )
 tasks = space_mix.enumerate_tasks()
 print(f"number of tasks: {len(tasks)}")
@@ -264,10 +256,8 @@ _expect_value_error(
                 subspace_tags=["x1"],
                 activity_condition_tags={"y1": 5},
                 subspaces=_subspaces_oor,
-                indicator_tags=["y1"],
             )
         ],
-        indicator_tags=["y1"],
     )
 )
 
@@ -285,9 +275,7 @@ _expect_value_error(
                 subspace_tags=["x1"],
                 activity_condition_tags={"y1": 1},
                 subspaces=_subspaces_2d,
-                indicator_tags=["y1"],
             )
         ],
-        indicator_tags=["y1"],
     )
 )
