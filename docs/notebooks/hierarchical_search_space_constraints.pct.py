@@ -250,8 +250,9 @@ def feasible_acquisition_optimizer(space, target_func):
     target_func = (
         target_func[0] if isinstance(target_func, tuple) else target_func
     )
+    num_candidates = 200
     candidates = tf.convert_to_tensor(
-        feasible_sample(200), dtype=tf.float64
+        feasible_sample(num_candidates), dtype=tf.float64
     )  # [N, D]
     acquisition = target_func(candidates[:, None, :])  # [N, 1]
     return candidates[int(tf.argmax(acquisition[:, 0]))][None]  # [1, D]
