@@ -109,7 +109,6 @@ def test_resolves_subspace_tags_to_columns() -> None:
 
 
 def test_translates_activity_condition_tags_to_global_columns() -> None:
-    subspaces = _worked_example_subspaces()
     space = _make_worked_example_hss()
     by_name = {n.name: n for n in space.to_gpflow_hierarchy()}
     # y1 is at flat-vector column 1 (x1=0, y1=1, ...), and that column is the key.
@@ -263,9 +262,7 @@ def test_hss_inferred_box_indicator_rejected_by_type_check() -> None:
     # If a node gates on a Box column, inference treats it as an indicator and the type check
     # rejects it (indicators must be Boolean / 1-D categorical).
     subspaces = {"x1": Box([0.0], [1.0]), "x2": Box([0.0], [1.0])}
-    hierarchy = [
-        HierarchyNode("n", subspace_tags=["x1"], activity_condition_tags={"x2": 1})
-    ]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], activity_condition_tags={"x2": 1})]
     with pytest.raises(ValueError, match="BooleanSearchSpace or a"):
         HierarchicalSearchSpace(subspaces, hierarchy)
 
@@ -405,9 +402,7 @@ def test_hss_raises_if_indicator_tag_refs_non_indicator_subspace() -> None:
         "x1": Box([0.0], [1.0]),
         "y1": DiscreteSearchSpace(tf.constant([[0], [1], [2]])),
     }
-    hierarchy = [
-        HierarchyNode("n", subspace_tags=["x1"], activity_condition_tags={"y1": 1})
-    ]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], activity_condition_tags={"y1": 1})]
     with pytest.raises(ValueError, match="BooleanSearchSpace"):
         HierarchicalSearchSpace(subspaces, hierarchy)
 
@@ -434,9 +429,7 @@ def test_hss_raises_if_orphan_non_indicator_column() -> None:
         "y1": BooleanSearchSpace(),
     }
     # x2 is never referenced by any node's subspace_tags.
-    hierarchy = [
-        HierarchyNode("n", subspace_tags=["x1"], activity_condition_tags={"y1": 1})
-    ]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1"], activity_condition_tags={"y1": 1})]
     with pytest.raises(ValueError, match="orphan"):
         HierarchicalSearchSpace(subspaces, hierarchy)
 
@@ -553,20 +546,14 @@ def test_hss_raises_if_non_indicator_subspace_has_no_bounds() -> None:
         "c1": CategoricalSearchSpace(3),
         "y1": BooleanSearchSpace(),
     }
-    hierarchy = [
-        HierarchyNode(
-            "n", subspace_tags=["x1", "c1"], activity_condition_tags={"y1": 1}
-        )
-    ]
+    hierarchy = [HierarchyNode("n", subspace_tags=["x1", "c1"], activity_condition_tags={"y1": 1})]
     with pytest.raises(ValueError, match="without numerical"):
         HierarchicalSearchSpace(subspaces, hierarchy)
 
 
 def test_raises_on_duplicate_subspace_tags() -> None:
     subspaces = {"x1": Box([0.0], [1.0]), "y1": BooleanSearchSpace()}
-    node = HierarchyNode(
-        "n", subspace_tags=["x1", "x1"], activity_condition_tags={"y1": 1}
-    )
+    node = HierarchyNode("n", subspace_tags=["x1", "x1"], activity_condition_tags={"y1": 1})
     with pytest.raises(ValueError, match="duplicate tags"):
         HierarchicalSearchSpace(subspaces, [node])
 
@@ -588,9 +575,7 @@ def test_rejects_subspace_tag_not_a_subspace() -> None:
 def test_rejects_multidimensional_indicator() -> None:
     # An activity-condition key resolving to more than one column is not a valid indicator.
     subspaces = {"x1": Box([0.0], [1.0]), "big": Box([0.0, 0.0], [1.0, 1.0])}
-    node = HierarchyNode(
-        "n", subspace_tags=["x1"], activity_condition_tags={"big": 1}
-    )
+    node = HierarchyNode("n", subspace_tags=["x1"], activity_condition_tags={"big": 1})
     with pytest.raises(ValueError, match="must be 1-dimensional"):
         HierarchicalSearchSpace(subspaces, [node])
 
@@ -602,9 +587,7 @@ def test_rejects_non_indicator_subspace_without_bounds() -> None:
         "c": CategoricalSearchSpace(3),
         "y1": BooleanSearchSpace(),
     }
-    node = HierarchyNode(
-        "n", subspace_tags=["c"], activity_condition_tags={"y1": 1}
-    )
+    node = HierarchyNode("n", subspace_tags=["c"], activity_condition_tags={"y1": 1})
     with pytest.raises(ValueError, match="without numerical"):
         HierarchicalSearchSpace(subspaces, [node])
 
@@ -621,9 +604,7 @@ def test_accepts_discrete_non_indicator_subspace() -> None:
         subspaces,
         [
             HierarchyNode("shared", subspace_tags=["x1", "d"]),
-            HierarchyNode(
-                "branch", subspace_tags=["x2"], activity_condition_tags={"y1": 1}
-            ),
+            HierarchyNode("branch", subspace_tags=["x2"], activity_condition_tags={"y1": 1}),
         ],
     )
     by_name = {n.name: n for n in space.to_gpflow_hierarchy()}
@@ -692,9 +673,7 @@ def test_hss_hierarchy_is_directly_consumable_by_arc_hierarchical() -> None:
     # so feature columns and indicator columns tile active_dims contiguously.
     space = _make_worked_example_hss()
     active_dims = list(range(int(space.dimension)))
-    kernel = gpflow.kernels.ArcHierarchical(
-        space.to_gpflow_hierarchy(), active_dims=active_dims
-    )
+    kernel = gpflow.kernels.ArcHierarchical(space.to_gpflow_hierarchy(), active_dims=active_dims)
     # Two points differing only in the indicator are placed apart by the kernel.
     x = tf.constant(
         [
@@ -776,11 +755,17 @@ def test_hss_global_nonlinear_constraint_feasibility() -> None:
 def test_hss_product_combines_global_linear_constraints() -> None:
     # self (dim 5, cols [x1,y1,x2,x4,x3]) constrains 0.3 <= x1 <= 0.8 (col 0).
     self_space = _make_constrained_hss(
-        [LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.3], ub=[0.8])]
+        [
+            LinearConstraint(
+                A=tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.3], ub=[0.8]
+            )
+        ]
     )
     # other (dim 3, cols [z1,w1,z2]) constrains 0.0 <= z1 <= 0.5 (its col 0 -> combined col 5).
     other = _make_second_hss(
-        constraints=[LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.0], ub=[0.5])]
+        constraints=[
+            LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.0], ub=[0.5])
+        ]
     )
     combined = self_space.product(other)
     assert int(combined.dimension) == 8
@@ -811,20 +796,27 @@ def test_hss_product_embeds_nonlinear_constraint_on_correct_block() -> None:
     combined = _make_worked_example_hss().product(other)
     base = tf.constant([[0.5, 1.0, 2.0, 0.0, 0.0, 0.3, 1.0, 1.0]], dtype=tf.float64)  # z1=0.3
     bad_z1 = tf.constant([[0.5, 1.0, 2.0, 0.0, 0.0, 0.9, 1.0, 1.0]], dtype=tf.float64)  # z1=0.9
-    moved_x1 = tf.constant([[0.9, 1.0, 4.0, 1.0, 0.5, 0.3, 0.0, 1.5]], dtype=tf.float64)  # z1 unchanged
+    moved_x1 = tf.constant(
+        [[0.9, 1.0, 4.0, 1.0, 0.5, 0.3, 0.0, 1.5]], dtype=tf.float64
+    )  # z1 unchanged
 
     npt.assert_array_equal(combined.is_feasible(base).numpy(), [True])  # 0.09 in [0, 0.25]
     npt.assert_array_equal(combined.is_feasible(bad_z1).numpy(), [False])  # 0.81 > 0.25
     # The embedded constraint reads only the z1 block: changing x-columns leaves the residual fixed.
     npt.assert_allclose(
-        combined.constraints_residuals(base).numpy(), combined.constraints_residuals(moved_x1).numpy()
+        combined.constraints_residuals(base).numpy(),
+        combined.constraints_residuals(moved_x1).numpy(),
     )
 
 
 def test_hss_product_uses_min_ctol() -> None:
     # The combined space takes the tighter (minimum) tolerance, regardless of operand order.
     constrained = _make_constrained_hss(
-        [LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.3], ub=[0.8])],
+        [
+            LinearConstraint(
+                A=tf.constant([[1.0, 0.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.3], ub=[0.8]
+            )
+        ],
         ctol=1e-3,
     )
     other = _make_second_hss()  # default ctol 1e-7 (tighter)
@@ -874,7 +866,7 @@ def test_conditional_constraint_mixed_batch_feasibility() -> None:
     space = _hss_with_conditional(_x3_in_unit_when_y1_zero())
     pts = tf.constant(
         [
-            [0.5, 0.0, 2.0, 0.0, 0.0],   # y1=0 active, x3=0.0 -> feasible
+            [0.5, 0.0, 2.0, 0.0, 0.0],  # y1=0 active, x3=0.0 -> feasible
             [0.5, 0.0, 2.0, 0.0, -0.8],  # y1=0 active, x3=-0.8 -> infeasible
             [0.5, 1.0, 2.0, 0.0, -0.8],  # y1=1 inactive -> feasible (big-M)
         ],
@@ -912,7 +904,7 @@ def test_conditional_constraint_categorical_indicator_matches_only_target() -> N
 def test_conditional_constraint_nonlinear_inner() -> None:
     cc = ConditionalConstraint(
         constraint=NonlinearConstraint(
-            lambda x: tf.reduce_sum(x ** 2, axis=-1, keepdims=True), lb=0.0, ub=0.25
+            lambda x: tf.reduce_sum(x**2, axis=-1, keepdims=True), lb=0.0, ub=0.25
         ),
         indicator_conditions={"y1": 0},
         active_subspace_tags=["x3"],
@@ -1029,9 +1021,7 @@ def _two_indicator_hierarchy(subspaces: dict[str, SearchSpace]) -> list[Hierarch
 def test_hss_is_active_multi_indicator_node() -> None:
     # A node gated on two indicators is active only when BOTH conditions hold (logical AND).
     subspaces = _two_indicator_subspaces()
-    space = HierarchicalSearchSpace(
-        subspaces, _two_indicator_hierarchy(subspaces)
-    )
+    space = HierarchicalSearchSpace(subspaces, _two_indicator_hierarchy(subspaces))
     assert space.is_active("x2", {"y1": 0, "y2": 1})
     assert not space.is_active("x2", {"y1": 0, "y2": 0})
     assert not space.is_active("x2", {"y1": 1, "y2": 1})
@@ -1087,9 +1077,7 @@ def _two_indicator_hss(**kwargs: Any) -> HierarchicalSearchSpace:
     }
     hierarchy = [
         HierarchyNode("shared", subspace_tags=["x1"]),
-        HierarchyNode(
-            "branch", subspace_tags=["x2"], activity_condition_tags={"y1": 1, "y2": 1}
-        ),
+        HierarchyNode("branch", subspace_tags=["x2"], activity_condition_tags={"y1": 1, "y2": 1}),
     ]
     return HierarchicalSearchSpace(subspaces, hierarchy, **kwargs)
 
@@ -1179,7 +1167,9 @@ def test_hss_product_combines_all_constraint_sources() -> None:
     # self (cols [x1, y1, y2, x2]) carries a global, a conditional, and a logical constraint.
     self_space = _two_indicator_hss(
         constraints=[
-            LinearConstraint(A=tf.constant([[1.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.0], ub=[0.8])
+            LinearConstraint(
+                A=tf.constant([[1.0, 0.0, 0.0, 0.0]], dtype=tf.float64), lb=[0.0], ub=[0.8]
+            )
         ],
         conditional_constraints=[
             ConditionalConstraint(

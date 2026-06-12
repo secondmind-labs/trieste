@@ -2061,7 +2061,9 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         :return: A boolean tensor of shape ``[...]``, ``True`` where the point is feasible.
         """
         if self._constraints or self._conditional_constraints:
-            feasible = tf.math.reduce_all(self.constraints_residuals(points) >= -self._ctol, axis=-1)
+            feasible = tf.math.reduce_all(
+                self.constraints_residuals(points) >= -self._ctol, axis=-1
+            )
         else:
             feasible = tf.cast(tf.ones(tf.shape(points)[:-1]), dtype=bool)
 
@@ -2274,9 +2276,7 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
         conditional_constraints = list(self._conditional_constraints) + list(
             other._conditional_constraints
         )
-        logical_propositions = list(self._logical_propositions) + list(
-            other._logical_propositions
-        )
+        logical_propositions = list(self._logical_propositions) + list(other._logical_propositions)
         return HierarchicalSearchSpace(
             combined_subspaces,
             hierarchy,
