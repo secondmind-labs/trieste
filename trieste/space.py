@@ -251,7 +251,10 @@ def _embed_constraint(
         orig_fun = constraint._orig_fun
 
         def shifted_fun(
-            x: TensorType, _fun: Callable = orig_fun, _o: int = offset, _w: int = part_dim
+            x: TensorType,
+            _fun: Callable[[TensorType], TensorType] = orig_fun,
+            _o: int = offset,
+            _w: int = part_dim,
         ) -> TensorType:
             return _fun(x[..., _o : _o + _w])
 

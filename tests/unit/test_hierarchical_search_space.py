@@ -14,6 +14,8 @@
 """Tests for the hierarchical-search-space API."""
 from __future__ import annotations
 
+from typing import Any, Sequence
+
 import gpflow.kernels
 import numpy.testing as npt
 import pytest
@@ -25,6 +27,7 @@ from trieste.space import (
     Box,
     CategoricalSearchSpace,
     ConditionalConstraint,
+    Constraint,
     DiscreteSearchSpace,
     HierarchicalSearchSpace,
     HierarchyNode,
@@ -471,7 +474,7 @@ def test_categorical_hss_active_subspaces() -> None:
 # ===== product =====
 
 
-def _make_second_hss(**kwargs) -> HierarchicalSearchSpace:
+def _make_second_hss(**kwargs: Any) -> HierarchicalSearchSpace:
     """A second, disjoint hierarchical space (tags z1/w1/z2) for product tests.
 
     Columns: z1 (uncond), w1 (Boolean indicator), z2 gated by w1=1. Extra keyword
@@ -707,7 +710,9 @@ def test_hss_hierarchy_is_directly_consumable_by_arc_hierarchical() -> None:
 # ===== global constraints (standard SearchSpace contract) =====
 
 
-def _make_constrained_hss(constraints, ctol: float = 1e-7) -> HierarchicalSearchSpace:
+def _make_constrained_hss(
+    constraints: Sequence[Constraint], ctol: float = 1e-7
+) -> HierarchicalSearchSpace:
     subspaces = _worked_example_subspaces()
     return HierarchicalSearchSpace(
         subspaces,
@@ -1072,7 +1077,7 @@ def _implies_proposition() -> LogicalProposition:
     )
 
 
-def _two_indicator_hss(**kwargs) -> HierarchicalSearchSpace:
+def _two_indicator_hss(**kwargs: Any) -> HierarchicalSearchSpace:
     # Columns: x1(0), y1(1), y2(2), x2(3).
     subspaces = {
         "x1": Box([0.0], [1.0]),
