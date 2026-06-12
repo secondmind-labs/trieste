@@ -54,7 +54,7 @@ from trieste.space import (
     HierarchicalSearchSpace,
     LinearConstraint,
     LogicalProposition,
-    hierarchy_node_from_tags,
+    HierarchyNode,
 )
 
 np.random.seed(1793)
@@ -78,14 +78,12 @@ subspaces = {
     "x3": Box([-1.0], [1.0]),
 }
 hierarchy = [
-    hierarchy_node_from_tags("shared", subspace_tags=["x1"], subspaces=subspaces, indicator_tags=["y1"]),
-    hierarchy_node_from_tags(
+    HierarchyNode("shared", subspace_tags=["x1"]),
+    HierarchyNode(
         "branch_A", subspace_tags=["x2"], activity_condition_tags={"y1": 1},
-        subspaces=subspaces, indicator_tags=["y1"],
     ),
-    hierarchy_node_from_tags(
+    HierarchyNode(
         "branch_B", subspace_tags=["x3"], activity_condition_tags={"y1": 0},
-        subspaces=subspaces, indicator_tags=["y1"],
     ),
 ]
 
@@ -107,7 +105,6 @@ conditional_constraint = ConditionalConstraint(
 space = HierarchicalSearchSpace(
     subspaces,
     hierarchy,
-    indicator_tags=["y1"],
     constraints=[global_constraint],
     conditional_constraints=[conditional_constraint],
 )
@@ -152,16 +149,14 @@ subspaces_2 = {
     "x2": Box([0.0], [1.0]),
 }
 hierarchy_2 = [
-    hierarchy_node_from_tags("shared", subspace_tags=["x1"], subspaces=subspaces_2, indicator_tags=["y1", "y2"]),
-    hierarchy_node_from_tags(
+    HierarchyNode("shared", subspace_tags=["x1"]),
+    HierarchyNode(
         "branch", subspace_tags=["x2"], activity_condition_tags={"y1": 1, "y2": 1},
-        subspaces=subspaces_2, indicator_tags=["y1", "y2"],
     ),
 ]
 space_2 = HierarchicalSearchSpace(
     subspaces_2,
     hierarchy_2,
-    indicator_tags=["y1", "y2"],
     logical_propositions=[
         LogicalProposition(
             fun=lambda ind: tf.logical_or(
@@ -236,7 +231,7 @@ initial_data = observer(tf.convert_to_tensor(feasible_sample(15), dtype=tf.float
 
 # Wrap a GPflow ArcHierarchical GPR as a trieste model.
 kernel = gpflow.kernels.Constant() * ArcHierarchical(
-    list(space.hierarchy), active_dims=active_dims
+    space.to_gpflow_hierarchy(), active_dims=active_dims
 )
 gpr = gpflow.models.GPR(
     (initial_data.query_points, initial_data.observations), kernel=kernel, noise_variance=0.01
