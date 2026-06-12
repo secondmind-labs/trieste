@@ -91,7 +91,10 @@ def trieste_deep_ensemble_model(
 
 def keras_optimizer_weights(optimizer: tf_keras.optimizers.Optimizer) -> Optional[TensorType]:
     # optimizer weight API was changed in TF 2.11: https://github.com/keras-team/keras/issues/16983
+    # in TF 2.11 `variables` is a method; in later versions it is a property
     if Version(tf.__version__) < Version("2.11"):
         return optimizer.get_weights()
+    elif callable(optimizer.variables):
+        return optimizer.variables()[0]
     else:
         return optimizer.variables[0]
