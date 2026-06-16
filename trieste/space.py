@@ -1628,10 +1628,9 @@ def _resolve_node(
 
 INACTIVE_CONSTRAINT_RESIDUAL: float = 1e10
 """Large positive residual returned for an inactive :class:`ConditionalConstraint`, so the
-point is trivially feasible with respect to that constraint. This is the "big-M" sentinel of
-the MI(N)LP reformulation of a generalized disjunctive program: it keeps the residual smooth
-and feasible-with-huge-margin on the inactive branch, so gradient-based polish never has to
-cross the indicator discontinuity."""
+point is trivially feasible with respect to that constraint. This is inspired by the "big-M"
+MI(N)LP reformulation of a generalized disjunctive program: allocating feasible-with-huge-
+margin on the inactive branch."""
 
 
 @dataclass(frozen=True)
