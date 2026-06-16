@@ -1699,6 +1699,9 @@ class LogicalProposition:
     fun: Callable[[Mapping[str, TensorType]], TensorType]
     name: str = ""
 
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(name={self.name!r})"
+
 
 class HierarchicalSearchSpace(CollectionSearchSpace):
     r"""
@@ -1959,6 +1962,8 @@ class HierarchicalSearchSpace(CollectionSearchSpace):
             f"hierarchy={list(self._hierarchy)}, "
             f"indicator_tags={list(self._indicator_tags)}, "
             f"constraints={self._constraints!r}, "
+            f"conditional_constraints={self._conditional_constraints!r}, "
+            f"logical_propositions={self._logical_propositions!r}, "
             f"ctol={self._ctol!r})"
         )
 

@@ -35,6 +35,7 @@ from trieste.space import (
     DiscreteSearchSpace,
     GeneralDiscreteSearchSpace,
     LinearConstraint,
+    LogicalProposition,
     NonlinearConstraint,
     SearchSpace,
     TaggedMultiSearchSpace,
@@ -1975,6 +1976,12 @@ def test_boolean_search_space_bounds() -> None:
 def test_boolean_search_space_repr() -> None:
     assert repr(BooleanSearchSpace()) == "BooleanSearchSpace(tf.float64)"
     assert repr(BooleanSearchSpace(tf.float32)) == "BooleanSearchSpace(tf.float32)"
+
+
+def test_logical_proposition_repr() -> None:
+    assert repr(LogicalProposition(fun=lambda d: d, name="foo")) == (
+        "LogicalProposition(name='foo')"
+    )
 
 
 def test_boolean_search_space_equality() -> None:
