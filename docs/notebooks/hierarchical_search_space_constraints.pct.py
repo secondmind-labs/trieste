@@ -273,9 +273,9 @@ gpr = gpflow.models.GPR(
     kernel=kernel,
     noise_variance=0.01,
 )
-# num_kernel_samples=0: skip the random-restart hyperparameter sampling, which doesn't support
-# ArcHierarchical's vector-valued ``angle`` parameter; we just optimise from the default init.
-model = GaussianProcessRegression(gpr, num_kernel_samples=0)
+# NOTE num_kernel_samples=2: perform random-restart hyperparameter sampling, this is supported
+# from GPflow 2.11.1 onwards.
+model = GaussianProcessRegression(gpr, num_kernel_samples=2)
 
 rule = EfficientGlobalOptimization(
     builder=ExpectedImprovement(), optimizer=feasible_acquisition_optimizer
