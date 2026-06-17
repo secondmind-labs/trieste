@@ -35,7 +35,9 @@ authors:
   given-names: "Ivo"
 - family-names: "Morter"
   given-names: "Chris"
+- family-names: "Mowbray"
+  given-names: "Max"
 title: "Trieste"
-version: 4.5.1
-date-released: 2025-05-23
+version: 4.6.0
+date-released: 2026-06-17
 url: "https://github.com/secondmind-labs/trieste"
