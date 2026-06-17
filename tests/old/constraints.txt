@@ -27,7 +27,7 @@ gast==0.4.0
 google-auth==2.53.0
 google-auth-oauthlib==0.4.6
 google-pasta==0.2.0
-gpflow==2.10.1
+gpflow==2.11.1
 gpflux==0.4.4
 graphemeu==0.7.2
 greenlet==3.5.1
