@@ -1,0 +1,135 @@
+:py:mod:`trieste.models.gpflow.inducing_point_selectors`
+========================================================
+
+.. py:module:: trieste.models.gpflow.inducing_point_selectors
+
+.. autoapi-nested-parse::
+
+   This module is the home of  Trieste's functionality for choosing the inducing points
+   of sparse variational Gaussian processes (i.e. our :class:`SparseVariational` wrapper).
+
+
+
+Module Contents
+---------------
+
+.. py:class:: InducingPointSelector(search_space: trieste.space.SearchSpace, recalc_every_model_update: bool = True)
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`Generic`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   This class provides functionality to update the inducing points of an inducing point-based model
+   as the Bayesian optimization progresses.
+
+   The only constraint on subclasses of :class:`InducingPointSelector` is that they preserve
+   the shape of the inducing points so not to trigger expensive retracing.
+
+   It can often be beneficial to change the inducing points during optimization, for example
+   to allow the model to focus its limited modelling resources into promising areas of the space.
+   See :cite:`vakili2021scalable` for demonstrations of some of
+   our :class:`InducingPointSelectors`.
+
+   :param search_space: The global search space over which the optimization is defined.
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: calculate_inducing_points(current_inducing_points: trieste.types.TensorType, model: trieste.models.interfaces.ProbabilisticModelType, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Calculate the new inducing points given the existing inducing points.
+
+      If `recalc_every_model_update` is set to False then we only generate new inducing points
+      for the first :meth:`calculate_inducing_points` call, otherwise we just return the current
+      inducing points.
+
+      :param current_inducing_points: The current inducing points used by the model.
+      :param model: The sparse model.
+      :param dataset: The data from the observer.
+      :return: The new updated inducing points.
+      :raise NotImplementedError: If model has more than one set of inducing variables.
+
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.interfaces.ProbabilisticModelType, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Method for calculating new inducing points given a `model` and `dataset`.
+
+      This method is to be implemented by all subclasses of :class:`InducingPointSelector`.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model.
+      :param dataset: The data from the observer.
+      :return: The new updated inducing points.
+
+
+
+.. py:class:: UniformInducingPointSelector(search_space: trieste.space.SearchSpace, recalc_every_model_update: bool = True)
+
+   Bases: :py:obj:`InducingPointSelector`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModel`\ ]
+
+   An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space.
+
+   :param search_space: The global search space over which the optimization is defined.
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.interfaces.ProbabilisticModel, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Sample `M` points. If `search_space` is a :class:`Box` then we use a space-filling Sobol
+      design to ensure high diversity.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model .
+      :param dataset: The data from the observer.
+      :return: The new updated inducing points.
+
+
+
+.. py:class:: RandomSubSampleInducingPointSelector(search_space: trieste.space.SearchSpace, recalc_every_model_update: bool = True)
+
+   Bases: :py:obj:`InducingPointSelector`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModel`\ ]
+
+   An :class:`InducingPointSelector` that chooses points at random from the training data.
+
+   :param search_space: The global search space over which the optimization is defined.
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.interfaces.ProbabilisticModel, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Sample `M` points from the training data without replacement. If we require more
+      inducing points than training data, then we fill the remaining points with random
+      samples across the search space.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model.
+      :param dataset: The data from the observer. Must be populated.
+      :return: The new updated inducing points.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+
+.. py:class:: KMeansInducingPointSelector(search_space: trieste.space.SearchSpace, recalc_every_model_update: bool = True)
+
+   Bases: :py:obj:`InducingPointSelector`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModel`\ ]
+
+   An :class:`InducingPointSelector` that chooses points as centroids of a K-means clustering
+   of the training data.
+
+   :param search_space: The global search space over which the optimization is defined.
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.interfaces.ProbabilisticModel, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Calculate `M` centroids from a K-means clustering of the training data.
+
+      If the clustering returns fewer than `M` centroids or if we have fewer than `M` training
+      data, then we fill the remaining points with random samples across the search space.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model.
+      :param dataset: The data from the observer. Must be populated.
+      :return: The new updated inducing points.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+

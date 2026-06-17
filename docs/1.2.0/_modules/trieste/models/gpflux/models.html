@@ -1,0 +1,853 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflux.models &#8212; trieste 1.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/models/gpflux/models';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '1.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      1.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.models.gpflux.models</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.models.gpflux.models</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="kn">import</span> <span class="nn">dill</span>
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">gpflow.inducing_variables</span> <span class="kn">import</span> <span class="n">InducingPoints</span>
+<span class="kn">from</span> <span class="nn">gpflux.layers</span> <span class="kn">import</span> <span class="n">GPLayer</span><span class="p">,</span> <span class="n">LatentVariableLayer</span>
+<span class="kn">from</span> <span class="nn">gpflux.models</span> <span class="kn">import</span> <span class="n">DeepGP</span>
+<span class="kn">from</span> <span class="nn">tensorflow.python.keras.callbacks</span> <span class="kn">import</span> <span class="n">Callback</span>
+
+<span class="kn">from</span> <span class="nn">...</span> <span class="kn">import</span> <span class="n">logging</span>
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..interfaces</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">HasReparamSampler</span><span class="p">,</span>
+    <span class="n">HasTrajectorySampler</span><span class="p">,</span>
+    <span class="n">ReparametrizationSampler</span><span class="p">,</span>
+    <span class="n">TrainableProbabilisticModel</span><span class="p">,</span>
+    <span class="n">TrajectorySampler</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">..optimizer</span> <span class="kn">import</span> <span class="n">KerasOptimizer</span>
+<span class="kn">from</span> <span class="nn">..utils</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">write_summary_data_based_metrics</span><span class="p">,</span>
+    <span class="n">write_summary_kernel_parameters</span><span class="p">,</span>
+    <span class="n">write_summary_likelihood_parameters</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">.interface</span> <span class="kn">import</span> <span class="n">GPfluxPredictor</span>
+<span class="kn">from</span> <span class="nn">.sampler</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DeepGaussianProcessDecoupledTrajectorySampler</span><span class="p">,</span>
+    <span class="n">DeepGaussianProcessReparamSampler</span><span class="p">,</span>
+<span class="p">)</span>
+
+
+<div class="viewcode-block" id="DeepGaussianProcess"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess">[docs]</a><span class="k">class</span> <span class="nc">DeepGaussianProcess</span><span class="p">(</span>
+    <span class="n">GPfluxPredictor</span><span class="p">,</span> <span class="n">TrainableProbabilisticModel</span><span class="p">,</span> <span class="n">HasReparamSampler</span><span class="p">,</span> <span class="n">HasTrajectorySampler</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`TrainableProbabilisticModel` wrapper for a GPflux :class:`~gpflux.models.DeepGP` with</span>
+<span class="sd">    :class:`GPLayer` or :class:`LatentVariableLayer`: this class does not support e.g. keras layers.</span>
+<span class="sd">    We provide simple architectures that can be used with this class in the `architectures.py` file.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">DeepGP</span> <span class="o">|</span> <span class="n">Callable</span><span class="p">[[],</span> <span class="n">DeepGP</span><span class="p">],</span>
+        <span class="n">optimizer</span><span class="p">:</span> <span class="n">KerasOptimizer</span> <span class="o">|</span> <span class="kc">None</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+        <span class="n">num_rff_features</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="n">continuous_optimisation</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param model: The underlying GPflux deep Gaussian process model. Passing in a named closure</span>
+<span class="sd">            rather than a model can help when copying or serialising.</span>
+<span class="sd">        :param optimizer: The optimizer wrapper with necessary specifications for compiling and</span>
+<span class="sd">            training the model. Defaults to :class:`~trieste.models.optimizer.KerasOptimizer` with</span>
+<span class="sd">            :class:`~tf.optimizers.Adam` optimizer, mean squared error metric and a dictionary of</span>
+<span class="sd">            default arguments for the Keras `fit` method: 400 epochs, batch size of 1000, and</span>
+<span class="sd">            verbose 0. A custom callback that reduces the optimizer learning rate is used as well.</span>
+<span class="sd">            See https://keras.io/api/models/model_training_apis/#fit-method for a list of possible</span>
+<span class="sd">            arguments.</span>
+<span class="sd">        :param num_rff_features: The number of random Fourier features used to approximate the</span>
+<span class="sd">            kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it typically</span>
+<span class="sd">            performs well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can</span>
+<span class="sd">            be well-approximated with fewer features.</span>
+<span class="sd">        :param continuous_optimisation: if True (default), the optimizer will keep track of the</span>
+<span class="sd">            number of epochs across BO iterations and use this number as initial_epoch. This is</span>
+<span class="sd">            essential to allow monitoring of model training across BO iterations.</span>
+<span class="sd">        :raise ValueError: If ``model`` has unsupported layers, ``num_rff_features`` is less than 0,</span>
+<span class="sd">            or if the ``optimizer`` is not of a supported type.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">DeepGP</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model_closure</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model_closure</span> <span class="o">=</span> <span class="n">model</span>
+            <span class="n">model</span> <span class="o">=</span> <span class="n">model</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">layer</span> <span class="ow">in</span> <span class="n">model</span><span class="o">.</span><span class="n">f_layers</span><span class="p">:</span>
+            <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="p">(</span><span class="n">GPLayer</span><span class="p">,</span> <span class="n">LatentVariableLayer</span><span class="p">)):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;`DeepGaussianProcess` can only be built out of `GPLayer` or&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot;`LatentVariableLayer`, received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">layer</span><span class="p">)</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+                <span class="p">)</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">optimizer</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">num_rff_features</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;num_rff_features must be greater or equal to zero, got </span><span class="si">{</span><span class="n">num_rff_features</span><span class="si">}</span><span class="s2">.&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_num_rff_features</span> <span class="o">=</span> <span class="n">num_rff_features</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Optimizer</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Optimizer for `DeepGaussianProcess` must be an instance of a &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;`tf.optimizers.Optimizer` or `tf.keras.optimizers.Optimizer`, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">)</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">schedules</span><span class="o">.</span><span class="n">LearningRateSchedule</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">original_lr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+        <span class="n">epochs</span> <span class="o">=</span> <span class="mi">400</span>
+
+        <span class="k">def</span> <span class="nf">scheduler</span><span class="p">(</span><span class="n">epoch</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">lr</span><span class="p">:</span> <span class="nb">float</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">float</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">epoch</span> <span class="o">==</span> <span class="n">epochs</span> <span class="o">//</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">lr</span> <span class="o">*</span> <span class="mf">0.1</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">return</span> <span class="n">lr</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">fit_args</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+                <span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="n">epochs</span><span class="p">,</span>
+                <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+                <span class="s2">&quot;callbacks&quot;</span><span class="p">:</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">LearningRateScheduler</span><span class="p">(</span><span class="n">scheduler</span><span class="p">)],</span>
+            <span class="p">}</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">metrics</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span><span class="s2">&quot;mse&quot;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span> <span class="o">=</span> <span class="n">model</span>
+        <span class="c1"># inputs and targets need to be redone with a float64 dtype to avoid setting the keras</span>
+        <span class="c1"># backend to float64, this is likely to be fixed in GPflux, see issue:</span>
+        <span class="c1"># https://github.com/secondmind-labs/GPflux/issues/76</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+            <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">targets</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">targets</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">as_training_model</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">,</span> <span class="n">metrics</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">metrics</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span> <span class="o">=</span> <span class="mi">0</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_continuous_optimisation</span> <span class="o">=</span> <span class="n">continuous_optimisation</span>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="c1"># when using a model closure, store the model parameters, not the model itself</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_closure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_model_gpflux&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">utilities</span><span class="o">.</span><span class="n">parameter_dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="p">)</span>
+            <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_model_keras&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">utilities</span><span class="o">.</span><span class="n">parameter_dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="p">)</span>
+
+        <span class="c1"># use to_json and get_weights to save any optimizer fit_arg callback models</span>
+        <span class="n">callbacks</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">Callback</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;callbacks&quot;</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">callback</span><span class="p">:</span> <span class="n">Callback</span>
+        <span class="n">saved_models</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="n">KerasOptimizer</span><span class="p">]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">tensorboard_writers</span><span class="p">:</span> <span class="nb">list</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="n">callbacks</span><span class="p">:</span>
+                <span class="c1"># serialize the callback models before pickling the optimizer</span>
+                <span class="n">saved_models</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="p">:</span>
+                    <span class="c1"># no need to serialize the main model, just use a special value instead</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="o">...</span>
+                <span class="k">elif</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="o">.</span><span class="n">get_weights</span><span class="p">())</span>
+                <span class="c1"># don&#39;t pickle tensorboard writers either; they&#39;ll be recreated when needed</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">callback</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">):</span>
+                    <span class="n">tensorboard_writers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">callback</span><span class="o">.</span><span class="n">_writers</span><span class="p">)</span>
+                    <span class="n">callback</span><span class="o">.</span><span class="n">_writers</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_optimizer&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;_optimizer&quot;</span><span class="p">])</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+                <span class="s2">&quot;Failed to copy DeepGaussianProcess optimizer due to unsupported callbacks.&quot;</span>
+            <span class="p">)</span> <span class="kn">from</span> <span class="nn">e</span>
+        <span class="k">finally</span><span class="p">:</span>
+            <span class="c1"># revert original state, even if the pickling failed</span>
+            <span class="k">for</span> <span class="n">callback</span><span class="p">,</span> <span class="n">model</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;callbacks&quot;</span><span class="p">,</span> <span class="p">[]),</span> <span class="n">saved_models</span><span class="p">):</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">model</span>
+            <span class="k">for</span> <span class="n">callback</span><span class="p">,</span> <span class="n">writers</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">cb</span> <span class="k">for</span> <span class="n">cb</span> <span class="ow">in</span> <span class="n">callbacks</span> <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">cb</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">TensorBoard</span><span class="p">)),</span>
+                <span class="n">tensorboard_writers</span><span class="p">,</span>
+            <span class="p">):</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">_writers</span> <span class="o">=</span> <span class="n">writers</span>
+
+        <span class="c1"># do the same thing for the history callback</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="p">:</span>
+            <span class="n">history_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">history_model</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="p">:</span>
+                    <span class="c1"># no need to serialize the main model, just use a special value instead</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="o">...</span>
+                <span class="k">elif</span> <span class="n">history_model</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">history_model</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span>
+                        <span class="n">history_model</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(),</span>
+                    <span class="p">)</span>
+                <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_history&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">history_model</span>
+
+        <span class="k">return</span> <span class="n">state</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+
+        <span class="c1"># regenerate the models using the model closure</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_closure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">dgp</span><span class="p">:</span> <span class="n">DeepGP</span> <span class="o">=</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_model_closure&quot;</span><span class="p">]()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span> <span class="o">=</span> <span class="n">dgp</span>
+            <span class="c1"># inputs and targets need to be redone with a float64 dtype to avoid setting the keras</span>
+            <span class="c1"># backend to float64, this is likely to be fixed in GPflux, see issue:</span>
+            <span class="c1"># https://github.com/secondmind-labs/GPflux/issues/76</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">inputs</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">inputs</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">targets</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+                <span class="nb">tuple</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">targets</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]),</span>
+                <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="o">.</span><span class="n">targets</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+                <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span> <span class="o">=</span> <span class="n">dgp</span><span class="o">.</span><span class="n">as_training_model</span><span class="p">()</span>
+
+        <span class="c1"># unpickle the optimizer, and restore all the callback models</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">callback</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s2">&quot;callbacks&quot;</span><span class="p">,</span> <span class="p">[]):</span>
+            <span class="k">if</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="o">...</span><span class="p">:</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+                <span class="n">model_json</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="n">callback</span><span class="o">.</span><span class="n">model</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">model_from_json</span><span class="p">(</span><span class="n">model_json</span><span class="p">)</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">set_weights</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+                <span class="n">callback</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+        <span class="c1"># recompile the model</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="p">)</span>
+
+        <span class="c1"># assign the model parameters</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_closure</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">gpflow</span><span class="o">.</span><span class="n">utilities</span><span class="o">.</span><span class="n">multiple_assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span><span class="p">,</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_model_gpflux&quot;</span><span class="p">])</span>
+            <span class="n">gpflow</span><span class="o">.</span><span class="n">utilities</span><span class="o">.</span><span class="n">multiple_assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="p">,</span> <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_model_keras&quot;</span><span class="p">])</span>
+
+        <span class="c1"># restore the history (including any model it contains)</span>
+        <span class="k">if</span> <span class="s2">&quot;_history&quot;</span> <span class="ow">in</span> <span class="n">state</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;_history&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="o">...</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+                <span class="n">model_json</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">model_from_json</span><span class="p">(</span><span class="n">model_json</span><span class="p">)</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">set_weights</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;DeepGaussianProcess(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">model_gpflux</span><span class="si">!r}</span><span class="s2">, </span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DeepGaussianProcess.model_gpflux"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.model_gpflux">[docs]</a>    <span class="k">def</span> <span class="nf">model_gpflux</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DeepGP</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_gpflux</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="DeepGaussianProcess.model_keras"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.model_keras">[docs]</a>    <span class="k">def</span> <span class="nf">model_keras</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model_keras</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcess.sample"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.sample">[docs]</a>    <span class="k">def</span> <span class="nf">sample</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">query_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">trajectory</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">trajectory_sampler</span><span class="p">()</span><span class="o">.</span><span class="n">get_trajectory</span><span class="p">()</span>
+        <span class="n">expanded_query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">query_points</span><span class="p">,</span> <span class="o">-</span><span class="mi">2</span><span class="p">)</span>  <span class="c1"># [N, 1, D]</span>
+        <span class="n">tiled_query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">tile</span><span class="p">(</span><span class="n">expanded_query_points</span><span class="p">,</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>  <span class="c1"># [N, S, D]</span>
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">trajectory</span><span class="p">(</span><span class="n">tiled_query_points</span><span class="p">),</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">2</span><span class="p">])</span>  <span class="c1"># [S, N, L]</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcess.reparam_sampler"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.reparam_sampler">[docs]</a>    <span class="k">def</span> <span class="nf">reparam_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ReparametrizationSampler</span><span class="p">[</span><span class="n">GPfluxPredictor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a reparametrization sampler for a :class:`DeepGaussianProcess` model.</span>
+
+<span class="sd">        :param num_samples: The number of samples to obtain.</span>
+<span class="sd">        :return: The reparametrization sampler.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">DeepGaussianProcessReparamSampler</span><span class="p">(</span><span class="n">num_samples</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcess.trajectory_sampler"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.trajectory_sampler">[docs]</a>    <span class="k">def</span> <span class="nf">trajectory_sampler</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TrajectorySampler</span><span class="p">[</span><span class="n">GPfluxPredictor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return a trajectory sampler. For :class:`DeepGaussianProcess`, we build</span>
+<span class="sd">        trajectories using the GPflux default sampler.</span>
+
+<span class="sd">        :return: The trajectory sampler.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">DeepGaussianProcessDecoupledTrajectorySampler</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">_num_rff_features</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcess.update"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.update">[docs]</a>    <span class="k">def</span> <span class="nf">update</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">inputs</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span>
+        <span class="n">new_num_data</span> <span class="o">=</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">model_gpflux</span><span class="o">.</span><span class="n">num_data</span> <span class="o">=</span> <span class="n">new_num_data</span>
+
+        <span class="c1"># Update num_data for each layer, as well as make sure dataset shapes are ok</span>
+        <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_gpflux</span><span class="o">.</span><span class="n">f_layers</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="s2">&quot;num_data&quot;</span><span class="p">):</span>
+                <span class="n">layer</span><span class="o">.</span><span class="n">num_data</span> <span class="o">=</span> <span class="n">new_num_data</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="p">,</span> <span class="n">LatentVariableLayer</span><span class="p">):</span>
+                <span class="n">inputs</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+                <span class="k">continue</span>
+
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="p">,</span> <span class="n">InducingPoints</span><span class="p">):</span>
+                <span class="n">inducing_variable</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">inducing_variable</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">inducing_variable</span> <span class="o">=</span> <span class="n">layer</span><span class="o">.</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">inducing_variable</span>
+
+            <span class="k">if</span> <span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">inducing_variable</span><span class="o">.</span><span class="n">Z</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Shape </span><span class="si">{</span><span class="n">inputs</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of input to layer </span><span class="si">{</span><span class="n">layer</span><span class="si">}</span><span class="s2"> is incompatible with shape&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; </span><span class="si">{</span><span class="n">inducing_variable</span><span class="o">.</span><span class="n">Z</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of that layer. Trailing dimensions must match.&quot;</span>
+                <span class="p">)</span>
+
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="n">i</span> <span class="o">==</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_gpflux</span><span class="o">.</span><span class="n">f_layers</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+                <span class="ow">and</span> <span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="n">layer</span><span class="o">.</span><span class="n">q_mu</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+            <span class="p">):</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Shape </span><span class="si">{</span><span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of new observations is incompatible&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; with shape </span><span class="si">{</span><span class="n">layer</span><span class="o">.</span><span class="n">q_mu</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2"> of existing observations. Trailing&quot;</span>
+                    <span class="sa">f</span><span class="s2">&quot; dimensions must match.&quot;</span>
+                <span class="p">)</span>
+
+            <span class="n">inputs</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcess.optimize"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.optimize">[docs]</a>    <span class="k">def</span> <span class="nf">optimize</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Optimize the model with the specified `dataset`.</span>
+<span class="sd">        :param dataset: The data with which to optimize the `model`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">fit_args</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">fit_args</span><span class="p">)</span>
+
+        <span class="c1"># Tell optimizer how many epochs have been used before: the optimizer will &quot;continue&quot;</span>
+        <span class="c1"># optimization across multiple BO iterations rather than start fresh at each iteration.</span>
+        <span class="c1"># This allows us to monitor training across iterations.</span>
+
+        <span class="k">if</span> <span class="s2">&quot;epochs&quot;</span> <span class="ow">in</span> <span class="n">fit_args</span><span class="p">:</span>
+            <span class="n">fit_args</span><span class="p">[</span><span class="s2">&quot;epochs&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">fit_args</span><span class="p">[</span><span class="s2">&quot;epochs&quot;</span><span class="p">]</span> <span class="o">+</span> <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span>
+
+        <span class="n">hist</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_keras</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;inputs&quot;</span><span class="p">:</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="s2">&quot;targets&quot;</span><span class="p">:</span> <span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="p">},</span>
+            <span class="o">**</span><span class="n">fit_args</span><span class="p">,</span>
+            <span class="n">initial_epoch</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_continuous_optimisation</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_absolute_epochs</span> <span class="o">+</span> <span class="nb">len</span><span class="p">(</span><span class="n">hist</span><span class="o">.</span><span class="n">history</span><span class="p">[</span><span class="s2">&quot;loss&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Reset lr in case there was an lr schedule: a schedule will have changed the learning</span>
+        <span class="c1"># rate, so that the next time we call `optimize` the starting learning rate would be</span>
+        <span class="c1"># different. Therefore, we make sure the learning rate is set back to its initial value.</span>
+        <span class="c1"># However, this is not needed for `LearningRateSchedule` instances.</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">schedules</span><span class="o">.</span><span class="n">LearningRateSchedule</span>
+        <span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">optimizer</span><span class="o">.</span><span class="n">lr</span><span class="o">.</span><span class="n">assign</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">original_lr</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="DeepGaussianProcess.log"><a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflux/models/index.html#trieste.models.gpflux.DeepGaussianProcess.log">[docs]</a>    <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Dataset</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Log model training information at a given optimization step to the Tensorboard.</span>
+<span class="sd">        We log a few summary statistics of losses, layer KL divergences and metrics (as provided in</span>
+<span class="sd">        ``optimizer``): ``final`` value at the end of the training, ``diff`` value as a difference</span>
+<span class="sd">        between inital and final epoch. We also log epoch statistics, but as histograms, rather</span>
+<span class="sd">        than time series. We also log several training data based metrics, such as root mean square</span>
+<span class="sd">        error between predictions and observations and several others.</span>
+
+<span class="sd">        For custom logs user will need to subclass the model and overwrite this method.</span>
+
+<span class="sd">        :param dataset: Optional data that can be used to log additional data-based model summaries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span><span class="n">step</span><span class="o">=</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="s2">&quot;epochs/num_epochs&quot;</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">epoch</span><span class="p">))</span>
+                <span class="k">for</span> <span class="n">idx</span><span class="p">,</span> <span class="n">layer</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_gpflux</span><span class="o">.</span><span class="n">f_layers</span><span class="p">):</span>
+                    <span class="n">write_summary_kernel_parameters</span><span class="p">(</span><span class="n">layer</span><span class="o">.</span><span class="n">kernel</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="sa">f</span><span class="s2">&quot;layer[</span><span class="si">{</span><span class="n">idx</span><span class="si">}</span><span class="s2">]/&quot;</span><span class="p">)</span>
+                <span class="n">write_summary_likelihood_parameters</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">model_gpflux</span><span class="o">.</span><span class="n">likelihood_layer</span><span class="o">.</span><span class="n">likelihood</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">k</span><span class="p">,</span> <span class="n">v</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">model_keras</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">histogram</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">/epoch&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">v</span><span class="p">)</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">/final&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                    <span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">k</span><span class="si">}</span><span class="s2">/diff&quot;</span><span class="p">,</span> <span class="k">lambda</span><span class="p">:</span> <span class="n">v</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">v</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+                <span class="k">if</span> <span class="n">dataset</span><span class="p">:</span>
+                    <span class="n">write_summary_data_based_metrics</span><span class="p">(</span>
+                        <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span> <span class="n">model</span><span class="o">=</span><span class="bp">self</span><span class="p">,</span> <span class="n">prefix</span><span class="o">=</span><span class="s2">&quot;training_&quot;</span>
+                    <span class="p">)</span></div></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

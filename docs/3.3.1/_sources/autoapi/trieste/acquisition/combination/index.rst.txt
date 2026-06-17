@@ -1,0 +1,113 @@
+:orphan:
+
+:py:mod:`trieste.acquisition.combination`
+=========================================
+
+.. py:module:: trieste.acquisition.combination
+
+
+Module Contents
+---------------
+
+.. py:class:: Reducer(*builders: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.models.ProbabilisticModelType])
+
+
+   Bases: :py:obj:`trieste.acquisition.interface.AcquisitionFunctionBuilder`\ [\ :py:obj:`trieste.models.ProbabilisticModelType`\ ]
+
+   A :class:`Reducer` builds an :const:`~trieste.acquisition.AcquisitionFunction` whose output is
+   calculated from the outputs of a number of other
+   :const:`~trieste.acquisition.AcquisitionFunction`\ s. How these outputs are composed is defined
+   by the method :meth:`_reduce`.
+
+   :param \*builders: Acquisition function builders. At least one must be provided.
+   :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
+
+   .. py:property:: acquisitions
+      :type: collections.abc.Sequence[trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.models.ProbabilisticModelType]]
+
+      The acquisition function builders specified at class initialisation.
+
+
+   .. py:method:: prepare_acquisition_function(models: collections.abc.Mapping[trieste.types.Tag, trieste.models.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      Return an acquisition function. This acquisition function is defined by first building
+      acquisition functions from each of the
+      :class:`~trieste.acquisition.AcquisitionFunctionBuilder`\ s specified at
+      :meth:`__init__`, then reducing, with :meth:`_reduce`, the output of each of those
+      acquisition functions.
+
+      :param datasets: The data from the observer.
+      :param models: The models over each dataset in ``datasets``.
+      :return: The reduced acquisition function.
+
+
+   .. py:method:: update_acquisition_function(function: trieste.acquisition.interface.AcquisitionFunction, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.acquisition.interface.AcquisitionFunction
+
+      :param function: The acquisition function to update.
+      :param models: The model.
+      :param datasets: Unused.
+
+
+   .. py:method:: _reduce(inputs: collections.abc.Sequence[trieste.types.TensorType]) -> trieste.types.TensorType
+      :abstractmethod:
+
+      :param inputs: The output of each constituent acquisition function.
+      :return: The output of the reduced acquisition function.
+
+
+
+.. py:class:: Sum(*builders: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.models.ProbabilisticModelType])
+
+
+   Bases: :py:obj:`Reducer`\ [\ :py:obj:`trieste.models.ProbabilisticModelType`\ ]
+
+   :class:`Reducer` whose resulting acquisition function returns the element-wise sum of the
+   outputs of constituent acquisition functions.
+
+   :param \*builders: Acquisition function builders. At least one must be provided.
+   :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
+
+   .. py:method:: _reduce(inputs: collections.abc.Sequence[trieste.types.TensorType]) -> trieste.types.TensorType
+
+      :param inputs: The outputs of each acquisition function.
+      :return: The element-wise sum of the ``inputs``.
+
+
+
+.. py:class:: Product(*builders: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.models.ProbabilisticModelType])
+
+
+   Bases: :py:obj:`Reducer`\ [\ :py:obj:`trieste.models.ProbabilisticModelType`\ ]
+
+   :class:`Reducer` whose resulting acquisition function returns the element-wise product of the
+   outputs of constituent acquisition functions.
+
+   :param \*builders: Acquisition function builders. At least one must be provided.
+   :raise `~tf.errors.InvalidArgumentError`: If no builders are specified.
+
+   .. py:method:: _reduce(inputs: collections.abc.Sequence[trieste.types.TensorType]) -> trieste.types.TensorType
+
+      :param inputs: The outputs of each acquisition function.
+      :return: The element-wise product of the ``inputs``.
+
+
+
+.. py:class:: Map(map_fn: Callable[[trieste.types.TensorType], trieste.types.TensorType], builder: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.models.ProbabilisticModelType])
+
+
+   Bases: :py:obj:`Reducer`\ [\ :py:obj:`trieste.models.ProbabilisticModelType`\ ]
+
+   :class:`Reducer` that accepts just one acquisition function builder and applies a
+   given function to its output. For example ``Map(lambda x: -x, builder)`` would generate
+   an acquisition function that returns the negative of the output of ``builder``.
+
+   :param map_fn: Function to apply.
+   :param builder: Acquisition function builder.
+
+   .. py:method:: _reduce(inputs: collections.abc.Sequence[trieste.types.TensorType]) -> trieste.types.TensorType
+
+      :param inputs: The outputs of the acquisition function.
+      :return: The result of applying the map function to ``inputs``.
+
+
+

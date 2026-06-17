@@ -1,0 +1,1150 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.experimental.plotting.plotting &#8212; trieste 3.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/experimental/plotting/plotting';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.experimental.plotting.plotting</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.experimental.plotting.plotting</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">io</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span><span class="p">,</span> <span class="n">Sequence</span><span class="p">,</span> <span class="n">Union</span>
+
+<span class="kn">import</span> <span class="nn">imageio</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">from</span> <span class="nn">gpflow.models</span> <span class="kn">import</span> <span class="n">GPModel</span>
+<span class="kn">from</span> <span class="nn">matplotlib</span> <span class="kn">import</span> <span class="n">cm</span>
+<span class="kn">from</span> <span class="nn">matplotlib.axes</span> <span class="kn">import</span> <span class="n">Axes</span>
+<span class="kn">from</span> <span class="nn">matplotlib.collections</span> <span class="kn">import</span> <span class="n">Collection</span>
+<span class="kn">from</span> <span class="nn">matplotlib.colors</span> <span class="kn">import</span> <span class="n">rgb2hex</span>
+<span class="kn">from</span> <span class="nn">matplotlib.contour</span> <span class="kn">import</span> <span class="n">ContourSet</span>
+<span class="kn">from</span> <span class="nn">matplotlib.figure</span> <span class="kn">import</span> <span class="n">Figure</span>
+<span class="kn">from</span> <span class="nn">matplotlib.patches</span> <span class="kn">import</span> <span class="n">Rectangle</span>
+
+<span class="kn">from</span> <span class="nn">trieste.acquisition</span> <span class="kn">import</span> <span class="n">AcquisitionFunction</span>
+<span class="kn">from</span> <span class="nn">trieste.acquisition.multi_objective.dominance</span> <span class="kn">import</span> <span class="n">non_dominated</span>
+<span class="kn">from</span> <span class="nn">trieste.bayesian_optimizer</span> <span class="kn">import</span> <span class="n">FrozenRecord</span><span class="p">,</span> <span class="n">Record</span><span class="p">,</span> <span class="n">StateType</span>
+<span class="kn">from</span> <span class="nn">trieste.models</span> <span class="kn">import</span> <span class="n">ProbabilisticModel</span>
+<span class="kn">from</span> <span class="nn">trieste.observer</span> <span class="kn">import</span> <span class="n">OBJECTIVE</span>
+<span class="kn">from</span> <span class="nn">trieste.space</span> <span class="kn">import</span> <span class="n">TaggedMultiSearchSpace</span>
+<span class="kn">from</span> <span class="nn">trieste.types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">trieste.utils</span> <span class="kn">import</span> <span class="n">to_numpy</span>
+<span class="kn">from</span> <span class="nn">trieste.utils.misc</span> <span class="kn">import</span> <span class="n">LocalizedTag</span>
+
+
+<div class="viewcode-block" id="create_grid"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.create_grid">[docs]</a><span class="k">def</span> <span class="nf">create_grid</span><span class="p">(</span>
+    <span class="n">mins</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">maxs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">grid_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">30</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates a regular 2D grid of size `grid_density^2` between mins and maxs.</span>
+
+<span class="sd">    :param mins: list of 2 lower bounds</span>
+<span class="sd">    :param maxs: list of 2 upper bounds</span>
+<span class="sd">    :param grid_density: scalar</span>
+<span class="sd">    :return: Xplot [grid_density**2, 2], xx, yy from meshgrid for the specific formatting of</span>
+<span class="sd">        contour / surface plots</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">mins</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">]),</span> <span class="p">(</span><span class="n">maxs</span><span class="p">,</span> <span class="p">[</span><span class="mi">2</span><span class="p">])])</span>
+
+    <span class="n">xspaced</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">grid_density</span><span class="p">)</span>
+    <span class="n">yspaced</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">grid_density</span><span class="p">)</span>
+    <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">xspaced</span><span class="p">,</span> <span class="n">yspaced</span><span class="p">)</span>
+    <span class="n">Xplot</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">vstack</span><span class="p">((</span><span class="n">xx</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">yy</span><span class="o">.</span><span class="n">flatten</span><span class="p">()))</span><span class="o">.</span><span class="n">T</span>
+
+    <span class="k">return</span> <span class="n">Xplot</span><span class="p">,</span> <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span></div>
+
+
+<div class="viewcode-block" id="plot_surface"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_surface">[docs]</a><span class="k">def</span> <span class="nf">plot_surface</span><span class="p">(</span>
+    <span class="n">xx</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">yy</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">f</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Axes</span><span class="p">,</span>
+    <span class="n">contour</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">ContourSet</span> <span class="o">|</span> <span class="n">Collection</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adds either a contour or a surface to a given ax.</span>
+
+<span class="sd">    :param xx: input 1, from meshgrid</span>
+<span class="sd">    :param yy: input2, from meshgrid</span>
+<span class="sd">    :param f: output, from meshgrid</span>
+<span class="sd">    :param ax: plt axes object</span>
+<span class="sd">    :param contour: Boolean</span>
+<span class="sd">    :param fill: filled contour</span>
+<span class="sd">    :param alpha: transparency</span>
+<span class="sd">    :return: generated contour or surface</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">contour</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">fill</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ax</span><span class="o">.</span><span class="n">contourf</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">xx</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="mi">80</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">ax</span><span class="o">.</span><span class="n">contour</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">f</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">xx</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span> <span class="mi">80</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ax</span><span class="o">.</span><span class="n">plot_surface</span><span class="p">(</span>
+            <span class="n">xx</span><span class="p">,</span>
+            <span class="n">yy</span><span class="p">,</span>
+            <span class="n">f</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">*</span><span class="n">xx</span><span class="o">.</span><span class="n">shape</span><span class="p">),</span>
+            <span class="n">cmap</span><span class="o">=</span><span class="n">cm</span><span class="o">.</span><span class="n">coolwarm</span><span class="p">,</span>
+            <span class="n">linewidth</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+            <span class="n">antialiased</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+            <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="plot_function_2d"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_function_2d">[docs]</a><span class="k">def</span> <span class="nf">plot_function_2d</span><span class="p">(</span>
+    <span class="n">obj_func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">],</span>
+    <span class="n">mins</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">maxs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">grid_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">contour</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">xlabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+    <span class="n">colorbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Figure</span><span class="p">,</span> <span class="n">Axes</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    2D/3D plot of an obj_func for a grid of size grid_density**2 between mins and maxs</span>
+
+<span class="sd">    :param obj_func: a function that returns a n-array given a [n, d] array</span>
+<span class="sd">    :param mins: 2 lower bounds</span>
+<span class="sd">    :param maxs: 2 upper bounds</span>
+<span class="sd">    :param grid_density: positive integer for the grid size</span>
+<span class="sd">    :param contour: Boolean. If False, a 3d plot is produced</span>
+<span class="sd">    :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied</span>
+<span class="sd">    :param title: optional titles</span>
+<span class="sd">    :param xlabel: optional xlabel</span>
+<span class="sd">    :param ylabel: optional ylabel</span>
+<span class="sd">    :param figsize: optional figsize</span>
+<span class="sd">    :param colorbar: whether to use colorbar</span>
+<span class="sd">    :param alpha: transparency</span>
+<span class="sd">    :param fill: filled contour</span>
+<span class="sd">    :return: figure and axes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mins</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">mins</span><span class="p">)</span>
+    <span class="n">maxs</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">maxs</span><span class="p">)</span>
+
+    <span class="c1"># Create a regular grid on the parameter space</span>
+    <span class="n">Xplot</span><span class="p">,</span> <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">create_grid</span><span class="p">(</span><span class="n">mins</span><span class="o">=</span><span class="n">mins</span><span class="p">,</span> <span class="n">maxs</span><span class="o">=</span><span class="n">maxs</span><span class="p">,</span> <span class="n">grid_density</span><span class="o">=</span><span class="n">grid_density</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate objective function</span>
+    <span class="n">F</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">obj_func</span><span class="p">(</span><span class="n">Xplot</span><span class="p">))</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">F</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">n_output</span> <span class="o">=</span> <span class="n">F</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">contour</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+            <span class="mi">1</span><span class="p">,</span> <span class="n">n_output</span><span class="p">,</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">F</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]):</span>
+        <span class="c1"># Apply log transformation</span>
+        <span class="n">f</span> <span class="o">=</span> <span class="n">F</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">log</span><span class="p">:</span>
+            <span class="n">f</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">f</span> <span class="o">-</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">f</span><span class="p">)</span> <span class="o">+</span> <span class="mf">1e-1</span><span class="p">)</span>
+
+        <span class="c1"># Either plot contour of surface</span>
+        <span class="k">if</span> <span class="n">contour</span><span class="p">:</span>
+            <span class="n">axx</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="n">k</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">axx</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_output</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
+
+        <span class="n">plt_obj</span> <span class="o">=</span> <span class="n">plot_surface</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">f</span><span class="p">,</span> <span class="n">axx</span><span class="p">,</span> <span class="n">contour</span><span class="o">=</span><span class="n">contour</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span> <span class="n">fill</span><span class="o">=</span><span class="n">fill</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">axx</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">[</span><span class="n">k</span><span class="p">])</span>
+        <span class="k">if</span> <span class="n">colorbar</span><span class="p">:</span>
+            <span class="n">fig</span><span class="o">.</span><span class="n">colorbar</span><span class="p">(</span><span class="n">plt_obj</span><span class="p">,</span> <span class="n">ax</span><span class="o">=</span><span class="n">axx</span><span class="p">)</span>
+        <span class="n">axx</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+        <span class="n">axx</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+        <span class="n">axx</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">axx</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<div class="viewcode-block" id="plot_acq_function_2d"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_acq_function_2d">[docs]</a><span class="k">def</span> <span class="nf">plot_acq_function_2d</span><span class="p">(</span>
+    <span class="n">acq_func</span><span class="p">:</span> <span class="n">AcquisitionFunction</span><span class="p">,</span>
+    <span class="n">mins</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">maxs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">grid_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">contour</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">log</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Sequence</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">xlabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+    <span class="n">colorbar</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">1.0</span><span class="p">,</span>
+    <span class="n">fill</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Figure</span><span class="p">,</span> <span class="n">Axes</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Wrapper to produce a 2D/3D plot of an acq_func for a grid of size grid_density**2 between</span>
+<span class="sd">    mins and maxs.</span>
+
+<span class="sd">    :param acq_func: a function that returns a n-array given a [n, d] array</span>
+<span class="sd">    :param mins: 2 lower bounds</span>
+<span class="sd">    :param maxs: 2 upper bounds</span>
+<span class="sd">    :param grid_density: positive integer for the grid size</span>
+<span class="sd">    :param contour: Boolean. If False, a 3d plot is produced</span>
+<span class="sd">    :param log: Boolean. If True, the log transformation (log(f - min(f) + 0.1)) is applied</span>
+<span class="sd">    :param title: optional titles</span>
+<span class="sd">    :param xlabel: optional xlabel</span>
+<span class="sd">    :param ylabel: optional ylabel</span>
+<span class="sd">    :param figsize: optional figsize</span>
+<span class="sd">    :param colorbar: whether to use colorbar</span>
+<span class="sd">    :param alpha: transparency</span>
+<span class="sd">    :param fill: filled contour</span>
+<span class="sd">    :return: figure and axes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="nf">batched_func</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">acq_func</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">2</span><span class="p">))</span>
+
+    <span class="k">return</span> <span class="n">plot_function_2d</span><span class="p">(</span>
+        <span class="n">batched_func</span><span class="p">,</span>
+        <span class="n">mins</span><span class="p">,</span>
+        <span class="n">maxs</span><span class="p">,</span>
+        <span class="n">grid_density</span><span class="p">,</span>
+        <span class="n">contour</span><span class="p">,</span>
+        <span class="n">log</span><span class="p">,</span>
+        <span class="n">title</span><span class="p">,</span>
+        <span class="n">xlabel</span><span class="p">,</span>
+        <span class="n">ylabel</span><span class="p">,</span>
+        <span class="n">figsize</span><span class="p">,</span>
+        <span class="n">colorbar</span><span class="p">,</span>
+        <span class="n">alpha</span><span class="p">,</span>
+        <span class="n">fill</span><span class="p">,</span>
+    <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="format_point_markers"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.format_point_markers">[docs]</a><span class="k">def</span> <span class="nf">format_point_markers</span><span class="p">(</span>
+    <span class="n">num_pts</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mask_fail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">m_init</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+    <span class="n">m_add</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span>
+    <span class="n">c_pass</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:green&quot;</span><span class="p">,</span>
+    <span class="n">c_fail</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;tab:red&quot;</span><span class="p">,</span>
+    <span class="n">c_best</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:purple&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">TensorType</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Prepares point marker styles according to some BO factors.</span>
+
+<span class="sd">    :param num_pts: total number of BO points</span>
+<span class="sd">    :param num_init: initial number of BO points; can also be a mask</span>
+<span class="sd">    :param idx_best: index of the best BO point(s)</span>
+<span class="sd">    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)</span>
+<span class="sd">    :param m_init: marker for the initial BO points</span>
+<span class="sd">    :param m_add: marker for the other BO points</span>
+<span class="sd">    :param c_pass: color for the regular BO points</span>
+<span class="sd">    :param c_fail: color for the failed BO points</span>
+<span class="sd">    :param c_best: color for the best BO points</span>
+<span class="sd">    :return: 2 string vectors col_pts, mark_pts containing marker styles and colors</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">num_init</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">num_init</span> <span class="o">=</span> <span class="n">num_pts</span>
+    <span class="n">col_pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">c_pass</span><span class="p">,</span> <span class="n">num_pts</span><span class="p">)</span>
+    <span class="n">col_pts</span> <span class="o">=</span> <span class="n">col_pts</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s2">&quot;&lt;U15&quot;</span><span class="p">)</span>
+    <span class="n">mark_pts</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">m_init</span><span class="p">,</span> <span class="n">num_pts</span><span class="p">)</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">num_init</span><span class="p">,</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="n">mark_pts</span><span class="p">[</span><span class="n">num_init</span><span class="p">:]</span> <span class="o">=</span> <span class="n">m_add</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">mark_pts</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="n">num_init</span><span class="p">)]</span> <span class="o">=</span> <span class="n">m_add</span>
+    <span class="k">if</span> <span class="n">mask_fail</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">col_pts</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">mask_fail</span><span class="p">)]</span> <span class="o">=</span> <span class="n">c_fail</span>
+    <span class="k">if</span> <span class="n">idx_best</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">col_pts</span><span class="p">[</span><span class="n">idx_best</span><span class="p">]</span> <span class="o">=</span> <span class="n">c_best</span>
+
+    <span class="k">return</span> <span class="n">col_pts</span><span class="p">,</span> <span class="n">mark_pts</span></div>
+
+
+<div class="viewcode-block" id="plot_bo_points"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_bo_points">[docs]</a><span class="k">def</span> <span class="nf">plot_bo_points</span><span class="p">(</span>
+    <span class="n">pts</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Axes</span><span class="p">,</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Union</span><span class="p">[</span><span class="nb">int</span><span class="p">,</span> <span class="n">TensorType</span><span class="p">]]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mask_fail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">obs_values</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">m_init</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+    <span class="n">m_add</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span>
+    <span class="n">c_pass</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:green&quot;</span><span class="p">,</span>
+    <span class="n">c_fail</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">List</span><span class="p">[</span><span class="nb">str</span><span class="p">]]</span> <span class="o">=</span> <span class="s2">&quot;tab:red&quot;</span><span class="p">,</span>
+    <span class="n">c_best</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:purple&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adds scatter points to an existing subfigure. Markers and colors are chosen according to</span>
+<span class="sd">    BO factors.</span>
+
+<span class="sd">    :param pts: [N, 2] x inputs</span>
+<span class="sd">    :param ax: a plt axes object</span>
+<span class="sd">    :param num_init: initial number of BO points; can also be a mask</span>
+<span class="sd">    :param idx_best: index of the best BO point</span>
+<span class="sd">    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)</span>
+<span class="sd">    :param obs_values: optional [N] outputs (for 3d plots)</span>
+<span class="sd">    :param m_init: marker for the initial BO points</span>
+<span class="sd">    :param m_add: marker for the other BO points</span>
+<span class="sd">    :param c_pass: color for the regular BO points</span>
+<span class="sd">    :param c_fail: color for the failed BO points</span>
+<span class="sd">    :param c_best: color for the best BO points</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">num_pts</span> <span class="o">=</span> <span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">col_pts</span><span class="p">,</span> <span class="n">mark_pts</span> <span class="o">=</span> <span class="n">format_point_markers</span><span class="p">(</span>
+        <span class="n">num_pts</span><span class="p">,</span> <span class="n">num_init</span><span class="p">,</span> <span class="n">idx_best</span><span class="p">,</span> <span class="n">mask_fail</span><span class="p">,</span> <span class="n">m_init</span><span class="p">,</span> <span class="n">m_add</span><span class="p">,</span> <span class="n">c_pass</span><span class="p">,</span> <span class="n">c_fail</span><span class="p">,</span> <span class="n">c_best</span>
+    <span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">obs_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">col_pts</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="n">mark_pts</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">obs_values</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">col_pts</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="n">mark_pts</span><span class="p">[</span><span class="n">i</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="plot_mobo_points_in_obj_space"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_mobo_points_in_obj_space">[docs]</a><span class="k">def</span> <span class="nf">plot_mobo_points_in_obj_space</span><span class="p">(</span>
+    <span class="n">obs_values</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">mask_fail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+    <span class="n">xlabel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Obj 1&quot;</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Obj 2&quot;</span><span class="p">,</span>
+    <span class="n">zlabel</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;Obj 3&quot;</span><span class="p">,</span>
+    <span class="n">title</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">m_init</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+    <span class="n">m_add</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span>
+    <span class="n">c_pass</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:green&quot;</span><span class="p">,</span>
+    <span class="n">c_fail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:red&quot;</span><span class="p">,</span>
+    <span class="n">c_pareto</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:purple&quot;</span><span class="p">,</span>
+    <span class="n">only_plot_pareto</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Figure</span><span class="p">,</span> <span class="n">Axes</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Adds scatter points in objective space, used for multi-objective optimization (2 or 3</span>
+<span class="sd">    objectives only). Markers and colors are chosen according to BO factors.</span>
+
+<span class="sd">    :param obs_values: TF Tensor or numpy array of objective values, shape (N, 2) or (N, 3).</span>
+<span class="sd">    :param num_init: initial number of BO points</span>
+<span class="sd">    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)</span>
+<span class="sd">    :param figsize: Size of the figure.</span>
+<span class="sd">    :param xlabel: Label of the X axis.</span>
+<span class="sd">    :param ylabel: Label of the Y axis.</span>
+<span class="sd">    :param zlabel: Label of the Z axis (in 3d case).</span>
+<span class="sd">    :param title: Title of the plot.</span>
+<span class="sd">    :param m_init: Marker for initial points.</span>
+<span class="sd">    :param m_add: Marker for the points observed during the BO loop.</span>
+<span class="sd">    :param c_pass: color for the regular BO points</span>
+<span class="sd">    :param c_fail: color for the failed BO points</span>
+<span class="sd">    :param c_pareto: color for the Pareto front points</span>
+<span class="sd">    :param only_plot_pareto: if set to `True`, only plot the pareto points. Default is `False`.</span>
+<span class="sd">    :return: figure and axes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">obj_num</span> <span class="o">=</span> <span class="n">obs_values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([])</span>
+    <span class="k">assert</span> <span class="n">obj_num</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">),</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Only support 2/3-objective functions but found: </span><span class="si">{</span><span class="n">obj_num</span><span class="si">}</span><span class="s2">&quot;</span>
+    <span class="p">)</span>
+
+    <span class="n">_</span><span class="p">,</span> <span class="n">dom</span> <span class="o">=</span> <span class="n">non_dominated</span><span class="p">(</span><span class="n">obs_values</span><span class="p">)</span>
+    <span class="n">idx_pareto</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">dom</span><span class="p">)</span> <span class="k">if</span> <span class="n">mask_fail</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">logical_and</span><span class="p">(</span><span class="n">dom</span><span class="p">,</span> <span class="o">~</span><span class="n">mask_fail</span><span class="p">))</span>
+
+    <span class="n">pts</span> <span class="o">=</span> <span class="n">obs_values</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span> <span class="k">if</span> <span class="n">tf</span><span class="o">.</span><span class="n">is_tensor</span><span class="p">(</span><span class="n">obs_values</span><span class="p">)</span> <span class="k">else</span> <span class="n">obs_values</span>
+    <span class="n">num_pts</span> <span class="o">=</span> <span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+
+    <span class="n">col_pts</span><span class="p">,</span> <span class="n">mark_pts</span> <span class="o">=</span> <span class="n">format_point_markers</span><span class="p">(</span>
+        <span class="n">num_pts</span><span class="p">,</span> <span class="n">num_init</span><span class="p">,</span> <span class="n">idx_pareto</span><span class="p">,</span> <span class="n">mask_fail</span><span class="p">,</span> <span class="n">m_init</span><span class="p">,</span> <span class="n">m_add</span><span class="p">,</span> <span class="n">c_pass</span><span class="p">,</span> <span class="n">c_fail</span><span class="p">,</span> <span class="n">c_pareto</span>
+    <span class="p">)</span>
+    <span class="k">if</span> <span class="n">only_plot_pareto</span><span class="p">:</span>
+        <span class="n">col_pts</span> <span class="o">=</span> <span class="n">col_pts</span><span class="p">[</span><span class="n">idx_pareto</span><span class="p">]</span>
+        <span class="n">mark_pts</span> <span class="o">=</span> <span class="n">mark_pts</span><span class="p">[</span><span class="n">idx_pareto</span><span class="p">]</span>
+        <span class="n">pts</span> <span class="o">=</span> <span class="n">pts</span><span class="p">[</span><span class="n">idx_pareto</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">obj_num</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">()</span>
+        <span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">pts</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="o">*</span><span class="n">pts</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">col_pts</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="n">mark_pts</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">obj_num</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_zlabel</span><span class="p">(</span><span class="n">zlabel</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">title</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="n">title</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<div class="viewcode-block" id="plot_mobo_history"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_mobo_history">[docs]</a><span class="k">def</span> <span class="nf">plot_mobo_history</span><span class="p">(</span>
+    <span class="n">obs_values</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">metric_func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">],</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">mask_fail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Figure</span><span class="p">,</span> <span class="n">Axes</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Draw the performance measure for multi-objective optimization.</span>
+
+<span class="sd">    :param obs_values: TF Tensor or numpy array of objective values</span>
+<span class="sd">    :param metric_func: a callable function calculate metric score</span>
+<span class="sd">    :param num_init: initial number of BO points</span>
+<span class="sd">    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)</span>
+<span class="sd">    :param figsize: Size of the figure.</span>
+<span class="sd">    :return: figure and axes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+    <span class="n">size</span><span class="p">,</span> <span class="n">obj_num</span> <span class="o">=</span> <span class="n">obs_values</span><span class="o">.</span><span class="n">shape</span>
+
+    <span class="k">if</span> <span class="n">mask_fail</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">obs_values</span><span class="p">[</span><span class="n">mask_fail</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">inf</span><span class="p">]</span> <span class="o">*</span> <span class="n">obj_num</span>
+
+    <span class="n">_idxs</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">size</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">_idxs</span><span class="p">,</span> <span class="p">[</span><span class="n">metric_func</span><span class="p">(</span><span class="n">obs_values</span><span class="p">[:</span><span class="n">pts</span><span class="p">,</span> <span class="p">:])</span> <span class="k">for</span> <span class="n">pts</span> <span class="ow">in</span> <span class="n">_idxs</span><span class="p">],</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:orange&quot;</span><span class="p">)</span>
+    <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">num_init</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<div class="viewcode-block" id="plot_regret"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_regret">[docs]</a><span class="k">def</span> <span class="nf">plot_regret</span><span class="p">(</span>
+    <span class="n">obs_values</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">ax</span><span class="p">:</span> <span class="n">Axes</span><span class="p">,</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">show_obs</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="n">mask_fail</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="n">TensorType</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">m_init</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;x&quot;</span><span class="p">,</span>
+    <span class="n">m_add</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;o&quot;</span><span class="p">,</span>
+    <span class="n">c_pass</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:green&quot;</span><span class="p">,</span>
+    <span class="n">c_fail</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:red&quot;</span><span class="p">,</span>
+    <span class="n">c_best</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;tab:purple&quot;</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Draws the simple regret with same colors / markers as the other plots.</span>
+
+<span class="sd">    :param obs_values: TF Tensor or numpy array of objective values</span>
+<span class="sd">    :param ax: a plt axes object</span>
+<span class="sd">    :param show_obs: show observations</span>
+<span class="sd">    :param num_init: initial number of BO points</span>
+<span class="sd">    :param mask_fail: Bool vector, True if the corresponding observation violates the constraint(s)</span>
+<span class="sd">    :param idx_best: index of the best BO point</span>
+<span class="sd">    :param m_init: marker for the initial BO points</span>
+<span class="sd">    :param m_add: marker for the other BO points</span>
+<span class="sd">    :param c_pass: color for the regular BO points</span>
+<span class="sd">    :param c_fail: color for the failed BO points</span>
+<span class="sd">    :param c_best: color for the best BO points</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">col_pts</span><span class="p">,</span> <span class="n">mark_pts</span> <span class="o">=</span> <span class="n">format_point_markers</span><span class="p">(</span>
+        <span class="n">obs_values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">num_init</span><span class="p">,</span> <span class="n">idx_best</span><span class="p">,</span> <span class="n">mask_fail</span><span class="p">,</span> <span class="n">m_init</span><span class="p">,</span> <span class="n">m_add</span><span class="p">,</span> <span class="n">c_pass</span><span class="p">,</span> <span class="n">c_fail</span><span class="p">,</span> <span class="n">c_best</span>
+    <span class="p">)</span>
+
+    <span class="n">safe_obs_values</span> <span class="o">=</span> <span class="n">obs_values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+    <span class="k">if</span> <span class="n">mask_fail</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">safe_obs_values</span><span class="p">[</span><span class="n">mask_fail</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">obs_values</span><span class="p">)</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">minimum</span><span class="o">.</span><span class="n">accumulate</span><span class="p">(</span><span class="n">safe_obs_values</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:orange&quot;</span><span class="p">)</span>
+
+    <span class="k">if</span> <span class="n">show_obs</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">obs_values</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]):</span>
+            <span class="n">ax</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">obs_values</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">c</span><span class="o">=</span><span class="n">col_pts</span><span class="p">[</span><span class="n">i</span><span class="p">],</span> <span class="n">marker</span><span class="o">=</span><span class="n">mark_pts</span><span class="p">[</span><span class="n">i</span><span class="p">])</span>
+
+    <span class="n">ax</span><span class="o">.</span><span class="n">axvline</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="n">num_init</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;tab:blue&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="plot_gp_2d"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_gp_2d">[docs]</a><span class="k">def</span> <span class="nf">plot_gp_2d</span><span class="p">(</span>
+    <span class="n">model</span><span class="p">:</span> <span class="n">GPModel</span><span class="p">,</span>
+    <span class="n">mins</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">maxs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">grid_density</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">100</span><span class="p">,</span>
+    <span class="n">contour</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="n">xlabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">ylabel</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">str</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">figsize</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">tuple</span><span class="p">[</span><span class="nb">float</span><span class="p">,</span> <span class="nb">float</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span><span class="mi">8</span><span class="p">,</span> <span class="mi">6</span><span class="p">),</span>
+    <span class="n">predict_y</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Figure</span><span class="p">,</span> <span class="n">Axes</span><span class="p">]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    2D/3D plot of a gp model for a grid of size grid_density**2 between mins and maxs</span>
+
+<span class="sd">    :param model: a gpflow model</span>
+<span class="sd">    :param mins: 2 lower bounds</span>
+<span class="sd">    :param maxs: 2 upper bounds</span>
+<span class="sd">    :param grid_density: positive integer for the grid size</span>
+<span class="sd">    :param contour: Boolean. If False, a 3d plot is produced</span>
+<span class="sd">    :param xlabel: optional string</span>
+<span class="sd">    :param ylabel: optional string</span>
+<span class="sd">    :param figsize: optional figsize</span>
+<span class="sd">    :param predict_y: predict_y or predict_f</span>
+<span class="sd">    :return: figure and axes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">mins</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">mins</span><span class="p">)</span>
+    <span class="n">maxs</span> <span class="o">=</span> <span class="n">to_numpy</span><span class="p">(</span><span class="n">maxs</span><span class="p">)</span>
+
+    <span class="c1"># Create a regular grid on the parameter space</span>
+    <span class="n">Xplot</span><span class="p">,</span> <span class="n">xx</span><span class="p">,</span> <span class="n">yy</span> <span class="o">=</span> <span class="n">create_grid</span><span class="p">(</span><span class="n">mins</span><span class="o">=</span><span class="n">mins</span><span class="p">,</span> <span class="n">maxs</span><span class="o">=</span><span class="n">maxs</span><span class="p">,</span> <span class="n">grid_density</span><span class="o">=</span><span class="n">grid_density</span><span class="p">)</span>
+
+    <span class="c1"># Evaluate objective function</span>
+    <span class="k">if</span> <span class="n">predict_y</span><span class="p">:</span>
+        <span class="n">Fmean</span><span class="p">,</span> <span class="n">Fvar</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_y</span><span class="p">(</span><span class="n">Xplot</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">Fmean</span><span class="p">,</span> <span class="n">Fvar</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict_f</span><span class="p">(</span><span class="n">Xplot</span><span class="p">)</span>
+
+    <span class="n">n_output</span> <span class="o">=</span> <span class="n">Fmean</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">contour</span><span class="p">:</span>
+        <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
+            <span class="n">n_output</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">squeeze</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">sharex</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">sharey</span><span class="o">=</span><span class="s2">&quot;all&quot;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span>
+        <span class="p">)</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="n">figsize</span><span class="p">)</span>
+
+    <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_output</span><span class="p">):</span>
+        <span class="c1"># Apply log transformation</span>
+        <span class="n">fmean</span> <span class="o">=</span> <span class="n">Fmean</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+        <span class="n">fvar</span> <span class="o">=</span> <span class="n">Fvar</span><span class="p">[:,</span> <span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+        <span class="c1"># Either plot contour of surface</span>
+        <span class="k">if</span> <span class="n">contour</span><span class="p">:</span>
+            <span class="n">axx</span> <span class="o">=</span> <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span>
+            <span class="n">plot_surface</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">fmean</span><span class="p">,</span> <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="n">contour</span><span class="o">=</span><span class="n">contour</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">plot_surface</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">fvar</span><span class="p">,</span> <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">1</span><span class="p">],</span> <span class="n">contour</span><span class="o">=</span><span class="n">contour</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">1.0</span><span class="p">)</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;mean&quot;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;variance&quot;</span><span class="p">)</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+            <span class="n">ax</span><span class="p">[</span><span class="n">k</span><span class="p">,</span> <span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ax</span> <span class="o">=</span> <span class="n">axx</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">n_output</span><span class="p">,</span> <span class="n">k</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">projection</span><span class="o">=</span><span class="s2">&quot;3d&quot;</span><span class="p">)</span>
+            <span class="n">plot_surface</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">fmean</span><span class="p">,</span> <span class="n">axx</span><span class="p">,</span> <span class="n">contour</span><span class="o">=</span><span class="n">contour</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">ucb</span> <span class="o">=</span> <span class="n">fmean</span> <span class="o">+</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fvar</span><span class="p">)</span>
+            <span class="n">lcb</span> <span class="o">=</span> <span class="n">fmean</span> <span class="o">-</span> <span class="mf">2.0</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">fvar</span><span class="p">)</span>
+            <span class="n">plot_surface</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">ucb</span><span class="p">,</span> <span class="n">axx</span><span class="p">,</span> <span class="n">contour</span><span class="o">=</span><span class="n">contour</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="n">plot_surface</span><span class="p">(</span><span class="n">xx</span><span class="p">,</span> <span class="n">yy</span><span class="p">,</span> <span class="n">lcb</span><span class="p">,</span> <span class="n">axx</span><span class="p">,</span> <span class="n">contour</span><span class="o">=</span><span class="n">contour</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.1</span><span class="p">)</span>
+            <span class="n">axx</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="n">xlabel</span><span class="p">)</span>
+            <span class="n">axx</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="n">ylabel</span><span class="p">)</span>
+            <span class="n">axx</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+            <span class="n">axx</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="n">mins</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">maxs</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<div class="viewcode-block" id="plot_trust_region_history_2d"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.plot_trust_region_history_2d">[docs]</a><span class="k">def</span> <span class="nf">plot_trust_region_history_2d</span><span class="p">(</span>
+    <span class="n">obj_func</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">],</span>
+    <span class="n">mins</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">maxs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">history</span><span class="p">:</span> <span class="n">Record</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModel</span><span class="p">]</span> <span class="o">|</span> <span class="n">FrozenRecord</span><span class="p">[</span><span class="n">StateType</span><span class="p">,</span> <span class="n">ProbabilisticModel</span><span class="p">],</span>
+    <span class="n">num_query_points</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">num_init</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">int</span><span class="p">]</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="mf">0.3</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">Optional</span><span class="p">[</span><span class="n">Figure</span><span class="p">],</span> <span class="n">Optional</span><span class="p">[</span><span class="n">Axes</span><span class="p">]]:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Plot the contour of the objective function, query points and the trust regions for a particular</span>
+<span class="sd">    step of the optimization process.</span>
+
+<span class="sd">    :param obj_func: the objective function that returns a n-array given a [n, d] array</span>
+<span class="sd">    :param mins: search space 2D lower bounds</span>
+<span class="sd">    :param maxs: search space 2D upper bounds</span>
+<span class="sd">    :param history: the optimization history for a particular step of the optimization process</span>
+<span class="sd">    :param num_query_points: total number of query points in this step</span>
+<span class="sd">    :param num_init: initial number of BO points</span>
+<span class="sd">    :param alpha: transparency for the trust regions</span>
+<span class="sd">    :return: figure and axes</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">state</span> <span class="o">=</span> <span class="n">history</span><span class="o">.</span><span class="n">acquisition_state</span>
+    <span class="k">if</span> <span class="n">state</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># If state is None, then there is no trust region state to plot.</span>
+        <span class="k">return</span> <span class="kc">None</span><span class="p">,</span> <span class="kc">None</span>
+
+    <span class="c1"># Plot objective contour.</span>
+    <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plot_function_2d</span><span class="p">(</span>
+        <span class="n">obj_func</span><span class="p">,</span>
+        <span class="n">mins</span><span class="p">,</span>
+        <span class="n">maxs</span><span class="p">,</span>
+        <span class="n">grid_density</span><span class="o">=</span><span class="mi">40</span><span class="p">,</span>
+        <span class="n">contour</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">assert</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">state</span><span class="p">,</span> <span class="s2">&quot;acquisition_space&quot;</span><span class="p">)</span>
+    <span class="n">acquisition_space</span> <span class="o">=</span> <span class="n">state</span><span class="o">.</span><span class="n">acquisition_space</span>
+
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">acquisition_space</span><span class="p">,</span> <span class="n">TaggedMultiSearchSpace</span><span class="p">):</span>
+        <span class="n">spaces</span> <span class="o">=</span> <span class="p">[</span><span class="n">acquisition_space</span><span class="o">.</span><span class="n">get_subspace</span><span class="p">(</span><span class="n">tag</span><span class="p">)</span> <span class="k">for</span> <span class="n">tag</span> <span class="ow">in</span> <span class="n">acquisition_space</span><span class="o">.</span><span class="n">subspace_tags</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">spaces</span> <span class="o">=</span> <span class="p">[</span><span class="n">acquisition_space</span><span class="p">]</span>
+
+    <span class="n">num_spaces</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">spaces</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">num_query_points</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">num_query_points</span> <span class="o">=</span> <span class="n">num_spaces</span>  <span class="c1"># Assume one query point per subspace.</span>
+
+    <span class="k">assert</span> <span class="n">num_query_points</span> <span class="o">%</span> <span class="n">num_spaces</span> <span class="o">==</span> <span class="mi">0</span><span class="p">,</span> <span class="p">(</span>
+        <span class="sa">f</span><span class="s2">&quot;Number of query points (</span><span class="si">{</span><span class="n">num_query_points</span><span class="si">}</span><span class="s2">) must be a multiple of the number of &quot;</span>
+        <span class="sa">f</span><span class="s2">&quot;spaces (</span><span class="si">{</span><span class="n">num_spaces</span><span class="si">}</span><span class="s2">).&quot;</span>
+    <span class="p">)</span>
+    <span class="n">num_query_points_per_space</span> <span class="o">=</span> <span class="n">num_query_points</span> <span class="o">//</span> <span class="n">num_spaces</span>
+
+    <span class="c1"># If there are local datasets, use them to generate the colors for the query points.</span>
+    <span class="c1"># Otherwise, use the global dataset and assume the last `num_query_points` points are new.</span>
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">history</span><span class="o">.</span><span class="n">datasets</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="c1"># Expect there to be an objective dataset for each subspace.</span>
+        <span class="n">datasets</span> <span class="o">=</span> <span class="p">[</span><span class="n">history</span><span class="o">.</span><span class="n">datasets</span><span class="p">[</span><span class="n">LocalizedTag</span><span class="p">(</span><span class="n">OBJECTIVE</span><span class="p">,</span> <span class="n">i</span><span class="p">)]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_spaces</span><span class="p">)]</span>
+
+        <span class="n">_new_points_mask</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span>
+        <span class="p">]</span>
+        <span class="c1"># New points in each dataset are at the end.</span>
+        <span class="k">for</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">_new_points_mask</span><span class="p">:</span>
+            <span class="n">mask</span><span class="p">[</span><span class="o">-</span><span class="n">num_query_points_per_space</span><span class="p">:]</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="c1"># Concatenate the masks.</span>
+        <span class="n">new_points_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">_new_points_mask</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">num_init</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">_num_init_mask</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span>
+            <span class="p">]</span>
+            <span class="c1"># First num_init points in each dataset are the init points.</span>
+            <span class="k">for</span> <span class="n">mask</span> <span class="ow">in</span> <span class="n">_num_init_mask</span><span class="p">:</span>
+                <span class="n">mask</span><span class="p">[:</span><span class="n">num_init</span><span class="p">]</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="c1"># Concatenate the masks.</span>
+            <span class="n">num_init</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">(</span><span class="n">_num_init_mask</span><span class="p">)</span>
+
+        <span class="c1"># Get the overall query points.</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span> <span class="k">for</span> <span class="n">dataset</span> <span class="ow">in</span> <span class="n">datasets</span><span class="p">])</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">history</span><span class="o">.</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span>  <span class="c1"># All query points.</span>
+        <span class="n">new_points_mask</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">zeros</span><span class="p">(</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="nb">bool</span><span class="p">)</span>
+        <span class="n">new_points_mask</span><span class="p">[</span><span class="o">-</span><span class="n">num_query_points</span><span class="p">:]</span> <span class="o">=</span> <span class="kc">True</span>
+
+    <span class="c1"># Plot trust regions.</span>
+    <span class="n">space_colors</span> <span class="o">=</span> <span class="p">[</span><span class="n">rgb2hex</span><span class="p">(</span><span class="n">color</span><span class="p">)</span> <span class="k">for</span> <span class="n">color</span> <span class="ow">in</span> <span class="n">cm</span><span class="o">.</span><span class="n">rainbow</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">num_spaces</span><span class="p">))]</span>
+    <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">space</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">spaces</span><span class="p">):</span>
+        <span class="n">lb</span> <span class="o">=</span> <span class="n">space</span><span class="o">.</span><span class="n">lower</span>
+        <span class="n">ub</span> <span class="o">=</span> <span class="n">space</span><span class="o">.</span><span class="n">upper</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span>
+            <span class="n">Rectangle</span><span class="p">(</span>
+                <span class="p">(</span><span class="n">lb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">lb</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span>
+                <span class="n">ub</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">lb</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+                <span class="n">ub</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="n">lb</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+                <span class="n">facecolor</span><span class="o">=</span><span class="n">space_colors</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">edgecolor</span><span class="o">=</span><span class="n">space_colors</span><span class="p">[</span><span class="n">i</span><span class="p">],</span>
+                <span class="n">alpha</span><span class="o">=</span><span class="n">alpha</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+
+    <span class="c1"># Plot new query points, using failure mask to color them.</span>
+    <span class="n">point_colors</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="n">np</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span>
+            <span class="n">space_colors</span> <span class="o">*</span> <span class="n">num_query_points_per_space</span><span class="p">,</span> <span class="p">[</span><span class="n">num_query_points_per_space</span><span class="p">,</span> <span class="n">num_spaces</span><span class="p">]</span>
+        <span class="p">)</span>
+        <span class="o">.</span><span class="n">flatten</span><span class="p">(</span><span class="s2">&quot;F&quot;</span><span class="p">)</span>
+        <span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+    <span class="p">)</span>
+    <span class="n">plot_bo_points</span><span class="p">(</span>
+        <span class="n">query_points</span><span class="p">,</span>
+        <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span>
+        <span class="n">num_init</span><span class="p">,</span>
+        <span class="n">mask_fail</span><span class="o">=</span><span class="n">new_points_mask</span><span class="p">,</span>
+        <span class="n">c_pass</span><span class="o">=</span><span class="s2">&quot;black&quot;</span><span class="p">,</span>
+        <span class="n">c_fail</span><span class="o">=</span><span class="n">point_colors</span><span class="p">,</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">fig</span><span class="p">,</span> <span class="n">ax</span></div>
+
+
+<div class="viewcode-block" id="convert_figure_to_frame"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.convert_figure_to_frame">[docs]</a><span class="k">def</span> <span class="nf">convert_figure_to_frame</span><span class="p">(</span><span class="n">fig</span><span class="p">:</span> <span class="n">plt</span><span class="o">.</span><span class="n">Figure</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts a matplotlib figure to an array of pixels.</span>
+
+<span class="sd">    :param fig: a matplotlib figure</span>
+<span class="sd">    :return: an array of pixels - a frame</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">draw</span><span class="p">()</span>
+    <span class="n">size_pix</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">get_size_inches</span><span class="p">()</span> <span class="o">*</span> <span class="n">fig</span><span class="o">.</span><span class="n">dpi</span>
+    <span class="n">image</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">frombuffer</span><span class="p">(</span><span class="n">fig</span><span class="o">.</span><span class="n">canvas</span><span class="o">.</span><span class="n">tostring_rgb</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="s2">&quot;uint8&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">image</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">size_pix</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="nb">int</span><span class="p">))</span> <span class="o">+</span> <span class="p">[</span><span class="mi">3</span><span class="p">])</span></div>
+
+
+<div class="viewcode-block" id="convert_frames_to_gif"><a class="viewcode-back" href="../../../../autoapi/trieste/experimental/plotting/plotting/index.html#trieste.experimental.plotting.plotting.convert_frames_to_gif">[docs]</a><span class="k">def</span> <span class="nf">convert_frames_to_gif</span><span class="p">(</span><span class="n">frames</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">duration</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">5000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Converts a sequence of frames (arrays of pixels) to a gif.</span>
+
+<span class="sd">    :param frames: sequence of frames</span>
+<span class="sd">    :param duration: duration of each frame in milliseconds</span>
+<span class="sd">    :return: gif file</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">gif_file</span> <span class="o">=</span> <span class="n">io</span><span class="o">.</span><span class="n">BytesIO</span><span class="p">()</span>
+    <span class="n">imageio</span><span class="o">.</span><span class="n">mimsave</span><span class="p">(</span><span class="n">gif_file</span><span class="p">,</span> <span class="n">frames</span><span class="p">,</span> <span class="nb">format</span><span class="o">=</span><span class="s2">&quot;gif&quot;</span><span class="p">,</span> <span class="n">loop</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">duration</span><span class="o">=</span><span class="n">duration</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gif_file</span></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

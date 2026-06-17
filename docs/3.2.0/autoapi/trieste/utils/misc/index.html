@@ -1,0 +1,866 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>trieste.utils.misc &#8212; trieste 3.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'autoapi/trieste/utils/misc/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.2.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.2.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.utils.misc</span></code></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="module-trieste.utils.misc">
+<span id="trieste-utils-misc"></span><h1><a class="reference internal" href="#module-trieste.utils.misc" title="trieste.utils.misc"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.utils.misc</span></code></a><a class="headerlink" href="#module-trieste.utils.misc" title="Permalink to this heading">#</a></h1>
+<section id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this heading">#</a></h2>
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.misc.C">
+<span class="sig-name descname"><span class="pre">C</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#C"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.C" title="Permalink to this definition">#</a></dt>
+<dd><p>A type variable bound to <cite>typing.Callable</cite>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.jit">
+<span class="sig-name descname"><span class="pre">jit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">apply</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">optimize_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">C</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">C</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#jit"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.jit" title="Permalink to this definition">#</a></dt>
+<dd><p>A decorator that conditionally wraps a function with <cite>tf.function</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>apply</strong> – If <cite>True</cite>, the decorator is equivalent to <cite>tf.function</cite>. If <cite>False</cite>, the decorator
+does nothing.</p></li>
+<li><p><strong>optimize_kwargs</strong> – Additional arguments to <cite>tf.function</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The decorator.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.shapes_equal">
+<span class="sig-name descname"><span class="pre">shapes_equal</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">this</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">that</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#shapes_equal"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.shapes_equal" title="Permalink to this definition">#</a></dt>
+<dd><p>Return a scalar tensor containing: <cite>True</cite> if <code class="docutils literal notranslate"><span class="pre">this</span></code> and <code class="docutils literal notranslate"><span class="pre">that</span></code> have equal runtime shapes,
+else <cite>False</cite>.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.to_numpy">
+<span class="sig-name descname"><span class="pre">to_numpy</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">t</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">numpy.ndarray</span><span class="p"><span class="pre">[</span></span><span class="pre">Any</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#to_numpy"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.to_numpy" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>t</strong> – An array-like object.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><code class="docutils literal notranslate"><span class="pre">t</span></code> as a NumPy array.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.misc.ResultType">
+<span class="sig-name descname"><span class="pre">ResultType</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#ResultType"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.ResultType" title="Permalink to this definition">#</a></dt>
+<dd><p>An unbounded covariant type variable.</p>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.utils.misc.Result">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Result</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Result"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Result" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">Generic</span></code>[<a class="reference internal" href="#trieste.utils.misc.ResultType" title="trieste.utils.misc.ResultType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ResultType</span></code></a>], <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
+<p>Represents the result of an operation that can fail with an exception. It contains either the
+operation return value (in an <a class="reference internal" href="#trieste.utils.misc.Ok" title="trieste.utils.misc.Ok"><code class="xref py py-class docutils literal notranslate"><span class="pre">Ok</span></code></a>), or the exception raised (in an <a class="reference internal" href="#trieste.utils.misc.Err" title="trieste.utils.misc.Err"><code class="xref py py-class docutils literal notranslate"><span class="pre">Err</span></code></a>).</p>
+<p>To check whether instances such as</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">res</span> <span class="o">=</span> <span class="n">Ok</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">other_res</span> <span class="o">=</span> <span class="n">Err</span><span class="p">(</span><span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;whoops&quot;</span><span class="p">))</span>
+</pre></div>
+</div>
+<p>contain a value, use <a class="reference internal" href="#trieste.utils.misc.Result.is_ok" title="trieste.utils.misc.Result.is_ok"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_ok</span></code></a> (or <a class="reference internal" href="#trieste.utils.misc.Result.is_err" title="trieste.utils.misc.Result.is_err"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_err</span></code></a>)</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="o">.</span><span class="n">is_ok</span>
+<span class="go">True</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">other_res</span><span class="o">.</span><span class="n">is_ok</span>
+<span class="go">False</span>
+</pre></div>
+</div>
+<p>We can access the value if it <a class="reference internal" href="#trieste.utils.misc.Result.is_ok" title="trieste.utils.misc.Result.is_ok"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_ok</span></code></a> using <a class="reference internal" href="#trieste.utils.misc.Result.unwrap" title="trieste.utils.misc.Result.unwrap"><code class="xref py py-meth docutils literal notranslate"><span class="pre">unwrap()</span></code></a>.</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">res</span><span class="o">.</span><span class="n">unwrap</span><span class="p">()</span>
+<span class="go">1</span>
+</pre></div>
+</div>
+<p>Trying to access the value of a failed <a class="reference internal" href="#trieste.utils.misc.Result" title="trieste.utils.misc.Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a>, or <a class="reference internal" href="#trieste.utils.misc.Err" title="trieste.utils.misc.Err"><code class="xref py py-class docutils literal notranslate"><span class="pre">Err</span></code></a>, will raise the wrapped
+exception</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">other_res</span><span class="o">.</span><span class="n">unwrap</span><span class="p">()</span>
+<span class="gt">Traceback (most recent call last):</span>
+<span class="w">    </span><span class="o">...</span>
+<span class="gr">ValueError</span>: <span class="n">whoops</span>
+</pre></div>
+</div>
+<p><strong>Note:</strong> This class is not intended to be subclassed other than by <a class="reference internal" href="#trieste.utils.misc.Ok" title="trieste.utils.misc.Ok"><code class="xref py py-class docutils literal notranslate"><span class="pre">Ok</span></code></a> and
+<a class="reference internal" href="#trieste.utils.misc.Err" title="trieste.utils.misc.Err"><code class="xref py py-class docutils literal notranslate"><span class="pre">Err</span></code></a>.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.utils.misc.Result.is_ok">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_ok</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Result.is_ok"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Result.is_ok" title="Permalink to this definition">#</a></dt>
+<dd><p><cite>True</cite> if this <a class="reference internal" href="#trieste.utils.misc.Result" title="trieste.utils.misc.Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> contains a value, else <cite>False</cite>.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.utils.misc.Result.is_err">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_err</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Result.is_err"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Result.is_err" title="Permalink to this definition">#</a></dt>
+<dd><p><cite>True</cite> if this <a class="reference internal" href="#trieste.utils.misc.Result" title="trieste.utils.misc.Result"><code class="xref py py-class docutils literal notranslate"><span class="pre">Result</span></code></a> contains an error, else <cite>False</cite>. The opposite of
+<a class="reference internal" href="#trieste.utils.misc.Result.is_ok" title="trieste.utils.misc.Result.is_ok"><code class="xref py py-attr docutils literal notranslate"><span class="pre">is_ok</span></code></a>.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.utils.misc.Result.unwrap">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">unwrap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ResultType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Result.unwrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Result.unwrap" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The contained value, if it exists.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.12)"><strong>Exception</strong></a> – If there is no contained value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.utils.misc.Ok">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Ok</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">value</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">ResultType</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Ok"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Ok" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.utils.misc.Result" title="trieste.utils.misc.Result"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Result</span></code></a>[<a class="reference internal" href="#trieste.utils.misc.ResultType" title="trieste.utils.misc.ResultType"><code class="xref py py-obj docutils literal notranslate"><span class="pre">ResultType</span></code></a>]</p>
+<p>Wraps the result of a successful evaluation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>value</strong> – The result of a successful evaluation.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.utils.misc.Ok.is_ok">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_ok</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Ok.is_ok"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Ok.is_ok" title="Permalink to this definition">#</a></dt>
+<dd><p><cite>True</cite> always.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.utils.misc.Ok.unwrap">
+<span class="sig-name descname"><span class="pre">unwrap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">ResultType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Ok.unwrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Ok.unwrap" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The wrapped value.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.utils.misc.Err">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Err</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">exc</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.12)"><span class="pre">Exception</span></a></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Err"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Err" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.utils.misc.Result" title="trieste.utils.misc.Result"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Result</span></code></a>[<code class="xref py py-obj docutils literal notranslate"><span class="pre">NoReturn</span></code>]</p>
+<p>Wraps the exception that occurred during a failed evaluation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>exc</strong> – The exception that occurred.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.utils.misc.Err.is_ok">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_ok</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Err.is_ok"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Err.is_ok" title="Permalink to this definition">#</a></dt>
+<dd><p><cite>False</cite> always.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.utils.misc.Err.unwrap">
+<span class="sig-name descname"><span class="pre">unwrap</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">NoReturn</span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Err.unwrap"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Err.unwrap" title="Permalink to this definition">#</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.12)"><strong>Exception</strong></a> – Always. Raises the wrapped exception.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.utils.misc.DEFAULTS">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DEFAULTS</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#DEFAULTS"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.DEFAULTS" title="Permalink to this definition">#</a></dt>
+<dd><p>Default constants used in Trieste.</p>
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.utils.misc.DEFAULTS.JITTER">
+<span class="sig-name descname"><span class="pre">JITTER</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">typing_extensions.Final</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/functions.html#float" title="(in Python v3.12)"><span class="pre">float</span></a><span class="p"><span class="pre">]</span></span></em><em class="property"><span class="w"> </span><span class="p"><span class="pre">=</span></span><span class="w"> </span><span class="pre">1e-06</span></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#DEFAULTS.JITTER"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.DEFAULTS.JITTER" title="Permalink to this definition">#</a></dt>
+<dd><p>The default jitter, typically used to stabilise computations near singular points, such as in
+Cholesky decomposition.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.misc.K">
+<span class="sig-name descname"><span class="pre">K</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#K"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.K" title="Permalink to this definition">#</a></dt>
+<dd><p>An unbound type variable.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.misc.U">
+<span class="sig-name descname"><span class="pre">U</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#U"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.U" title="Permalink to this definition">#</a></dt>
+<dd><p>An unbound type variable.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.misc.V">
+<span class="sig-name descname"><span class="pre">V</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#V"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.V" title="Permalink to this definition">#</a></dt>
+<dd><p>An unbound type variable.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.map_values">
+<span class="sig-name descname"><span class="pre">map_values</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">f</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">U</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">V</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mapping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">K</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">U</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">K</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">V</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#map_values"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.map_values" title="Permalink to this definition">#</a></dt>
+<dd><p>Apply <code class="docutils literal notranslate"><span class="pre">f</span></code> to each value in <code class="docutils literal notranslate"><span class="pre">mapping</span></code> and return the result. If <code class="docutils literal notranslate"><span class="pre">f</span></code> does not modify its
+argument, <a class="reference internal" href="#trieste.utils.misc.map_values" title="trieste.utils.misc.map_values"><code class="xref py py-func docutils literal notranslate"><span class="pre">map_values()</span></code></a> does not modify <code class="docutils literal notranslate"><span class="pre">mapping</span></code>. For example:</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="kn">import</span> <span class="nn">math</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">squares</span> <span class="o">=</span> <span class="p">{</span><span class="s1">&#39;a&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;b&#39;</span><span class="p">:</span> <span class="mi">4</span><span class="p">,</span> <span class="s1">&#39;c&#39;</span><span class="p">:</span> <span class="mi">9</span><span class="p">}</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">map_values</span><span class="p">(</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">,</span> <span class="n">squares</span><span class="p">)[</span><span class="s1">&#39;b&#39;</span><span class="p">]</span>
+<span class="go">2.0</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">squares</span>
+<span class="go">{&#39;a&#39;: 1, &#39;b&#39;: 4, &#39;c&#39;: 9}</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>f</strong> – The function to apply to the values in <code class="docutils literal notranslate"><span class="pre">mapping</span></code>.</p></li>
+<li><p><strong>mapping</strong> – A mapping.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new mapping, whose keys are the same as <code class="docutils literal notranslate"><span class="pre">mapping</span></code>, and values are the result of
+applying <code class="docutils literal notranslate"><span class="pre">f</span></code> to each value in <code class="docutils literal notranslate"><span class="pre">mapping</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py data">
+<dt class="sig sig-object py" id="trieste.utils.misc.T">
+<span class="sig-name descname"><span class="pre">T</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#T"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.T" title="Permalink to this definition">#</a></dt>
+<dd><p>An unbound type variable.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.get_value_for_tag">
+<span class="sig-name descname"><span class="pre">get_value_for_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">tags</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.Tag</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#get_value_for_tag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.get_value_for_tag" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the value from a mapping for the first tag found from a sequence of tags.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>mapping</strong> – A mapping from tags to values.</p></li>
+<li><p><strong>tags</strong> – A tag or a sequence of tags. Sequence is searched in order. If no tags are
+provided, the default tag OBJECTIVE is used.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The chosen tag and value of the tag in the mapping, or None for each if the mapping is
+None.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If none of the tags are in the mapping and the mapping is not None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.utils.misc.LocalizedTag">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">LocalizedTag</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#LocalizedTag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.LocalizedTag" title="Permalink to this definition">#</a></dt>
+<dd><p>Manage a tag for a local model or dataset. These have a global tag and a local index.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.utils.misc.LocalizedTag.is_local">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">is_local</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#LocalizedTag.is_local"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.LocalizedTag.is_local" title="Permalink to this definition">#</a></dt>
+<dd><p>Return True if the tag is a local tag.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.utils.misc.LocalizedTag.global_tag">
+<span class="sig-name descname"><span class="pre">global_tag</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">trieste.types.Tag</span></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#LocalizedTag.global_tag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.LocalizedTag.global_tag" title="Permalink to this definition">#</a></dt>
+<dd><p>The global portion of the tag.</p>
+</dd></dl>
+
+<dl class="py attribute">
+<dt class="sig sig-object py" id="trieste.utils.misc.LocalizedTag.local_index">
+<span class="sig-name descname"><span class="pre">local_index</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></em><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#LocalizedTag.local_index"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.LocalizedTag.local_index" title="Permalink to this definition">#</a></dt>
+<dd><p>The local index of the tag.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.utils.misc.LocalizedTag.from_tag">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">from_tag</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">tag</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.Tag</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference internal" href="#trieste.utils.misc.LocalizedTag" title="trieste.utils.misc.LocalizedTag"><span class="pre">LocalizedTag</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="#trieste.utils.misc.LocalizedTag" title="trieste.utils.misc.LocalizedTag"><span class="pre">LocalizedTag</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#LocalizedTag.from_tag"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.LocalizedTag.from_tag" title="Permalink to this definition">#</a></dt>
+<dd><p>Return a LocalizedTag from a given tag.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.ignoring_local_tags">
+<span class="sig-name descname"><span class="pre">ignoring_local_tags</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">mapping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.Tag</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">T</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#ignoring_local_tags"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.ignoring_local_tags" title="Permalink to this definition">#</a></dt>
+<dd><p>Filter out local tags from a mapping, returning a new mapping with only global tags.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>mapping</strong> – A mapping from tags to values.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A new mapping with only global tags.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.utils.misc.Timer">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">Timer</span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#Timer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.Timer" title="Permalink to this definition">#</a></dt>
+<dd><p>Functionality for timing chunks of code. For example:
+&gt;&gt;&gt; from time import sleep
+&gt;&gt;&gt; with Timer() as timer: sleep(2.0)
+&gt;&gt;&gt; timer.time  # doctest: +SKIP
+2.0</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.flatten_leading_dims">
+<span class="sig-name descname"><span class="pre">flatten_leading_dims</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#flatten_leading_dims"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.flatten_leading_dims" title="Permalink to this definition">#</a></dt>
+<dd><p>Flattens the leading dimensions of <cite>x</cite> (all but the last <cite>output_dims</cite> dimensions), and returns
+a function that can be used to restore them (typically after first manipulating the
+flattened tensor).</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc.get_variables">
+<span class="sig-name descname"><span class="pre">get_variables</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">object</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Any</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">tensorflow.Variable</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Ellipsis</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#get_variables"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc.get_variables" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the sequence of variables in an object.</p>
+<p>This is essentially a reimplementation of the <cite>variables</cite> property of tf.Module
+but doesn’t require that we, or any of our substructures, inherit from that.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A sequence of variables of the object (sorted by attribute
+name) followed by variables from all submodules recursively (breadth
+first).</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc._flatten">
+<span class="sig-name descname"><span class="pre">_flatten</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicate</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_traversal_key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expand_composites</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#_flatten"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc._flatten" title="Permalink to this definition">#</a></dt>
+<dd><p>Flattened attribute values in sorted order by attribute name.</p>
+<p>This is taken verbatim from tensorflow core but uses a modified _flatten_module.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.utils.misc._flatten_module">
+<span class="sig-name descname"><span class="pre">_flatten_module</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursive</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">predicate</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attribute_traversal_key</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes_to_ignore</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">with_path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">expand_composites</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">()</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seen</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/utils/misc.html#_flatten_module"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.utils.misc._flatten_module" title="Permalink to this definition">#</a></dt>
+<dd><p>Implementation of <cite>flatten</cite>.</p>
+<p>This is a reimplementation of the equivalent function in tf.Module so
+that we can extract the list of variables from a Trieste model wrapper
+without the need to inherit from it.</p>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#module-contents">Module Contents</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.C"><code class="docutils literal notranslate"><span class="pre">C</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.jit"><code class="docutils literal notranslate"><span class="pre">jit()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.shapes_equal"><code class="docutils literal notranslate"><span class="pre">shapes_equal()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.to_numpy"><code class="docutils literal notranslate"><span class="pre">to_numpy()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.ResultType"><code class="docutils literal notranslate"><span class="pre">ResultType</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Result"><code class="docutils literal notranslate"><span class="pre">Result</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Result.is_ok"><code class="docutils literal notranslate"><span class="pre">Result.is_ok</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Result.is_err"><code class="docutils literal notranslate"><span class="pre">Result.is_err</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Result.unwrap"><code class="docutils literal notranslate"><span class="pre">Result.unwrap()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Ok"><code class="docutils literal notranslate"><span class="pre">Ok</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Ok.is_ok"><code class="docutils literal notranslate"><span class="pre">Ok.is_ok</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Ok.unwrap"><code class="docutils literal notranslate"><span class="pre">Ok.unwrap()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Err"><code class="docutils literal notranslate"><span class="pre">Err</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Err.is_ok"><code class="docutils literal notranslate"><span class="pre">Err.is_ok</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Err.unwrap"><code class="docutils literal notranslate"><span class="pre">Err.unwrap()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.DEFAULTS"><code class="docutils literal notranslate"><span class="pre">DEFAULTS</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.DEFAULTS.JITTER"><code class="docutils literal notranslate"><span class="pre">DEFAULTS.JITTER</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.K"><code class="docutils literal notranslate"><span class="pre">K</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.U"><code class="docutils literal notranslate"><span class="pre">U</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.V"><code class="docutils literal notranslate"><span class="pre">V</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.map_values"><code class="docutils literal notranslate"><span class="pre">map_values()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.T"><code class="docutils literal notranslate"><span class="pre">T</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.get_value_for_tag"><code class="docutils literal notranslate"><span class="pre">get_value_for_tag()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.LocalizedTag"><code class="docutils literal notranslate"><span class="pre">LocalizedTag</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.LocalizedTag.is_local"><code class="docutils literal notranslate"><span class="pre">LocalizedTag.is_local</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.LocalizedTag.global_tag"><code class="docutils literal notranslate"><span class="pre">LocalizedTag.global_tag</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.LocalizedTag.local_index"><code class="docutils literal notranslate"><span class="pre">LocalizedTag.local_index</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.LocalizedTag.from_tag"><code class="docutils literal notranslate"><span class="pre">LocalizedTag.from_tag()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.ignoring_local_tags"><code class="docutils literal notranslate"><span class="pre">ignoring_local_tags()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.Timer"><code class="docutils literal notranslate"><span class="pre">Timer</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.flatten_leading_dims"><code class="docutils literal notranslate"><span class="pre">flatten_leading_dims()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc.get_variables"><code class="docutils literal notranslate"><span class="pre">get_variables()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc._flatten"><code class="docutils literal notranslate"><span class="pre">_flatten()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.utils.misc._flatten_module"><code class="docutils literal notranslate"><span class="pre">_flatten_module()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

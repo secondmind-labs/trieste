@@ -1,0 +1,17 @@
+:orphan:
+
+:py:mod:`trieste.experimental`
+==============================
+
+.. py:module:: trieste.experimental
+
+
+Subpackages
+-----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 3
+
+   plotting/index.rst
+
+

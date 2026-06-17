@@ -1,0 +1,101 @@
+:py:mod:`trieste.models.keras.sampler`
+======================================
+
+.. py:module:: trieste.models.keras.sampler
+
+.. autoapi-nested-parse::
+
+   This module is the home of the sampling functionality required by some
+   of the Trieste's Keras model wrappers.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: DeepEnsembleTrajectorySampler(model: trieste.models.keras.interface.DeepEnsembleModel, diversify: bool = False, seed: Optional[int] = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectorySampler`\ [\ :py:obj:`trieste.models.keras.interface.DeepEnsembleModel`\ ]
+
+   This class builds functions that approximate a trajectory by randomly choosing a network from
+   the ensemble and using its predicted means as a trajectory.
+
+   Option `diversify` can be used to increase the diversity in case of optimizing very large
+   batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+   the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+   using a reparametrisation trick to speed up computation. Note that quantiles are not true
+   trajectories, so this will likely have some performance costs.
+
+   :param model: The ensemble model to sample from.
+   :param diversify: Whether to use quantiles from the approximate Gaussian distribution of
+       the ensemble as trajectories (`False` by default). See class docstring for details.
+   :param seed: Random number seed to use for trajectory sampling.
+   :raise NotImplementedError: If we try to use the model that is not instance of
+       :class:`DeepEnsembleModel`.
+
+   .. py:method:: get_trajectory() -> trieste.models.interfaces.TrajectoryFunction
+
+      Generate an approximate function draw (trajectory) from the ensemble.
+
+      :return: A trajectory function representing an approximate trajectory
+          from the model, taking an input of shape `[N, B, D]` and returning shape `[N, B, L]`.
+
+
+   .. py:method:: update_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Update a :const:`TrajectoryFunction` to reflect an update in its
+      underlying :class:`DeepEnsembleModel` and resample accordingly.
+
+      Here we rely on the underlying models being updated and we only resample the trajectory.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new trajectory function updated for a new model
+
+
+   .. py:method:: resample_trajectory(trajectory: trieste.models.interfaces.TrajectoryFunction) -> trieste.models.interfaces.TrajectoryFunction
+
+      Efficiently resample a :const:`TrajectoryFunction` in-place to avoid function retracing
+      with every new sample.
+
+      :param trajectory: The trajectory function to be resampled.
+      :return: The new resampled trajectory function.
+
+
+
+.. py:class:: deep_ensemble_trajectory(model: trieste.models.keras.interface.DeepEnsembleModel, diversify: bool, seed: Optional[int] = None)
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectoryFunctionClass`
+
+   Generate an approximate function draw (trajectory) by randomly choosing a batch B of
+   networks from the ensemble and using their predicted means as trajectories.
+
+   Option `diversify` can be used to increase the diversity in case of optimizing very large
+   batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+   the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+   using a reparametrisation trick to speed up computation. Note that quantiles are not true
+   trajectories, so this will likely have some performance costs.
+
+   :param model: The model of the objective function.
+   :param diversify: Whether to use samples from final probabilistic layer as trajectories
+       or mean predictions.
+   :param seed: Optional RNG seed.
+
+   .. py:method:: __call__(x: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call trajectory function. Note that we are flattening the batch dimension and
+      doing a forward pass with each network in the ensemble with the whole batch. This is
+      somewhat wasteful, but is necessary given the underlying ``KerasEnsemble`` network
+      model.
+
+
+   .. py:method:: resample() -> None
+
+      Efficiently resample network indices in-place, without retracing.
+
+
+   .. py:method:: get_state() -> Dict[str, trieste.types.TensorType]
+
+      Return internal state variables.
+
+
+

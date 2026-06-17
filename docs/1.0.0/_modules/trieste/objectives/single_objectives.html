@@ -1,0 +1,857 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.objectives.single_objectives &#8212; trieste 1.0.0 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../" src="../../../_static/documentation_options.js"></script>
+    <script src="../../../_static/jquery.js"></script>
+    <script src="../../../_static/underscore.js"></script>
+    <script src="../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../index.html">
+  <img src="../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../autoapi/trieste/index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        1.0.0  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables _modules/trieste/objectives/single_objectives and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '1.0.0'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "_modules/trieste/objectives/single_objectives.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "_modules/trieste/objectives/single_objectives.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "1.0.0") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <h1>Source code for trieste.objectives.single_objectives</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module contains toy objective functions, useful for experimentation. A number of them have been</span>
+<span class="sd">taken from `this Virtual Library of Simulation Experiments</span>
+<span class="sd">&lt;https://web.archive.org/web/20211015101644/https://www.sfu.ca/~ssurjano/&gt; (:cite:`ssurjano2021`)`_.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">dataclasses</span> <span class="kn">import</span> <span class="n">dataclass</span>
+<span class="kn">from</span> <span class="nn">math</span> <span class="kn">import</span> <span class="n">pi</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="kn">from</span> <span class="nn">..space</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">Constraint</span><span class="p">,</span> <span class="n">LinearConstraint</span><span class="p">,</span> <span class="n">NonlinearConstraint</span>
+<span class="kn">from</span> <span class="nn">..types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="ObjectiveTestProblem"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ObjectiveTestProblem">[docs]</a><span class="k">class</span> <span class="nc">ObjectiveTestProblem</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience container class for synthetic objective test functions.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ObjectiveTestProblem.name"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ObjectiveTestProblem.name">[docs]</a>    <span class="n">name</span><span class="p">:</span> <span class="nb">str</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The test function name&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ObjectiveTestProblem.objective"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ObjectiveTestProblem.objective">[docs]</a>    <span class="n">objective</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[[</span><span class="n">TensorType</span><span class="p">],</span> <span class="n">TensorType</span><span class="p">]</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The synthetic test function&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ObjectiveTestProblem.search_space"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ObjectiveTestProblem.search_space">[docs]</a>    <span class="n">search_space</span><span class="p">:</span> <span class="n">Box</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The (continuous) search space of the test function&quot;&quot;&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="ObjectiveTestProblem.dim"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ObjectiveTestProblem.dim">[docs]</a>    <span class="k">def</span> <span class="nf">dim</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The input dimensionality of the test function&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_space</span><span class="o">.</span><span class="n">dimension</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="ObjectiveTestProblem.bounds"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ObjectiveTestProblem.bounds">[docs]</a>    <span class="k">def</span> <span class="nf">bounds</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">[</span><span class="nb">list</span><span class="p">[</span><span class="nb">float</span><span class="p">]]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;The input space bounds of the test function&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">]</span></div></div>
+
+
+<span class="nd">@dataclass</span><span class="p">(</span><span class="n">frozen</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<div class="viewcode-block" id="SingleObjectiveTestProblem"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.SingleObjectiveTestProblem">[docs]</a><span class="k">class</span> <span class="nc">SingleObjectiveTestProblem</span><span class="p">(</span><span class="n">ObjectiveTestProblem</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience container class for synthetic single-objective test functions,</span>
+<span class="sd">    including the global minimizers and minimum.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleObjectiveTestProblem.minimizers"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.SingleObjectiveTestProblem.minimizers">[docs]</a>    <span class="n">minimizers</span><span class="p">:</span> <span class="n">TensorType</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The global minimizers of the test function.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="SingleObjectiveTestProblem.minimum"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.SingleObjectiveTestProblem.minimum">[docs]</a>    <span class="n">minimum</span><span class="p">:</span> <span class="n">TensorType</span></div>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The global minimum of the test function.&quot;&quot;&quot;</span></div>
+
+
+<span class="k">def</span> <span class="nf">_branin_internals</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">scale</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">translate</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+    <span class="n">x0</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">]</span> <span class="o">*</span> <span class="mf">15.0</span> <span class="o">-</span> <span class="mf">5.0</span>
+    <span class="n">x1</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="mf">15.0</span>
+
+    <span class="n">b</span> <span class="o">=</span> <span class="mf">5.1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="mi">5</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="mi">6</span>
+    <span class="n">s</span> <span class="o">=</span> <span class="mi">10</span>
+    <span class="n">t</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">/</span> <span class="p">(</span><span class="mi">8</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">scale</span> <span class="o">*</span> <span class="p">((</span><span class="n">x1</span> <span class="o">-</span> <span class="n">b</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">-</span> <span class="n">r</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="n">s</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">t</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">x0</span><span class="p">)</span> <span class="o">+</span> <span class="n">translate</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="branin"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.branin">[docs]</a><span class="k">def</span> <span class="nf">branin</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Branin-Hoo function over :math:`[0, 1]^2`. See</span>
+<span class="sd">    :cite:`Picheny2013` for details.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 2].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">))])</span>
+
+    <span class="k">return</span> <span class="n">_branin_internals</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">10</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="scaled_branin"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.scaled_branin">[docs]</a><span class="k">def</span> <span class="nf">scaled_branin</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See</span>
+<span class="sd">    :cite:`Picheny2013` for details.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 2].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">))])</span>
+
+    <span class="k">return</span> <span class="n">_branin_internals</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span> <span class="o">/</span> <span class="mf">51.95</span><span class="p">,</span> <span class="o">-</span><span class="mf">44.81</span><span class="p">)</span></div>
+
+
+<span class="n">_ORIGINAL_BRANIN_MINIMIZERS</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span>
+    <span class="p">[[</span><span class="o">-</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mf">12.275</span><span class="p">],</span> <span class="p">[</span><span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">,</span> <span class="mf">2.275</span><span class="p">],</span> <span class="p">[</span><span class="mf">9.42478</span><span class="p">,</span> <span class="mf">2.475</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span>
+<span class="p">)</span>
+
+<div class="viewcode-block" id="Branin"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Branin">[docs]</a><span class="n">Branin</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Branin&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">branin</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="p">(</span><span class="n">_ORIGINAL_BRANIN_MINIMIZERS</span> <span class="o">+</span> <span class="p">[</span><span class="mf">5.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">])</span> <span class="o">/</span> <span class="mf">15.0</span><span class="p">,</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="mf">0.397887</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Branin-Hoo function over :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ScaledBranin"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ScaledBranin">[docs]</a><span class="n">ScaledBranin</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Scaled Branin&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">scaled_branin</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Branin</span><span class="o">.</span><span class="n">search_space</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">Branin</span><span class="o">.</span><span class="n">minimizers</span><span class="p">,</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">1.047393</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Branin-Hoo function, rescaled to have zero mean and unit variance over :math:`[0, 1]^2`. See</span>
+<span class="sd">:cite:`Picheny2013` for details.&quot;&quot;&quot;</span>
+
+
+<span class="k">def</span> <span class="nf">_scaled_branin_constraints</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Constraint</span><span class="p">]:</span>
+    <span class="k">def</span> <span class="nf">_nlc_func0</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">c0</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.2</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">c0</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">c0</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">c0</span>
+
+    <span class="k">def</span> <span class="nf">_nlc_func1</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+        <span class="n">c1</span> <span class="o">=</span> <span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="n">x</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">c1</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">c1</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">c1</span>
+
+    <span class="n">constraints</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">Constraint</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">LinearConstraint</span><span class="p">(</span>
+            <span class="n">A</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="o">-</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]]),</span>
+            <span class="n">lb</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.15</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">]),</span>
+            <span class="n">ub</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">]),</span>
+        <span class="p">),</span>
+        <span class="n">NonlinearConstraint</span><span class="p">(</span><span class="n">_nlc_func0</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="o">-</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)),</span>
+        <span class="n">NonlinearConstraint</span><span class="p">(</span><span class="n">_nlc_func1</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="o">-</span><span class="mf">0.8</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="mf">0.0</span><span class="p">)),</span>
+    <span class="p">]</span>
+
+    <span class="k">return</span> <span class="n">constraints</span>
+
+
+<div class="viewcode-block" id="ConstrainedScaledBranin"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ConstrainedScaledBranin">[docs]</a><span class="n">ConstrainedScaledBranin</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Constrained Scaled Branin&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">scaled_branin</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">(</span>
+        <span class="n">Branin</span><span class="o">.</span><span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+        <span class="n">Branin</span><span class="o">.</span><span class="n">search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+        <span class="n">constraints</span><span class="o">=</span><span class="n">_scaled_branin_constraints</span><span class="p">(),</span>
+    <span class="p">),</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.16518</span><span class="p">,</span> <span class="mf">0.66518</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">0.99888</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The rescaled Branin-Hoo function with a combination of linear and nonlinear constraints on the</span>
+<span class="sd">search space.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="simple_quadratic"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.simple_quadratic">[docs]</a><span class="k">def</span> <span class="nf">simple_quadratic</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 2].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">))])</span>
+
+    <span class="k">return</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span></div>
+
+
+<div class="viewcode-block" id="SimpleQuadratic"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.SimpleQuadratic">[docs]</a><span class="n">SimpleQuadratic</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Simple Quadratic&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">simple_quadratic</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Branin</span><span class="o">.</span><span class="n">search_space</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">4.0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;A trivial quadratic function over :math:`[0, 1]^2`. Useful for quick testing.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="gramacy_lee"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.gramacy_lee">[docs]</a><span class="k">def</span> <span class="nf">gramacy_lee</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Gramacy &amp; Lee function, typically evaluated over :math:`[0.5, 2.5]`. See</span>
+<span class="sd">    :cite:`gramacy2012cases` for details.</span>
+
+<span class="sd">    :param x: Where to evaluate the function, with shape [..., 1].</span>
+<span class="sd">    :return: The function values, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">))])</span>
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="mi">10</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x</span><span class="p">)</span> <span class="o">+</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">4</span></div>
+
+
+<div class="viewcode-block" id="GramacyLee"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.GramacyLee">[docs]</a><span class="n">GramacyLee</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Gramacy &amp; Lee&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">gramacy_lee</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">2.5</span><span class="p">]),</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.548562</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">0.869011</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Gramacy &amp; Lee function, typically evaluated over :math:`[0.5, 2.5]`. See</span>
+<span class="sd">:cite:`gramacy2012cases` for details.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="logarithmic_goldstein_price"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.logarithmic_goldstein_price">[docs]</a><span class="k">def</span> <span class="nf">logarithmic_goldstein_price</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over</span>
+<span class="sd">    :math:`[0, 1]^2`. See :cite:`Picheny2013` for details.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 2].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">2</span><span class="p">))])</span>
+
+    <span class="n">x0</span><span class="p">,</span> <span class="n">x1</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="mi">4</span> <span class="o">*</span> <span class="n">x</span> <span class="o">-</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="p">(</span><span class="n">x0</span> <span class="o">+</span> <span class="n">x1</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mi">19</span> <span class="o">-</span> <span class="mi">14</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">-</span> <span class="mi">14</span> <span class="o">*</span> <span class="n">x1</span> <span class="o">+</span> <span class="mi">6</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">*</span> <span class="n">x1</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">x1</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="p">(</span><span class="mi">2</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">x1</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="mi">18</span> <span class="o">-</span> <span class="mi">32</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">+</span> <span class="mi">12</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="mi">48</span> <span class="o">*</span> <span class="n">x1</span> <span class="o">-</span> <span class="mi">36</span> <span class="o">*</span> <span class="n">x0</span> <span class="o">*</span> <span class="n">x1</span> <span class="o">+</span> <span class="mi">27</span> <span class="o">*</span> <span class="n">x1</span> <span class="o">**</span> <span class="mi">2</span>
+
+    <span class="k">return</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mf">2.427</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">log</span><span class="p">((</span><span class="mi">1</span> <span class="o">+</span> <span class="n">a</span> <span class="o">*</span> <span class="n">b</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">30</span> <span class="o">+</span> <span class="n">c</span> <span class="o">*</span> <span class="n">d</span><span class="p">))</span> <span class="o">-</span> <span class="mf">8.693</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="LogarithmicGoldsteinPrice"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.LogarithmicGoldsteinPrice">[docs]</a><span class="n">LogarithmicGoldsteinPrice</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Logarithmic Goldstein-Price&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">logarithmic_goldstein_price</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.25</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">3.12913</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;A logarithmic form of the Goldstein-Price function, with zero mean and unit variance over</span>
+<span class="sd">:math:`[0, 1]^2`. See :cite:`Picheny2013` for details.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="hartmann_3"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.hartmann_3">[docs]</a><span class="k">def</span> <span class="nf">hartmann_3</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local</span>
+<span class="sd">    and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 3].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">3</span><span class="p">))])</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.2</span><span class="p">]</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="p">[[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">35.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">30.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">35.0</span><span class="p">]]</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="mf">0.3689</span><span class="p">,</span> <span class="mf">0.1170</span><span class="p">,</span> <span class="mf">0.2673</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.4699</span><span class="p">,</span> <span class="mf">0.4387</span><span class="p">,</span> <span class="mf">0.7470</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.1091</span><span class="p">,</span> <span class="mf">0.8732</span><span class="p">,</span> <span class="mf">0.5547</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.0381</span><span class="p">,</span> <span class="mf">0.5743</span><span class="p">,</span> <span class="mf">0.8828</span><span class="p">],</span>
+    <span class="p">]</span>
+
+    <span class="n">inner_sum</span> <span class="o">=</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">A</span> <span class="o">*</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">P</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">inner_sum</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Hartmann3"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Hartmann3">[docs]</a><span class="n">Hartmann3</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Hartmann 3&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">hartmann_3</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.114614</span><span class="p">,</span> <span class="mf">0.555649</span><span class="p">,</span> <span class="mf">0.852547</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">3.86278</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Hartmann 3 test function over :math:`[0, 1]^3`. This function has 3 local</span>
+<span class="sd">and one global minima. See https://www.sfu.ca/~ssurjano/hart3.html for details.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="shekel_4"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.shekel_4">[docs]</a><span class="k">def</span> <span class="nf">shekel_4</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Shekel test function over :math:`[0, 1]^4`. This function has ten local</span>
+<span class="sd">    minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.</span>
+<span class="sd">    Note that we rescale the original problem, which is typically defined</span>
+<span class="sd">    over `[0, 10]^4`.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 4].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">4</span><span class="p">))])</span>
+
+    <span class="n">y</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mf">10.0</span>
+
+    <span class="n">beta</span> <span class="o">=</span> <span class="p">[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.6</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.7</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]</span>
+    <span class="n">C</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.6</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">4.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">6.0</span><span class="p">,</span> <span class="mf">7.0</span><span class="p">,</span> <span class="mf">9.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">3.6</span><span class="p">],</span>
+    <span class="p">]</span>
+
+    <span class="n">inner_sum</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">((</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">C</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">inner_sum</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">beta</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">inner_sum</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">inner_sum</span> <span class="o">**</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Shekel4"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Shekel4">[docs]</a><span class="n">Shekel4</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Shekel 4&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">shekel_4</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">10.5363</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Shekel test function over :math:`[0, 1]^4`. This function has ten local</span>
+<span class="sd">minima and a single global minimum. See https://www.sfu.ca/~ssurjano/shekel.html for details.</span>
+<span class="sd">Note that we rescale the original problem, which is typically defined</span>
+<span class="sd">over `[0, 10]^4`.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="rosenbrock_4"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.rosenbrock_4">[docs]</a><span class="k">def</span> <span class="nf">rosenbrock_4</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See</span>
+<span class="sd">    :cite:`Picheny2013` for details.</span>
+<span class="sd">    This function (also known as the Banana function) is unimodal, however the minima</span>
+<span class="sd">    lies in a narrow valley.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 4].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">4</span><span class="p">))])</span>
+
+    <span class="n">y</span><span class="p">:</span> <span class="n">TensorType</span> <span class="o">=</span> <span class="n">x</span> <span class="o">*</span> <span class="mf">15.0</span> <span class="o">-</span> <span class="mi">5</span>
+    <span class="n">unscaled_function</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span>
+        <span class="p">(</span><span class="mf">100.0</span> <span class="o">*</span> <span class="p">(</span><span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span> <span class="o">+</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">y</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">),</span> <span class="n">axis</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="p">(</span><span class="n">unscaled_function</span> <span class="o">-</span> <span class="mf">3.827</span> <span class="o">*</span> <span class="mf">1e5</span><span class="p">)</span> <span class="o">/</span> <span class="p">(</span><span class="mf">3.755</span> <span class="o">*</span> <span class="mf">1e5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Rosenbrock4"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Rosenbrock4">[docs]</a><span class="n">Rosenbrock4</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Rosenbrock 4&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">rosenbrock_4</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">4</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">1.01917</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Rosenbrock function, rescaled to have zero mean and unit variance over :math:`[0, 1]^4. See</span>
+<span class="sd">:cite:`Picheny2013` for details.</span>
+<span class="sd">This function (also known as the Banana function) is unimodal, however the minima</span>
+<span class="sd">lies in a narrow valley.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="ackley_5"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.ackley_5">[docs]</a><span class="k">def</span> <span class="nf">ackley_5</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Ackley test function over :math:`[0, 1]^5`. This function has</span>
+<span class="sd">    many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html</span>
+<span class="sd">    for details.</span>
+<span class="sd">    Note that we rescale the original problem, which is typically defined</span>
+<span class="sd">    over `[-32.768, 32.768]`.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 5].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">5</span><span class="p">))])</span>
+
+    <span class="n">x</span> <span class="o">=</span> <span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mf">32.768</span> <span class="o">*</span> <span class="mf">2.0</span><span class="p">)</span>
+
+    <span class="n">exponent_1</span> <span class="o">=</span> <span class="o">-</span><span class="mf">0.2</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">((</span><span class="mi">1</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">x</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>
+    <span class="n">exponent_2</span> <span class="o">=</span> <span class="p">(</span><span class="mi">1</span> <span class="o">/</span> <span class="mf">5.0</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">cos</span><span class="p">(</span><span class="mf">2.0</span> <span class="o">*</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span> <span class="o">*</span> <span class="n">x</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+
+    <span class="n">function</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="o">-</span><span class="mf">20.0</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">exponent_1</span><span class="p">)</span>
+        <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">exponent_2</span><span class="p">)</span>
+        <span class="o">+</span> <span class="mf">20.0</span>
+        <span class="o">+</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="mf">1.0</span><span class="p">),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">function</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Ackley5"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Ackley5">[docs]</a><span class="n">Ackley5</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Ackley 5&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">ackley_5</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Ackley test function over :math:`[0, 1]^5`. This function has</span>
+<span class="sd">many local minima and a global minima. See https://www.sfu.ca/~ssurjano/ackley.html</span>
+<span class="sd">for details.</span>
+<span class="sd">Note that we rescale the original problem, which is typically defined</span>
+<span class="sd">over `[-32.768, 32.768]`.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="hartmann_6"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.hartmann_6">[docs]</a><span class="k">def</span> <span class="nf">hartmann_6</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Hartmann 6 test function over :math:`[0, 1]^6`. This function has</span>
+<span class="sd">    6 local and one global minima. See https://www.sfu.ca/~ssurjano/hart6.html</span>
+<span class="sd">    for details.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 6].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="mi">6</span><span class="p">))])</span>
+
+    <span class="n">a</span> <span class="o">=</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.2</span><span class="p">]</span>
+    <span class="n">A</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="mf">10.0</span><span class="p">,</span> <span class="mf">3.0</span><span class="p">,</span> <span class="mf">17.0</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">,</span> <span class="mf">1.7</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.05</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">17.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">14.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">3.0</span><span class="p">,</span> <span class="mf">3.5</span><span class="p">,</span> <span class="mf">1.7</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">17.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">17.0</span><span class="p">,</span> <span class="mf">8.0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mf">10.0</span><span class="p">,</span> <span class="mf">0.1</span><span class="p">,</span> <span class="mf">14.0</span><span class="p">],</span>
+    <span class="p">]</span>
+    <span class="n">P</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="p">[</span><span class="mf">0.1312</span><span class="p">,</span> <span class="mf">0.1696</span><span class="p">,</span> <span class="mf">0.5569</span><span class="p">,</span> <span class="mf">0.0124</span><span class="p">,</span> <span class="mf">0.8283</span><span class="p">,</span> <span class="mf">0.5886</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.2329</span><span class="p">,</span> <span class="mf">0.4135</span><span class="p">,</span> <span class="mf">0.8307</span><span class="p">,</span> <span class="mf">0.3736</span><span class="p">,</span> <span class="mf">0.1004</span><span class="p">,</span> <span class="mf">0.9991</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.2348</span><span class="p">,</span> <span class="mf">0.1451</span><span class="p">,</span> <span class="mf">0.3522</span><span class="p">,</span> <span class="mf">0.2883</span><span class="p">,</span> <span class="mf">0.3047</span><span class="p">,</span> <span class="mf">0.6650</span><span class="p">],</span>
+        <span class="p">[</span><span class="mf">0.4047</span><span class="p">,</span> <span class="mf">0.8828</span><span class="p">,</span> <span class="mf">0.8732</span><span class="p">,</span> <span class="mf">0.5743</span><span class="p">,</span> <span class="mf">0.1091</span><span class="p">,</span> <span class="mf">0.0381</span><span class="p">],</span>
+    <span class="p">]</span>
+
+    <span class="n">inner_sum</span> <span class="o">=</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">A</span> <span class="o">*</span> <span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span> <span class="o">-</span> <span class="n">P</span><span class="p">)</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)</span>
+    <span class="k">return</span> <span class="o">-</span><span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">a</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">exp</span><span class="p">(</span><span class="n">inner_sum</span><span class="p">),</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Hartmann6"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Hartmann6">[docs]</a><span class="n">Hartmann6</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Hartmann 6&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">hartmann_6</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="mf">1.0</span><span class="p">])</span> <span class="o">**</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.20169</span><span class="p">,</span> <span class="mf">0.150011</span><span class="p">,</span> <span class="mf">0.476874</span><span class="p">,</span> <span class="mf">0.275332</span><span class="p">,</span> <span class="mf">0.311652</span><span class="p">,</span> <span class="mf">0.6573</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">3.32237</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Hartmann 6 test function over :math:`[0, 1]^6`. This function has</span>
+<span class="sd">6 local and one global minima. See https://www.sfu.ca/~ssurjano/hart6.html</span>
+<span class="sd">for details.&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="michalewicz"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.michalewicz">[docs]</a><span class="k">def</span> <span class="nf">michalewicz</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">2</span><span class="p">,</span> <span class="n">m</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Michalewicz function over :math:`[0, \\pi]` for all i=1,...,d. Dimensionality is determined</span>
+<span class="sd">    by the parameter ``d`` and it features steep ridges and drops. It has :math:`d!` local minima,</span>
+<span class="sd">    and it is multimodal. The parameter ``m`` defines the steepness of they valleys and ridges; a</span>
+<span class="sd">    larger ``m`` leads to a more difficult search. The recommended value of ``m`` is 10. See</span>
+<span class="sd">    https://www.sfu.ca/~ssurjano/egg.html for details.</span>
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., d].</span>
+<span class="sd">    :param d: The dimension of the function.</span>
+<span class="sd">    :param m: The steepness of the valleys/ridges.</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">d</span><span class="p">))])</span>
+
+    <span class="n">xi</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="p">(</span><span class="n">d</span> <span class="o">+</span> <span class="mi">1</span><span class="p">),</span> <span class="n">delta</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">result</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">x</span><span class="p">)</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">sin</span><span class="p">(</span><span class="n">xi</span> <span class="o">/</span> <span class="n">math</span><span class="o">.</span><span class="n">pi</span><span class="p">),</span> <span class="mi">2</span> <span class="o">*</span> <span class="n">m</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">keepdims</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="o">-</span><span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="michalewicz_2"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.michalewicz_2">[docs]</a><span class="k">def</span> <span class="nf">michalewicz_2</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.</span>
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 2].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">michalewicz</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="michalewicz_5"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.michalewicz_5">[docs]</a><span class="k">def</span> <span class="nf">michalewicz_5</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.</span>
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 5].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">michalewicz</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="michalewicz_10"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.michalewicz_10">[docs]</a><span class="k">def</span> <span class="nf">michalewicz_10</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.</span>
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 10].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">michalewicz</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Michalewicz2"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Michalewicz2">[docs]</a><span class="n">Michalewicz2</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Michalewicz 2&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">michalewicz_2</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="n">pi</span><span class="p">])</span> <span class="o">**</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">2.202906</span><span class="p">,</span> <span class="mf">1.570796</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">1.8013034</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Convenience function for the 2-dimensional :func:`michalewicz` function with steepness 10.</span>
+<span class="sd">Taken from https://arxiv.org/abs/2003.09867&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Michalewicz5"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Michalewicz5">[docs]</a><span class="n">Michalewicz5</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Michalewicz 5&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">michalewicz_5</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="n">pi</span><span class="p">])</span> <span class="o">**</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">2.202906</span><span class="p">,</span> <span class="mf">1.570796</span><span class="p">,</span> <span class="mf">1.284992</span><span class="p">,</span> <span class="mf">1.923058</span><span class="p">,</span> <span class="mf">1.720470</span><span class="p">]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">4.6876582</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Convenience function for the 5-dimensional :func:`michalewicz` function with steepness 10.</span>
+<span class="sd">Taken from https://arxiv.org/abs/2003.09867&quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Michalewicz10"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Michalewicz10">[docs]</a><span class="n">Michalewicz10</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Michalewicz 10&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">michalewicz_10</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="mf">0.0</span><span class="p">],</span> <span class="p">[</span><span class="n">pi</span><span class="p">])</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span>
+        <span class="p">[</span>
+            <span class="p">[</span>
+                <span class="mf">2.202906</span><span class="p">,</span>
+                <span class="mf">1.570796</span><span class="p">,</span>
+                <span class="mf">1.284992</span><span class="p">,</span>
+                <span class="mf">1.923058</span><span class="p">,</span>
+                <span class="mf">1.720470</span><span class="p">,</span>
+                <span class="mf">1.570796</span><span class="p">,</span>
+                <span class="mf">1.454414</span><span class="p">,</span>
+                <span class="mf">1.756087</span><span class="p">,</span>
+                <span class="mf">1.655717</span><span class="p">,</span>
+                <span class="mf">1.570796</span><span class="p">,</span>
+            <span class="p">]</span>
+        <span class="p">],</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">,</span>
+    <span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mf">9.6601517</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;Convenience function for the 10-dimensional :func:`michalewicz` function with steepness 10.</span>
+<span class="sd">Taken from https://arxiv.org/abs/2003.09867&quot;&quot;&quot;</span>
+
+
+<div class="viewcode-block" id="trid"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.trid">[docs]</a><span class="k">def</span> <span class="nf">trid</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span> <span class="n">d</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="mi">10</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    The Trid function over :math:`[-d^2, d^2]` for all i=1,...,d. Dimensionality is determined</span>
+<span class="sd">    by the parameter ``d`` and it has a global minimum. This function has large variation in</span>
+<span class="sd">    output which makes it challenging for Bayesian optimisation with vanilla Gaussian processes</span>
+<span class="sd">    with non-stationary kernels. Models that can deal with non-stationarities, such as deep</span>
+<span class="sd">    Gaussian processes, can be useful for modelling these functions. See :cite:`hebbal2019bayesian`</span>
+<span class="sd">    and https://www.sfu.ca/~ssurjano/trid.html for details.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., d].</span>
+<span class="sd">    :param d: Dimensionality.</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_greater_equal</span><span class="p">(</span><span class="n">d</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_shapes</span><span class="p">([(</span><span class="n">x</span><span class="p">,</span> <span class="p">(</span><span class="o">...</span><span class="p">,</span> <span class="n">d</span><span class="p">))])</span>
+
+    <span class="n">result</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="n">x</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">),</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_sum</span><span class="p">(</span><span class="n">x</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">:]</span> <span class="o">*</span> <span class="n">x</span><span class="p">[:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="mi">1</span><span class="p">,</span> <span class="kc">True</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">result</span></div>
+
+
+<div class="viewcode-block" id="trid_10"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.trid_10">[docs]</a><span class="k">def</span> <span class="nf">trid_10</span><span class="p">(</span><span class="n">x</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;The Trid function with dimension 10.</span>
+
+<span class="sd">    :param x: The points at which to evaluate the function, with shape [..., 10].</span>
+<span class="sd">    :return: The function values at ``x``, with shape [..., 1].</span>
+<span class="sd">    :raise ValueError (or InvalidArgumentError): If ``x`` has an invalid shape.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">trid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="Trid10"><a class="viewcode-back" href="../../../autoapi/trieste/objectives/single_objectives/index.html#trieste.objectives.Trid10">[docs]</a><span class="n">Trid10</span> <span class="o">=</span> <span class="n">SingleObjectiveTestProblem</span><span class="p">(</span>
+    <span class="n">name</span><span class="o">=</span><span class="s2">&quot;Trid 10&quot;</span><span class="p">,</span>
+    <span class="n">objective</span><span class="o">=</span><span class="n">trid_10</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">=</span><span class="n">Box</span><span class="p">([</span><span class="o">-</span><span class="p">(</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">2</span><span class="p">)],</span> <span class="p">[</span><span class="mi">10</span> <span class="o">**</span> <span class="mi">2</span><span class="p">])</span> <span class="o">**</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">minimizers</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="mi">10</span> <span class="o">+</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">10</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)]],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+    <span class="n">minimum</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([</span><span class="o">-</span><span class="mi">10</span> <span class="o">*</span> <span class="p">(</span><span class="mi">10</span> <span class="o">+</span> <span class="mi">4</span><span class="p">)</span> <span class="o">*</span> <span class="p">(</span><span class="mi">10</span> <span class="o">-</span> <span class="mi">1</span><span class="p">)</span> <span class="o">/</span> <span class="mi">6</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span></div>
+<span class="p">)</span>
+<span class="sd">&quot;&quot;&quot;The Trid function with dimension 10.&quot;&quot;&quot;</span>
+</pre></div>
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

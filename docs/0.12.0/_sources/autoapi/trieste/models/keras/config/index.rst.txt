@@ -1,0 +1,8 @@
+:orphan:
+
+:py:mod:`trieste.models.keras.config`
+=====================================
+
+.. py:module:: trieste.models.keras.config
+
+

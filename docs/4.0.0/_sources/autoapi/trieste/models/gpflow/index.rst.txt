@@ -1,0 +1,1537 @@
+:py:mod:`trieste.models.gpflow`
+===============================
+
+.. py:module:: trieste.models.gpflow
+
+.. autoapi-nested-parse::
+
+   This package contains the primary interface for Gaussian process models. It also contains a
+   number of :class:`TrainableProbabilisticModel` wrappers for GPflow-based models.
+
+
+
+Submodules
+----------
+.. toctree::
+   :titlesonly:
+   :maxdepth: 1
+
+   builders/index.rst
+   inducing_point_selectors/index.rst
+   optimizer/index.rst
+   sampler/index.rst
+
+
+Package Contents
+----------------
+
+.. py:function:: build_gpr(data: trieste.data.Dataset, search_space: Optional[trieste.space.SearchSpace] = None, kernel_priors: bool = True, likelihood_variance: Optional[float] = None, trainable_likelihood: bool = False, kernel: Optional[gpflow.kernels.Kernel] = None, encoder: trieste.space.EncoderFunction | None = None, space_encoder: Callable[[trieste.space.SearchSpace], trieste.space.SearchSpace] | None = None) -> gpflow.models.GPR
+
+   Build a :class:`~gpflow.models.GPR` model with sensible initial parameters and
+   priors. By default, we use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situations, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters. Required unless a kernel is passed.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the noise variance is set to maintain the
+       signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+       variance in the kernel is set to the empirical variance.
+   :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
+       non-trainable. By default set to `False`.
+   :param kernel: The kernel to use in the model, defaults to letting the function set up a
+       :class:`~gpflow.kernels.Matern52` kernel.
+   :param encoder: Encoder with which to transform the dataset before training. Defaults to
+       one_hot_encoder if the search_space is specified.
+   :param space_encoder: Encoder with which to transform search_space before generating a kernel.
+       Defaults to one_hot_encoded_space.
+   :return: A :class:`~gpflow.models.GPR` model.
+
+
+.. py:function:: build_multifidelity_autoregressive_models(dataset: trieste.data.Dataset, num_fidelities: int, input_search_space: trieste.space.SearchSpace, likelihood_variance: float = 1e-06, kernel_priors: bool = False, trainable_likelihood: bool = False) -> Sequence[trieste.models.gpflow.models.GaussianProcessRegression]
+
+   Build the individual GPR models required for constructing an MultifidelityAutoregressive model
+   with `num_fidelities` fidelities.
+
+   :param dataset: Dataset of points with which to initialise the individual models,
+       where the final column of the final dimension of the query points contains the fidelity
+   :param num_fidelities: Number of fidelities desired for the MultifidelityAutoregressive model
+   :param input_search_space: The input search space of the models
+   :return: List of initialised GPR models
+
+
+.. py:function:: build_multifidelity_nonlinear_autoregressive_models(dataset: trieste.data.Dataset, num_fidelities: int, input_search_space: trieste.space.SearchSpace, kernel_base_class: Type[gpflow.kernels.Stationary] = gpflow.kernels.Matern32, kernel_priors: bool = True, trainable_likelihood: bool = False) -> Sequence[trieste.models.gpflow.models.GaussianProcessRegression]
+
+   Build models for training the trieste.models.gpflow.MultifidelityNonlinearAutoregressive` model
+
+   Builds a basic Matern32 kernel for the lowest fidelity, and the custom kernel described in
+   :cite:`perdikaris2017nonlinear` for the higher fidelities, which also have an extra input
+   dimension. Note that the initial data that the models with fidelity greater than 0 are
+   initialised with contain dummy data in this extra dimension, and so an `update` of the
+   `MultifidelityNonlinearAutoregressive` is required to propagate real data through to these
+   models.
+
+   :param dataset: The dataset to use to initialise the models
+   :param num_fidelities: The number of fidelities to model
+   :param input_search_space: the search space, used to initialise the kernel parameters
+   :param kernel_base_class: a stationary kernel type
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :return: gprs: A list containing gprs that can be used for the multifidelity model
+
+
+.. py:function:: build_sgpr(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, kernel_priors: bool = True, likelihood_variance: Optional[float] = None, trainable_likelihood: bool = False, num_inducing_points: Optional[int] = None, trainable_inducing_points: bool = False) -> gpflow.models.SGPR
+
+   Build a :class:`~gpflow.models.SGPR` model with sensible initial parameters and
+   priors. We use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting.
+
+   For performance reasons number of inducing points should not be changed during Bayesian
+   optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
+   number. By default inducing points are set to Sobol samples for the continuous search space,
+   and simple random samples for discrete or mixed search spaces. This carries
+   the risk that optimization gets stuck if they are not trainable, which calls for adaptive
+   inducing point selection during the optimization. This functionality will be added to Trieste
+   in future.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the noise variance is set to maintain the
+       signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+       variance in the kernel is set to the empirical variance.
+   :param trainable_likelihood: If set to `True` Gaussian likelihood parameter is set to
+       be trainable. By default set to `False`.
+   :param num_inducing_points: The number of inducing points can be optionally set to a
+       certain value. If left unspecified (default), this number is set to either
+       ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by
+       ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+   :param trainable_inducing_points: If set to `True` inducing points will be set to
+       be trainable. This option should be used with caution. By default set to `False`.
+   :return: An :class:`~gpflow.models.SGPR` model.
+
+
+.. py:function:: build_svgp(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, classification: bool = False, kernel_priors: bool = True, likelihood_variance: Optional[float] = None, trainable_likelihood: bool = False, num_inducing_points: Optional[int] = None, trainable_inducing_points: bool = False) -> gpflow.models.SVGP
+
+   Build a :class:`~gpflow.models.SVGP` model with sensible initial parameters and
+   priors. Both regression and binary classification models are
+   available. We use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting.
+
+   For performance reasons number of inducing points should not be changed during Bayesian
+   optimization. Hence, even if the initial dataset is smaller, we advise setting this to a higher
+   number. By default inducing points are set to Sobol samples for the continuous search space,
+   and simple random samples for discrete or mixed search spaces. This carries
+   the risk that optimization gets stuck if they are not trainable, which calls for adaptive
+   inducing point selection during the optimization. This functionality will be added to Trieste
+   in future.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters.
+   :param classification: If a classification model is needed, this should be set to `True`, in
+       which case a Bernoulli likelihood will be used. If a regression model is required, this
+       should be set to `False` (default), in which case a Gaussian likelihood is used.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale).
+   :param likelihood_variance: Likelihood (noise) variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the noise variance is set to maintain the
+       signal to noise ratio of value given by ``SIGNAL_NOISE_RATIO_LIKELIHOOD``, where signal
+       variance in the kernel is set to the empirical variance. This argument is ignored in the
+       classification case.
+   :param trainable_likelihood: If set to `True` likelihood parameter is set to
+       be trainable. By default set to `False`. This argument is ignored in the classification
+       case.
+   :param num_inducing_points: The number of inducing points can be optionally set to a
+       certain value. If left unspecified (default), this number is set to either
+       ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of the search space or value given by
+       ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+   :param trainable_inducing_points: If set to `True` inducing points will be set to
+       be trainable. This option should be used with caution. By default set to `False`.
+   :return: An :class:`~gpflow.models.SVGP` model.
+
+
+.. py:function:: build_vgp_classifier(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, kernel_priors: bool = True, noise_free: bool = False, kernel_variance: Optional[float] = None) -> gpflow.models.VGP
+
+   Build a :class:`~gpflow.models.VGP` binary classification model with sensible initial
+   parameters and priors. We use :class:`~gpflow.kernels.Matern52` kernel and
+   :class:`~gpflow.mean_functions.Constant` mean function in the model. We found the default
+   configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   We set priors for kernel hyperparameters by default in order to stabilize model fitting. We
+   found the priors below to be highly effective for objective functions defined over the unit
+   hypercube. They do seem to work for other search space sizes, but we advise caution when using
+   them in such search spaces. Using priors allows for using maximum a posteriori estimate of
+   these kernel parameters during model fitting. In the ``noise_free`` case we do not use prior
+   for the kernel variance parameters.
+
+   Note that although we scale parameters as a function of the size of the search space, ideally
+   inputs should be normalised to the unit hypercube before building a model.
+
+   :param data: Dataset from the initial design, used for estimating the variance of observations.
+   :param search_space: Search space for performing Bayesian optimization, used for scaling the
+       parameters.
+   :param kernel_priors: If set to `True` (default) priors are set for kernel parameters (variance
+       and lengthscale). In the ``noise_free`` case kernel variance prior is not set.
+   :param noise_free: If  there is a prior information that the classification problem is a
+       deterministic one, this should be set to `True` and kernel variance will be fixed to a
+       higher default value ``CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE`` leading to sharper
+       classification boundary. In this case prior for the kernel variance parameter is also not
+       set. By default set to `False`.
+   :param kernel_variance: Kernel variance parameter can be optionally set to a
+       certain value. If left unspecified (default), the kernel variance is set to
+       ``CLASSIFICATION_KERNEL_VARIANCE_NOISE_FREE`` in the ``noise_free`` case and to
+       ``CLASSIFICATION_KERNEL_VARIANCE`` otherwise.
+   :return: A :class:`~gpflow.models.VGP` model.
+
+
+.. py:class:: ConditionalImprovementReduction(recalc_every_model_update: bool = True)
+
+
+   Bases: :py:obj:`DPPInducingPointSelector`
+
+   An :class:`InducingPointSelector` that greedily chooses points with large predictive variance
+   and that are likely to be in promising regions of the search space, see :cite:`moss2023IPA`.
+
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+
+.. py:class:: ConditionalVarianceReduction(recalc_every_model_update: bool = True)
+
+
+   Bases: :py:obj:`DPPInducingPointSelector`
+
+   An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)
+   predictive variance, see :cite:`burt2019rates`.
+
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+
+.. py:class:: InducingPointSelector(recalc_every_model_update: bool = True)
+
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`Generic`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   This class provides functionality to update the inducing points of an inducing point-based model
+   as the Bayesian optimization progresses.
+
+   The only constraint on subclasses of :class:`InducingPointSelector` is that they preserve
+   the shape of the inducing points so not to trigger expensive retracing.
+
+   It can often be beneficial to change the inducing points during optimization, for example
+   to allow the model to focus its limited modelling resources into promising areas of the space.
+   See :cite:`vakili2021scalable` for demonstrations of some of
+   our :class:`InducingPointSelectors`.
+
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: calculate_inducing_points(current_inducing_points: trieste.types.TensorType, model: trieste.models.interfaces.ProbabilisticModelType, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Calculate the new inducing points given the existing inducing points.
+
+      If `recalc_every_model_update` is set to False then we only generate new inducing points
+      for the first :meth:`calculate_inducing_points` call, otherwise we just return the current
+      inducing points.
+
+      :param current_inducing_points: The current inducing points used by the model.
+      :param model: The sparse model.
+      :param dataset: The data from the observer.
+      :return: The new updated inducing points.
+      :raise NotImplementedError: If model has more than one set of inducing variables.
+
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.interfaces.ProbabilisticModelType, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Method for calculating new inducing points given a `model` and `dataset`.
+
+      This method is to be implemented by all subclasses of :class:`InducingPointSelector`.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model.
+      :param dataset: The data from the observer.
+      :return: The new updated inducing points.
+
+
+
+.. py:class:: KMeansInducingPointSelector(recalc_every_model_update: bool = True)
+
+
+   Bases: :py:obj:`InducingPointSelector`\ [\ :py:obj:`trieste.models.gpflow.interface.GPflowPredictor`\ ]
+
+   An :class:`InducingPointSelector` that chooses points as centroids of a K-means clustering
+   of the training data.
+
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.gpflow.interface.GPflowPredictor, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Calculate `M` centroids from a K-means clustering of the training data.
+
+      If the clustering returns fewer than `M` centroids or if we have fewer than `M` training
+      data, then we fill the remaining points with random samples across the search space.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model.
+      :param dataset: The data from the observer. Must be populated.
+      :return: The new updated inducing points.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+
+.. py:class:: RandomSubSampleInducingPointSelector(recalc_every_model_update: bool = True)
+
+
+   Bases: :py:obj:`InducingPointSelector`\ [\ :py:obj:`trieste.models.gpflow.interface.GPflowPredictor`\ ]
+
+   An :class:`InducingPointSelector` that chooses points at random from the training data.
+
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.gpflow.interface.GPflowPredictor, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Sample `M` points from the training data without replacement. If we require more
+      inducing points than training data, then we fill the remaining points with random
+      samples across the search space.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model.
+      :param dataset: The data from the observer. Must be populated.
+      :return: The new updated inducing points.
+      :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.
+
+
+
+.. py:class:: UniformInducingPointSelector(search_space: trieste.space.SearchSpace, recalc_every_model_update: bool = True)
+
+
+   Bases: :py:obj:`InducingPointSelector`\ [\ :py:obj:`trieste.models.gpflow.interface.GPflowPredictor`\ ]
+
+   An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space.
+
+   :param search_space: The global search space over which the optimization is defined.
+   :param recalc_every_model_update: If True then recalculate the inducing points for each
+       model update, otherwise just recalculate on the first call.
+
+   .. py:method:: _recalculate_inducing_points(M: int, model: trieste.models.gpflow.interface.GPflowPredictor, dataset: trieste.data.Dataset) -> trieste.types.TensorType
+
+      Sample `M` points. If `search_space` is a :class:`Box` then we use a space-filling Sobol
+      design to ensure high diversity.
+
+      :param M: Desired number of inducing points.
+      :param model: The sparse model .
+      :param dataset: The data from the observer.
+      :return: The new updated inducing points.
+
+
+
+.. py:class:: GPflowPredictor(optimizer: trieste.models.optimizer.Optimizer | None = None, encoder: trieste.space.EncoderFunction | None = None)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.EncodedSupportsPredictJoint`, :py:obj:`trieste.models.interfaces.SupportsGetKernel`, :py:obj:`trieste.models.interfaces.SupportsGetObservationNoise`, :py:obj:`trieste.models.interfaces.EncodedSupportsPredictY`, :py:obj:`trieste.models.interfaces.HasReparamSampler`, :py:obj:`trieste.models.interfaces.EncodedTrainableProbabilisticModel`, :py:obj:`trieste.models.interfaces.EncodedProbabilisticModel`, :py:obj:`abc.ABC`
+
+   A trainable wrapper for a GPflow Gaussian process model.
+
+   :param optimizer: The optimizer with which to train the model. Defaults to
+       :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+   :param encoder: Optional encoder with which to transform query points before
+       generating predictions.
+
+   .. py:property:: encoder
+      :type: trieste.space.EncoderFunction | None
+
+      Query point encoder.
+
+
+   .. py:property:: optimizer
+      :type: trieste.models.optimizer.Optimizer
+
+      The optimizer with which to train the model.
+
+
+   .. py:property:: model
+      :type: gpflow.models.GPModel
+      :abstractmethod:
+
+      The underlying GPflow model.
+
+
+   .. py:method:: create_posterior_cache() -> None
+
+      Create a posterior cache for fast sequential predictions.  Note that this must happen
+      at initialisation and *after* we ensure the model data is variable. Furthermore,
+      the cache must be updated whenever the underlying model is changed.
+
+
+   .. py:method:: _ensure_variable_model_data() -> None
+
+      Ensure GPflow data, which is normally stored in Tensors, is instead stored in
+      dynamically shaped Variables. Override this as required.
+
+
+   .. py:method:: update_posterior_cache() -> None
+
+      Update the posterior cache. This needs to be called whenever the underlying model
+      is changed.
+
+
+   .. py:method:: predict_encoded(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Implementation of predict on encoded query points.
+
+
+   .. py:method:: predict_joint_encoded(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Implementation of predict_joint on encoded query points.
+
+
+   .. py:method:: sample_encoded(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Implementation of sample on encoded query points.
+
+
+   .. py:method:: predict_y_encoded(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Implementation of predict_y on encoded query points.
+
+
+   .. py:method:: get_kernel() -> gpflow.kernels.Kernel
+
+      Return the kernel of the model.
+
+      :return: The kernel.
+
+
+   .. py:method:: get_mean_function() -> gpflow.mean_functions.MeanFunction
+
+      Return the mean function of the model.
+
+      :return: The mean function.
+
+
+   .. py:method:: get_observation_noise() -> trieste.types.TensorType
+
+      Return the variance of observation noise for homoscedastic likelihoods.
+
+      :return: The observation noise.
+      :raise NotImplementedError: If the model does not have a homoscedastic likelihood.
+
+
+   .. py:method:: log(dataset: Optional[trieste.data.Dataset] = None) -> None
+
+      Log model training information at a given optimization step to the Tensorboard.
+      We log kernel and likelihood parameters. We also log several training data based metrics,
+      such as root mean square error between predictions and observations and several others.
+
+      :param dataset: Optional data that can be used to log additional data-based model summaries.
+
+
+   .. py:method:: reparam_sampler(num_samples: int) -> trieste.models.interfaces.ReparametrizationSampler[GPflowPredictor]
+
+      Return a reparametrization sampler providing `num_samples` samples.
+
+      :return: The reparametrization sampler.
+
+
+
+.. py:class:: GaussianProcessRegression(model: gpflow.models.GPR, optimizer: trieste.models.optimizer.Optimizer | None = None, num_kernel_samples: int = 10, num_rff_features: int = 1000, use_decoupled_sampler: bool = True, encoder: trieste.space.EncoderFunction | None = None)
+
+
+   Bases: :py:obj:`trieste.models.gpflow.interface.GPflowPredictor`, :py:obj:`trieste.models.interfaces.EncodedFastUpdateModel`, :py:obj:`trieste.models.gpflow.interface.EncodedSupportsCovarianceBetweenPoints`, :py:obj:`trieste.models.interfaces.SupportsGetInternalData`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.GPR`.
+
+   As Bayesian optimization requires a large number of sequential predictions (i.e. when maximizing
+   acquisition functions), rather than calling the model directly at prediction time we instead
+   call the posterior objects built by these models. These posterior objects store the
+   pre-computed Gram matrices, which can be reused to allow faster subsequent predictions. However,
+   note that these posterior objects need to be updated whenever the underlying model is changed
+   by calling :meth:`update_posterior_cache` (this
+   happens automatically after calls to :meth:`update` or :math:`optimize`).
+
+   :param model: The GPflow model to wrap.
+   :param optimizer: The optimizer with which to train the model. Defaults to
+       :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+   :param num_kernel_samples: Number of randomly sampled kernels (for each kernel parameter) to
+       evaluate before beginning model optimization. Therefore, for a kernel with `p`
+       (vector-valued) parameters, we evaluate `p * num_kernel_samples` kernels.
+   :param num_rff_features: The number of random Fourier features used to approximate the
+       kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
+       typically perfoms well for a wide range of kernels. Note that very smooth
+       kernels (e.g. RBF) can be well-approximated with fewer features.
+   :param use_decoupled_sampler: If True use a decoupled random Fourier feature sampler, else
+       just use a random Fourier feature sampler. The decoupled sampler suffers less from
+       overestimating variance and can typically get away with a lower num_rff_features.
+   :param encoder: Optional encoder with which to transform query points before
+       generating predictions.
+
+   .. py:property:: model
+      :type: gpflow.models.GPR
+
+      The underlying GPflow model.
+
+
+   .. py:method:: _ensure_variable_model_data() -> None
+
+      Ensure GPflow data, which is normally stored in Tensors, is instead stored in
+      dynamically shaped Variables. Override this as required.
+
+
+   .. py:method:: predict_y_encoded(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Implementation of predict_y on encoded query points.
+
+
+   .. py:method:: update_encoded(dataset: trieste.data.Dataset) -> None
+
+      Implementation of update on the encoded dataset.
+
+
+   .. py:method:: covariance_between_points_encoded(query_points_1: trieste.types.TensorType, query_points_2: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Compute the posterior covariance between sets of query points.
+
+      .. math:: \Sigma_{12} = K_{12} - K_{x1}(K_{xx} + \sigma^2 I)^{-1}K_{x2}
+
+      Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+      have leading dimensions.
+
+      :param query_points_1: Set of query points with shape [..., N, D]
+      :param query_points_2: Sets of query points with shape [M, D]
+      :return: Covariance matrix between the sets of query points with shape [..., L, N, M]
+          (L being the number of latent GPs = number of output dimensions)
+
+
+   .. py:method:: optimize_encoded(dataset: trieste.data.Dataset) -> trieste.models.optimizer.OptimizeResult
+
+      Optimize the model with the specified `dataset`.
+
+      For :class:`GaussianProcessRegression`, we (optionally) try multiple randomly sampled
+      kernel parameter configurations as well as the configuration specified when initializing
+      the kernel. The best configuration is used as the starting point for model optimization.
+
+      For trainable parameters constrained to lie in a finite interval (through a sigmoid
+      bijector), we begin model optimization from the best of a random sample from these
+      parameters' acceptable domains.
+
+      For trainable parameters without constraints but with priors, we begin model optimization
+      from the best of a random sample from these parameters' priors.
+
+      For trainable parameters with neither priors nor constraints, we begin optimization from
+      their initial values.
+
+      :param dataset: The data with which to optimize the `model`.
+
+
+   .. py:method:: find_best_model_initialization(num_kernel_samples: int) -> None
+
+      Test `num_kernel_samples` models with sampled kernel parameters. The model's kernel
+      parameters are then set to the sample achieving maximal likelihood.
+
+      :param num_kernel_samples: Number of randomly sampled kernels to evaluate.
+
+
+   .. py:method:: trajectory_sampler() -> trieste.models.interfaces.TrajectorySampler[GaussianProcessRegression]
+
+      Return a trajectory sampler. For :class:`GaussianProcessRegression`, we build
+      trajectories using a random Fourier feature approximation.
+
+      At the moment only models with single latent GP are supported.
+
+      :return: The trajectory sampler.
+      :raise NotImplementedError: If we try to use the
+          sampler with a model that has more than one latent GP.
+
+
+   .. py:method:: get_internal_data() -> trieste.data.Dataset
+
+      Return the model's training data.
+
+      :return: The model's training data.
+
+
+   .. py:method:: conditional_predict_f_encoded(query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Returns the marginal GP distribution at query_points conditioned on both the model
+      and some additional data, using exact formula. See :cite:`chevalier2014corrected`
+      (eqs. 8-10) for details.
+
+      :param query_points: Set of query points with shape [M, D]
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :return: mean_qp_new: predictive mean at query_points, with shape [..., M, L],
+               and var_qp_new: predictive variance at query_points, with shape [..., M, L]
+
+
+   .. py:method:: conditional_predict_joint_encoded(query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Predicts the joint GP distribution at query_points conditioned on both the model
+      and some additional data, using exact formula. See :cite:`chevalier2014corrected`
+      (eqs. 8-10) for details.
+
+      :param query_points: Set of query points with shape [M, D]
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :return: mean_qp_new: predictive mean at query_points, with shape [..., M, L],
+               and cov_qp_new: predictive covariance between query_points, with shape
+               [..., L, M, M]
+
+
+   .. py:method:: conditional_predict_f_sample_encoded(query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset, num_samples: int) -> trieste.types.TensorType
+
+      Generates samples of the GP at query_points conditioned on both the model
+      and some additional data.
+
+      :param query_points: Set of query points with shape [M, D]
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :param num_samples: number of samples
+      :return: samples of f at query points, with shape [..., num_samples, M, L]
+
+
+   .. py:method:: conditional_predict_y_encoded(query_points: trieste.types.TensorType, additional_data: trieste.data.Dataset) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Generates samples of y from the GP at query_points conditioned on both the model
+      and some additional data.
+
+      :param query_points: Set of query points with shape [M, D]
+      :param additional_data: Dataset with query_points with shape [..., N, D] and observations
+               with shape [..., N, L]
+      :return: predictive variance at query_points, with shape [..., M, L],
+               and predictive variance at query_points, with shape [..., M, L]
+
+
+
+.. py:class:: MultifidelityAutoregressive(fidelity_models: Sequence[GaussianProcessRegression])
+
+
+   Bases: :py:obj:`trieste.models.interfaces.TrainableProbabilisticModel`, :py:obj:`trieste.models.interfaces.SupportsPredictY`, :py:obj:`trieste.models.interfaces.SupportsCovarianceWithTopFidelity`
+
+   A :class:`TrainableProbabilisticModel` implementation of the model
+   from :cite:`Kennedy2000`. This is a multi-fidelity model that works with an
+   arbitrary number of fidelities. It relies on there being a linear relationship
+   between fidelities, and may not perform well for more complex relationships.
+   Precisely, it models the relationship between sequential fidelities as
+
+   .. math:: f_{i}(x) = \rho f_{i-1}(x) + \delta(x)
+
+   where :math:`\rho` is a scalar and :math:`\delta` models the residual between the fidelities.
+   The only base models supported in this implementation are :class:`~gpflow.models.GPR` models.
+   Note: Currently only supports single output problems.
+
+   :param fidelity_models: List of
+       :class:`~trieste.models.gpflow.models.GaussianProcessRegression`
+       models, one for each fidelity. The model at index 0 will be used as the signal model
+       for the lowest fidelity and models at higher indices will be used as the residual
+       model for each higher fidelity.
+
+   .. py:property:: num_fidelities
+      :type: int
+
+      The number of fidelities
+
+
+   .. py:method:: predict(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Predict the marginal mean and variance at query_points.
+
+      :param query_points: Query points with shape [N, D+1], where the
+          final column of the final dimension contains the fidelity of the query point
+      :return: mean: The mean at query_points with shape [N, P],
+               and var: The variance at query_points with shape [N, P]
+
+
+   .. py:method:: _calculate_residual(dataset: trieste.data.Dataset, fidelity: int) -> trieste.types.TensorType
+
+      Calculate the true residuals for a set of datapoints at a given fidelity.
+
+      Dataset should be made up of points that you have observations for at fidelity `fidelity`.
+      The residuals calculated here are the difference between the data and the prediction at the
+      lower fidelity multiplied by the rho value at this fidelity. This produces the training
+      data for the residual models.
+
+      .. math:: r_{i} = y - \rho_{i} * f_{i-1}(x)
+
+      :param dataset: Dataset of points for which to calculate the residuals. Must have
+       observations at fidelity `fidelity`. Query points shape is [N, D], observations is [N,P].
+      :param fidelity: The fidelity for which to calculate the residuals
+      :return: The true residuals at given datapoints for given fidelity, shape is [N,1].
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Sample `num_samples` samples from the posterior distribution at `query_points`
+
+      :param query_points: The query points at which to sample of shape [N, D+1], where the
+          final column of the final dimension contains the fidelity of the query point
+      :param num_samples: The number of samples (S) to generate for each query point.
+      :return: samples from the posterior of shape [..., S, N, P]
+
+
+   .. py:method:: predict_y(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Predict the marginal mean and variance at `query_points` including observation noise
+
+      :param query_points: Query points with shape [..., N, D+1], where the
+          final column of the final dimension contains the fidelity of the query point
+      :return: mean: The mean at query_points with shape [N, P],
+               and var: The variance at query_points with shape [N, P]
+
+
+   .. py:method:: update(dataset: trieste.data.Dataset) -> None
+
+      Update the models on their corresponding data. The data for each model is
+      extracted by splitting the observations in ``dataset`` by fidelity level.
+
+      :param dataset: The query points and observations for *all* the wrapped models.
+
+
+   .. py:method:: optimize(dataset: trieste.data.Dataset) -> None
+
+      Optimize all the models on their corresponding data. The data for each model is
+      extracted by splitting the observations in ``dataset``  by fidelity level.
+      Note that we have to code up a custom loss function when optimizing our residual
+      model, so that we can include the correlation parameter as an optimisation variable.
+
+      :param dataset: The query points and observations for *all* the wrapped models.
+
+
+   .. py:method:: covariance_with_top_fidelity(query_points: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Calculate the covariance of the output at `query_point` and a given fidelity with the
+      highest fidelity output at the same `query_point`.
+
+      :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
+          where the final column of the final dimension contains the fidelity of the query point
+      :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
+
+
+   .. py:method:: log(dataset: Optional[trieste.data.Dataset] = None) -> None
+
+      Log model-specific information at a given optimization step.
+
+      :param dataset: Optional data that can be used to log additional data-based model summaries.
+
+
+
+.. py:class:: MultifidelityNonlinearAutoregressive(fidelity_models: Sequence[GaussianProcessRegression], num_monte_carlo_samples: int = 100)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.TrainableProbabilisticModel`, :py:obj:`trieste.models.interfaces.SupportsPredictY`, :py:obj:`trieste.models.interfaces.SupportsCovarianceWithTopFidelity`
+
+   A :class:`TrainableProbabilisticModel` implementation of the model from
+   :cite:`perdikaris2017nonlinear`. This is a multifidelity model that works with
+   an arbitrary number of fidelities. It is capable of modelling both linear and non-linear
+   relationships between fidelities. It models the relationship between sequential fidelities as
+
+   .. math:: f_{i}(x) =  g_{i}(x, f_{*i-1}(x))
+
+   where :math:`f{*i-1}` is the posterior of the previous fidelity.
+   The only base models supported in this implementation are :class:`~gpflow.models.GPR` models.
+   Note: Currently only supports single output problems.
+
+   :param fidelity_models: List of
+       :class:`~trieste.models.gpflow.models.GaussianProcessRegression`
+       models, one for each fidelity. The model at index 0 should take
+       inputs with the same number of dimensions as `x` and can use any kernel,
+       whilst the later models should take an extra input dimesion, and use the kernel
+       described in :cite:`perdikaris2017nonlinear`.
+   :param num_monte_carlo_samples: The number of Monte Carlo samples to use for the
+       sections of prediction and sampling that require the use of Monte Carlo methods.
+
+   .. py:property:: num_fidelities
+      :type: int
+
+      The number of fidelities
+
+
+   .. py:method:: sample(query_points: trieste.types.TensorType, num_samples: int) -> trieste.types.TensorType
+
+      Return ``num_samples`` samples from the independent marginal distributions at
+      ``query_points``.
+
+      :param query_points: The points at which to sample, with shape [..., N, D].
+      :param num_samples: The number of samples at each point.
+      :return: The samples, with shape [..., S, N], where S is the number of samples.
+
+
+   .. py:method:: predict(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Predict the marginal mean and variance at query_points.
+
+      :param query_points: Query points with shape [..., N, D+1], where the
+          final column of the final dimension contains the fidelity of the query point
+      :return: mean: The mean at query_points with shape [..., N, P],
+          and var: The variance at query_points with shape [..., N, P]
+
+
+   .. py:method:: predict_y(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Predict the marginal mean and variance at `query_points` including observation noise
+
+      :param query_points: Query points with shape [..., N, D+1], where the
+          final column of the final dimension contains the fidelity of the query point
+      :return: mean: The mean at query_points with shape [N, P],
+          and var: The variance at query_points with shape [N, P]
+
+
+   .. py:method:: _sample_mean_and_var_at_fidelities(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Draw `num_monte_carlo_samples` samples of mean and variance from the model at the fidelities
+      passed in the final column of the query points.
+
+      :param query_points:  Query points with shape [..., N, D+1], where the
+          final column of the final dimension contains the fidelity of the query point
+      :return: sample_mean: Samples of the mean at the query points with shape [..., N, 1, S]
+          and sample_var: Samples of the variance at the query points with shape [..., N, 1, S]
+
+
+   .. py:method:: _propagate_samples_through_level(query_point: trieste.types.TensorType, fidelity: int, sample_mean: trieste.types.TensorType, sample_var: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Propagate samples through a given fidelity.
+
+      This takes a set of query points without a fidelity column and calculates samples
+      at the given fidelity, using the sample means and variances from the previous fidelity.
+
+      :param query_points: The query points to sample at, with no fidelity column,
+          with shape[..., N, D]
+      :param fidelity: The fidelity to propagate the samples through
+      :param sample_mean: Samples of the posterior mean at the previous fidelity,
+          with shape [..., N, 1, S]
+      :param sample_var: Samples of the posterior variance at the previous fidelity,
+          with shape [..., N, 1, S]
+      :return: sample_mean: Samples of the posterior mean at the given fidelity,
+          of shape [..., N, 1, S]
+          and sample_var: Samples of the posterior variance at the given fidelity,
+          of shape [..., N, 1, S]
+
+
+   .. py:method:: update(dataset: trieste.data.Dataset) -> None
+
+      Update the models on their corresponding data. The data for each model is
+      extracted by splitting the observations in ``dataset`` by fidelity level.
+
+      :param dataset: The query points and observations for *all* the wrapped models.
+
+
+   .. py:method:: optimize(dataset: trieste.data.Dataset) -> None
+
+      Optimize all the models on their corresponding data. The data for each model is
+      extracted by splitting the observations in ``dataset``  by fidelity level.
+
+      :param dataset: The query points and observations for *all* the wrapped models.
+
+
+   .. py:method:: covariance_with_top_fidelity(query_points: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Calculate the covariance of the output at `query_point` and a given fidelity with the
+      highest fidelity output at the same `query_point`.
+
+      :param query_points: The query points to calculate the covariance for, of shape [N, D+1],
+          where the final column of the final dimension contains the fidelity of the query point
+      :return: The covariance with the top fidelity for the `query_points`, of shape [N, P]
+
+
+   .. py:method:: log(dataset: Optional[trieste.data.Dataset] = None) -> None
+
+      Log model-specific information at a given optimization step.
+
+      :param dataset: Optional data that can be used to log additional data-based model summaries.
+
+
+
+.. py:class:: SparseGaussianProcessRegression(model: gpflow.models.SGPR, optimizer: trieste.models.optimizer.Optimizer | None = None, num_rff_features: int = 1000, inducing_point_selector: Optional[trieste.models.gpflow.inducing_point_selectors.InducingPointSelector[SparseGaussianProcessRegression]] = None, encoder: trieste.space.EncoderFunction | None = None)
+
+
+   Bases: :py:obj:`trieste.models.gpflow.interface.GPflowPredictor`, :py:obj:`trieste.models.gpflow.interface.EncodedSupportsCovarianceBetweenPoints`, :py:obj:`trieste.models.interfaces.SupportsGetInducingVariables`, :py:obj:`trieste.models.interfaces.SupportsGetInternalData`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SGPR`.
+   At the moment we only support models with a single latent GP. This is due to ``compute_qu``
+   method in :class:`~gpflow.models.SGPR` that is used for computing covariance between
+   query points and trajectory sampling, which at the moment works only for single latent GP.
+
+   Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SGPR` wrapper
+   directly calls the posterior objects built by these models at prediction
+   time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+   faster subsequent predictions. However, note that these posterior objects need to be updated
+   whenever the underlying model is changed  by calling :meth:`update_posterior_cache` (this
+   happens automatically after calls to :meth:`update` or :math:`optimize`).
+
+   :param model: The GPflow model to wrap.
+   :param optimizer: The optimizer with which to train the model. Defaults to
+       :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+   :param num_rff_features: The number of random Fourier features used to approximate the
+       kernel when calling :meth:`trajectory_sampler`. We use a default of 1000 as it
+       typically perfoms well for a wide range of kernels. Note that very smooth
+       kernels (e.g. RBF) can be well-approximated with fewer features.
+   :param inducing_point_selector: The (optional) desired inducing point selector that
+       will update the underlying GPflow SGPR model's inducing points as
+       the optimization progresses.
+   :raise NotImplementedError (or ValueError): If we try to use a model with invalid
+       ``num_rff_features``, or an ``inducing_point_selector`` with a model
+       that has more than one set of inducing points.
+   :param encoder: Optional encoder with which to transform query points before
+       generating predictions.
+
+   .. py:property:: model
+      :type: gpflow.models.SGPR
+
+      The underlying GPflow model.
+
+
+   .. py:method:: predict_y_encoded(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Implementation of predict_y on encoded query points.
+
+
+   .. py:method:: _ensure_variable_model_data() -> None
+
+      Ensure GPflow data, which is normally stored in Tensors, is instead stored in
+      dynamically shaped Variables. Override this as required.
+
+
+   .. py:method:: optimize_encoded(dataset: trieste.data.Dataset) -> trieste.models.optimizer.OptimizeResult
+
+      Optimize the model with the specified `dataset`.
+
+      :param dataset: The data with which to optimize the `model`.
+
+
+   .. py:method:: update_encoded(dataset: trieste.data.Dataset) -> None
+
+      Implementation of update on the encoded dataset.
+
+
+   .. py:method:: _update_inducing_variables(new_inducing_points: trieste.types.TensorType) -> None
+
+      When updating the inducing points of a model, we must also update the other
+      inducing variables, i.e. `q_mu` and `q_sqrt` accordingly. The exact form of this update
+      depends if we are using whitened representations of the inducing variables.
+      See :meth:`_whiten_points` for details.
+
+      :param new_inducing_points: The desired values for the new inducing points.
+      :raise NotImplementedError: If we try to update the inducing variables of a model
+          that has more than one set of inducing points.
+
+
+   .. py:method:: get_inducing_variables() -> Tuple[Union[trieste.types.TensorType, list[trieste.types.TensorType]], trieste.types.TensorType, trieste.types.TensorType, bool]
+
+      Return the model's inducing variables. The SGPR model does not have ``q_mu``, ``q_sqrt`` and
+      ``whiten`` objects. We can use ``compute_qu`` method to obtain ``q_mu`` and ``q_sqrt``,
+      while the SGPR model does not use the whitened representation. Note that at the moment
+      ``compute_qu`` works only for single latent GP and returns ``q_sqrt`` in a shape that is
+      inconsistent with the SVGP model (hence we need to do modify its shape).
+
+      :return: The inducing points (i.e. locations of the inducing variables), as a Tensor or a
+          list of Tensors (when the model has multiple inducing points); a tensor containing the
+          variational mean ``q_mu``; a tensor containing the Cholesky decomposition of the
+          variational covariance ``q_sqrt``; and a bool denoting if we are using whitened or
+          non-whitened representations.
+      :raise NotImplementedError: If the model has more than one latent GP.
+
+
+   .. py:method:: covariance_between_points_encoded(query_points_1: trieste.types.TensorType, query_points_2: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Compute the posterior covariance between sets of query points.
+
+      Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+      have leading dimensions.
+
+      :param query_points_1: Set of query points with shape [..., A, D]
+      :param query_points_2: Sets of query points with shape [B, D]
+      :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+          (L being the number of latent GPs = number of output dimensions)
+
+
+   .. py:method:: trajectory_sampler() -> trieste.models.interfaces.TrajectorySampler[SparseGaussianProcessRegression]
+
+      Return a trajectory sampler. For :class:`SparseGaussianProcessRegression`, we build
+      trajectories using a decoupled random Fourier feature approximation. Note that this
+      is available only for single output models.
+
+      At the moment only models with single latent GP are supported.
+
+      :return: The trajectory sampler.
+      :raise NotImplementedError: If we try to use the
+          sampler with a model that has more than one latent GP.
+
+
+   .. py:method:: get_internal_data() -> trieste.data.Dataset
+
+      Return the model's training data.
+
+      :return: The model's training data.
+
+
+
+.. py:class:: SparseVariational(model: gpflow.models.SVGP, optimizer: trieste.models.optimizer.Optimizer | None = None, num_rff_features: int = 1000, inducing_point_selector: Optional[trieste.models.gpflow.inducing_point_selectors.InducingPointSelector[SparseVariational]] = None, encoder: trieste.space.EncoderFunction | None = None)
+
+
+   Bases: :py:obj:`trieste.models.gpflow.interface.GPflowPredictor`, :py:obj:`trieste.models.gpflow.interface.EncodedSupportsCovarianceBetweenPoints`, :py:obj:`trieste.models.interfaces.SupportsGetInducingVariables`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.SVGP`.
+
+   Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.SVGP` wrapper
+   directly calls the posterior objects built by these models at prediction
+   time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+   faster subsequent predictions. However, note that these posterior objects need to be updated
+   whenever the underlying model is changed  by calling :meth:`update_posterior_cache` (this
+   happens automatically after calls to :meth:`update` or :math:`optimize`).
+
+   :param model: The underlying GPflow sparse variational model.
+   :param optimizer: The optimizer with which to train the model. Defaults to
+       :class:`~trieste.models.optimizer.BatchOptimizer` with :class:`~tf.optimizers.Adam` with
+       batch size 100.
+   :param num_rff_features: The number of random Fourier features used to approximate the
+       kernel when performing decoupled Thompson sampling through
+       its :meth:`trajectory_sampler`. We use a default of 1000 as it typically
+       perfoms well for a wide range of kernels. Note that very smooth kernels (e.g. RBF)
+       can be well-approximated with fewer features.
+   :param inducing_point_selector: The (optional) desired inducing_point_selector that
+       will update the underlying GPflow sparse variational model's inducing points as
+       the optimization progresses.
+   :raise NotImplementedError: If we try to use an inducing_point_selector with a model
+       that has more than one set of inducing points.
+   :param encoder: Optional encoder with which to transform query points before
+       generating predictions.
+
+   .. py:property:: model
+      :type: gpflow.models.SVGP
+
+      The underlying GPflow model.
+
+
+   .. py:method:: _ensure_variable_model_data() -> None
+
+      Ensure GPflow data, which is normally stored in Tensors, is instead stored in
+      dynamically shaped Variables. Override this as required.
+
+
+   .. py:method:: predict_y_encoded(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Implementation of predict_y on encoded query points.
+
+
+   .. py:method:: update_encoded(dataset: trieste.data.Dataset) -> None
+
+      Implementation of update on the encoded dataset.
+
+
+   .. py:method:: optimize_encoded(dataset: trieste.data.Dataset) -> trieste.models.optimizer.OptimizeResult
+
+      Optimize the model with the specified `dataset`.
+
+      :param dataset: The data with which to optimize the `model`.
+
+
+   .. py:method:: _update_inducing_variables(new_inducing_points: trieste.types.TensorType) -> None
+
+      When updating the inducing points of a model, we must also update the other
+      inducing variables, i.e. `q_mu` and `q_sqrt` accordingly. The exact form of this update
+      depends if we are using whitened representations of the inducing variables.
+      See :meth:`_whiten_points` for details.
+
+      :param new_inducing_points: The desired values for the new inducing points.
+      :raise NotImplementedError: If we try to update the inducing variables of a model
+          that has more than one set of inducing points.
+
+
+   .. py:method:: get_inducing_variables() -> Tuple[Union[trieste.types.TensorType, list[trieste.types.TensorType]], trieste.types.TensorType, trieste.types.TensorType, bool]
+
+      Return the model's inducing variables.
+
+      :return: The inducing points (i.e. locations of the inducing variables), as a Tensor or a
+          list of Tensors (when the model has multiple inducing points); A tensor containing the
+          variational mean q_mu; a tensor containing the Cholesky decomposition of the variational
+          covariance q_sqrt; and a bool denoting if we are using whitened or
+          non-whitened representations.
+
+
+   .. py:method:: covariance_between_points_encoded(query_points_1: trieste.types.TensorType, query_points_2: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Compute the posterior covariance between sets of query points.
+
+      Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+      have leading dimensions.
+
+      :param query_points_1: Set of query points with shape [..., A, D]
+      :param query_points_2: Sets of query points with shape [B, D]
+      :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+          (L being the number of latent GPs = number of output dimensions)
+
+
+   .. py:method:: trajectory_sampler() -> trieste.models.interfaces.TrajectorySampler[SparseVariational]
+
+      Return a trajectory sampler. For :class:`SparseVariational`, we build
+      trajectories using a decoupled random Fourier feature approximation.
+
+      :return: The trajectory sampler.
+
+
+
+.. py:class:: VariationalGaussianProcess(model: gpflow.models.VGP, optimizer: trieste.models.optimizer.Optimizer | None = None, use_natgrads: bool = False, natgrad_gamma: Optional[float] = None, num_rff_features: int = 1000, encoder: trieste.space.EncoderFunction | None = None)
+
+
+   Bases: :py:obj:`trieste.models.gpflow.interface.GPflowPredictor`, :py:obj:`trieste.models.gpflow.interface.EncodedSupportsCovarianceBetweenPoints`, :py:obj:`trieste.models.interfaces.SupportsGetInducingVariables`, :py:obj:`trieste.models.interfaces.HasTrajectorySampler`
+
+   A :class:`TrainableProbabilisticModel` wrapper for a GPflow :class:`~gpflow.models.VGP`.
+
+   A Variational Gaussian Process (VGP) approximates the posterior of a GP
+   using the multivariate Gaussian closest to the posterior of the GP by minimizing the
+   KL divergence between approximated and exact posteriors. See :cite:`opper2009variational`
+   for details.
+
+   The VGP provides (approximate) GP modelling under non-Gaussian likelihoods, for example
+   when fitting a classification model over binary data.
+
+   A whitened representation and (optional) natural gradient steps are used to aid
+   model optimization.
+
+   Similarly to our :class:`GaussianProcessRegression`, our :class:`~gpflow.models.VGP` wrapper
+   directly calls the posterior objects built by these models at prediction
+   time. These posterior objects store the pre-computed Gram matrices, which can be reused to allow
+   faster subsequent predictions. However, note that these posterior objects need to be updated
+   whenever the underlying model is changed  by calling :meth:`update_posterior_cache` (this
+   happens automatically after calls to :meth:`update` or :math:`optimize`).
+
+   :param model: The GPflow :class:`~gpflow.models.VGP`.
+   :param optimizer: The optimizer with which to train the model. Defaults to
+       :class:`~trieste.models.optimizer.Optimizer` with :class:`~gpflow.optimizers.Scipy`.
+   :param use_natgrads: If True then alternate model optimization steps with natural
+       gradient updates. Note that natural gradients requires
+       a :class:`~trieste.models.optimizer.BatchOptimizer` wrapper with
+       :class:`~tf.optimizers.Optimizer` optimizer.
+   :natgrad_gamma: Gamma parameter for the natural gradient optimizer.
+   :param num_rff_features: The number of random Fourier features used to approximate the
+       kernel when performing decoupled Thompson sampling through
+       its :meth:`trajectory_sampler`. We use a default of 1000 as it typically perfoms
+       well for a wide range of kernels. Note that very smooth kernels (e.g. RBF) can
+       be well-approximated with fewer features.
+   :raise ValueError (or InvalidArgumentError): If ``model``'s :attr:`q_sqrt` is not rank 3
+       or if attempting to combine natural gradients with a :class:`~gpflow.optimizers.Scipy`
+       optimizer.
+   :param encoder: Optional encoder with which to transform query points before
+       generating predictions.
+
+   .. py:property:: model
+      :type: gpflow.models.VGP
+
+      The underlying GPflow model.
+
+
+   .. py:method:: _ensure_variable_model_data() -> None
+
+      Ensure GPflow data, which is normally stored in Tensors, is instead stored in
+      dynamically shaped Variables. Override this as required.
+
+
+   .. py:method:: predict_y_encoded(query_points: trieste.types.TensorType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Implementation of predict_y on encoded query points.
+
+
+   .. py:method:: update_encoded(dataset: trieste.data.Dataset, *, jitter: float = DEFAULTS.JITTER) -> None
+
+      Update the model given the specified ``dataset``. Does not train the model.
+
+      :param dataset: The data with which to update the model.
+      :param jitter: The size of the jitter to use when stabilizing the Cholesky decomposition of
+          the covariance matrix.
+
+
+   .. py:method:: optimize_encoded(dataset: trieste.data.Dataset) -> Optional[trieste.models.optimizer.OptimizeResult]
+
+      :class:`VariationalGaussianProcess` has a custom `optimize` method that (optionally) permits
+      alternating between standard optimization steps (for kernel parameters) and natural gradient
+      steps for the variational parameters (`q_mu` and `q_sqrt`). See :cite:`salimbeni2018natural`
+      for details. Using natural gradients can dramatically speed up model fitting, especially for
+      ill-conditioned posteriors.
+
+      If using natural gradients, our optimizer inherits the mini-batch behavior and number
+      of optimization steps as the base optimizer specified when initializing
+      the :class:`VariationalGaussianProcess`.
+
+
+   .. py:method:: get_inducing_variables() -> Tuple[trieste.types.TensorType, trieste.types.TensorType, trieste.types.TensorType, bool]
+
+      Return the model's inducing variables. Note that GPflow's VGP model is
+      hard-coded to use the whitened representation.
+
+      :return: Tensors containing: the inducing points (i.e. locations of the inducing
+          variables); the variational mean q_mu; the Cholesky decomposition of the
+          variational covariance q_sqrt; and a bool denoting if we are using whitened
+          or non-whitened representations.
+
+
+   .. py:method:: trajectory_sampler() -> trieste.models.interfaces.TrajectorySampler[VariationalGaussianProcess]
+
+      Return a trajectory sampler. For :class:`VariationalGaussianProcess`, we build
+      trajectories using a decoupled random Fourier feature approximation.
+
+      At the moment only models with single latent GP are supported.
+
+      :return: The trajectory sampler.
+      :raise NotImplementedError: If we try to use the
+          sampler with a model that has more than one latent GP.
+
+
+   .. py:method:: covariance_between_points_encoded(query_points_1: trieste.types.TensorType, query_points_2: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Compute the posterior covariance between sets of query points.
+
+      Note that query_points_2 must be a rank 2 tensor, but query_points_1 can
+      have leading dimensions.
+
+      :param query_points_1: Set of query points with shape [..., A, D]
+      :param query_points_2: Sets of query points with shape [B, D]
+      :return: Covariance matrix between the sets of query points with shape [..., L, A, B]
+          (L being the number of latent GPs = number of output dimensions)
+
+
+
+.. py:class:: BatchReparametrizationSampler(sample_size: int, model: trieste.models.interfaces.SupportsPredictJoint, qmc: bool = False, qmc_skip: bool = True)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.ReparametrizationSampler`\ [\ :py:obj:`trieste.models.interfaces.SupportsPredictJoint`\ ]
+
+   This sampler employs the *reparameterization trick* to approximate batches of samples from a
+   :class:`ProbabilisticModel`\ 's predictive joint distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon L(x)
+
+   where :math:`L` is the Cholesky factor s.t. :math:`LL^T` is the covariance, and
+   :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring samples
+   form a continuous curve.
+
+   :param sample_size: The number of samples for each batch of points. Must be positive.
+   :param model: The model to sample from.
+   :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
+       sampling more accurately approximates a normal distribution than truly random samples.
+   :param qmc_skip: Whether to use the skip parameter to ensure the QMC sampler gives different
+       samples whenever it is reset. This is not supported with XLA.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. py:attribute:: skip
+      :type: trieste.types.TensorType
+
+      Number of sobol sequence points to skip. This is incremented for each sampler.
+
+
+   .. py:method:: sample(at: trieste.types.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.types.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`BatchReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`BatchReparametrizationSampler` instances will produce different samples.
+
+      :param at: Batches of query points at which to sample the predictive distribution, with
+          shape `[..., B, D]`, for batches of size `B` of points of dimension `D`. Must have a
+          consistent batch size across all calls to :meth:`sample` for any given
+          :class:`BatchReparametrizationSampler`.
+      :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+          the covariance matrix.
+      :return: The samples, of shape `[..., S, B, L]`, where `S` is the `sample_size`, `B` the
+          number of points per batch, and `L` the dimension of the model's predictive
+          distribution.
+      :raise ValueError (or InvalidArgumentError): If any of the following are true:
+          - ``at`` is a scalar.
+          - The batch size `B` of ``at`` is not positive.
+          - The batch size `B` of ``at`` differs from that of previous calls.
+          - ``jitter`` is negative.
+
+
+
+.. py:class:: DecoupledTrajectorySampler(model: Union[FeatureDecompositionInducingPointModel, FeatureDecompositionInternalDataModel], num_features: int = 1000)
+
+
+   Bases: :py:obj:`FeatureDecompositionTrajectorySampler`\ [\ :py:obj:`Union`\ [\ :py:obj:`FeatureDecompositionInducingPointModel`\ , :py:obj:`FeatureDecompositionInternalDataModel`\ ]\ ]
+
+   This class builds functions that approximate a trajectory sampled from an underlying Gaussian
+   process model using decoupled sampling. See :cite:`wilson2020efficiently` for an introduction
+   to decoupled sampling.
+
+   Unlike our :class:`RandomFourierFeatureTrajectorySampler` which uses a RFF decomposition to
+   aprroximate the Gaussian process posterior, a :class:`DecoupledTrajectorySampler` only
+   uses an RFF decomposition to approximate the Gausian process prior and instead using
+   a canonical decomposition to discretize the effect of updating the prior on the given data.
+
+   In particular, we approximate the Gaussian processes' posterior samples as the finite feature
+   approximation
+
+   .. math:: \hat{f}(.) = \sum_{i=1}^L w_i\phi_i(.) + \sum_{j=1}^m v_jk(.,z_j)
+
+   where :math:`\phi_i(.)` and :math:`w_i` are the Fourier features and their weights that
+   discretize the prior. In contrast, `k(.,z_j)` and :math:`v_i` are the canonical features and
+   their weights that discretize the data update.
+
+   The expression for :math:`v_i` depends on if we are using an exact Gaussian process or a sparse
+   approximations. See  eq. (13) in :cite:`wilson2020efficiently` for details.
+
+   Note that if a model is both of :class:`FeatureDecompositionInducingPointModel` type and
+   :class:`FeatureDecompositionInternalDataModel` type,
+   :class:`FeatureDecompositionInducingPointModel` will take a priority and inducing points
+   will be used for computations rather than data.
+
+   :param model: The model to sample from.
+   :param num_features: The number of features used to approximate the kernel. We use a default
+       of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
+       kernels (e.g. RBF) can be well-approximated with fewer features.
+   :raise NotImplementedError: If the model is not of valid type.
+
+   .. py:method:: _prepare_weight_sampler() -> Callable[[int], trieste.types.TensorType]
+
+      Prepare the sampler function that provides samples of the feature weights
+      for both the RFF and canonical feature functions, i.e. we return a function
+      that takes in a batch size `B` and returns `B` samples for the weights of each of
+      the `F`  RFF features and `M` canonical features for `L` outputs.
+
+
+
+.. py:class:: IndependentReparametrizationSampler(sample_size: int, model: trieste.models.interfaces.ProbabilisticModel, qmc: bool = False, qmc_skip: bool = True)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.ReparametrizationSampler`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModel`\ ]
+
+   This sampler employs the *reparameterization trick* to approximate samples from a
+   :class:`ProbabilisticModel`\ 's predictive distribution as
+
+   .. math:: x \mapsto \mu(x) + \epsilon \sigma(x)
+
+   where :math:`\epsilon \sim \mathcal N (0, 1)` is constant for a given sampler, thus ensuring
+   samples form a continuous curve.
+
+   :param sample_size: The number of samples to take at each point. Must be positive.
+   :param model: The model to sample from.
+   :param qmc: Whether to use QMC sobol sampling instead of random normal sampling. QMC
+       sampling more accurately approximates a normal distribution than truly random samples.
+   :param qmc_skip: Whether to use the skip parameter to ensure the QMC sampler gives different
+       samples whenever it is reset. This is not supported with XLA.
+   :raise ValueError (or InvalidArgumentError): If ``sample_size`` is not positive.
+
+   .. py:attribute:: skip
+      :type: trieste.types.TensorType
+
+      Number of sobol sequence points to skip. This is incremented for each sampler.
+
+
+   .. py:method:: sample(at: trieste.types.TensorType, *, jitter: float = DEFAULTS.JITTER) -> trieste.types.TensorType
+
+      Return approximate samples from the `model` specified at :meth:`__init__`. Multiple calls to
+      :meth:`sample`, for any given :class:`IndependentReparametrizationSampler` and ``at``, will
+      produce the exact same samples. Calls to :meth:`sample` on *different*
+      :class:`IndependentReparametrizationSampler` instances will produce different samples.
+
+      :param at: Where to sample the predictive distribution, with shape `[..., 1, D]`, for points
+          of dimension `D`.
+      :param jitter: The size of the jitter to use when stabilising the Cholesky decomposition of
+          the covariance matrix.
+      :return: The samples, of shape `[..., S, 1, L]`, where `S` is the `sample_size` and `L` is
+          the number of latent model dimensions.
+      :raise ValueError (or InvalidArgumentError): If ``at`` has an invalid shape or ``jitter``
+          is negative.
+
+
+
+.. py:class:: RandomFourierFeatureTrajectorySampler(model: FeatureDecompositionInternalDataModel, num_features: int = 1000)
+
+
+   Bases: :py:obj:`FeatureDecompositionTrajectorySampler`\ [\ :py:obj:`FeatureDecompositionInternalDataModel`\ ]
+
+   This class builds functions that approximate a trajectory sampled from an underlying Gaussian
+   process model. For tractibility, the Gaussian process is approximated with a Bayesian
+   Linear model across a set of features sampled from the Fourier feature decomposition of
+   the model's kernel. See :cite:`hernandez2014predictive` for details. Currently we do not
+   support models with multiple latent Gaussian processes.
+
+   In particular, we approximate the Gaussian processes' posterior samples as the finite feature
+   approximation
+
+   .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+   where :math:`\phi_i` are m Fourier features and :math:`\theta_i` are
+   feature weights sampled from a posterior distribution that depends on the feature values at the
+   model's datapoints.
+
+   Our implementation follows :cite:`hernandez2014predictive`, with our calculations
+   differing slightly depending on properties of the problem. In particular,  we used different
+   calculation strategies depending on the number of considered features m and the number
+   of data points n.
+
+   If :math:`m<n` then we follow Appendix A of :cite:`hernandez2014predictive` and calculate the
+   posterior distribution for :math:`\theta` following their Bayesian linear regression motivation,
+   i.e. the computation revolves around an O(m^3)  inversion of a design matrix.
+
+   If :math:`n<m` then we use the kernel trick to recast computation to revolve around an O(n^3)
+   inversion of a gram matrix. As well as being more efficient in early BO
+   steps (where :math:`n<m`), this second computation method allows much larger choices
+   of m (as required to approximate very flexible kernels).
+
+   :param model: The model to sample from.
+   :param num_features: The number of features used to approximate the kernel. We use a default
+       of 1000 as it typically perfoms well for a wide range of kernels. Note that very smooth
+       kernels (e.g. RBF) can be well-approximated with fewer features.
+   :raise ValueError: If ``dataset`` is empty.
+
+   .. py:method:: _prepare_weight_sampler() -> Callable[[int], trieste.types.TensorType]
+
+      Calculate the posterior of theta (the feature weights) for the RFFs, returning
+      a function that takes in a batch size `B` and returns `B` samples for
+      the weights of each of the RFF `F` features for one output.
+
+
+   .. py:method:: _prepare_theta_posterior_in_design_space() -> tensorflow_probability.distributions.MultivariateNormalTriL
+
+      Calculate the posterior of theta (the feature weights) in the design space. This
+      distribution is a Gaussian
+
+      .. math:: \theta \sim N(D^{-1}\Phi^Ty,D^{-1}\sigma^2)
+
+      where the [m,m] design matrix :math:`D=(\Phi^T\Phi + \sigma^2I_m)` is defined for
+      the [n,m] matrix of feature evaluations across the training data :math:`\Phi`
+      and observation noise variance :math:`\sigma^2`.
+
+
+   .. py:method:: _prepare_theta_posterior_in_gram_space() -> tensorflow_probability.distributions.MultivariateNormalTriL
+
+      Calculate the posterior of theta (the feature weights) in the gram space.
+
+       .. math:: \theta \sim N(\Phi^TG^{-1}y,I_m - \Phi^TG^{-1}\Phi)
+
+      where the [n,n] gram matrix :math:`G=(\Phi\Phi^T + \sigma^2I_n)` is defined for the [n,m]
+      matrix of feature evaluations across the training data :math:`\Phi` and
+      observation noise variance :math:`\sigma^2`.
+
+
+
+.. py:class:: feature_decomposition_trajectory(feature_functions: Callable[[trieste.types.TensorType], trieste.types.TensorType], weight_sampler: Callable[[int], trieste.types.TensorType], mean_function: Callable[[trieste.types.TensorType], trieste.types.TensorType], encoder: trieste.space.EncoderFunction | None = None)
+
+
+   Bases: :py:obj:`trieste.models.interfaces.TrajectoryFunctionClass`
+
+   An approximate sample from a Gaussian processes' posterior samples represented as a
+   finite weighted sum of features.
+
+   A trajectory is given by
+
+   .. math:: \hat{f}(x) = \sum_{i=1}^m \phi_i(x)\theta_i
+
+   where :math:`\phi_i` are m feature functions and :math:`\theta_i` are
+   feature weights sampled from a posterior distribution.
+
+   The number of trajectories (i.e. batch size) is determined from the first call of the
+   trajectory. In order to change the batch size, a new :class:`TrajectoryFunction` must be built.
+
+   :param feature_functions: Set of feature function.
+   :param weight_sampler: New sampler that generates feature weight samples.
+   :param mean_function: The underlying model's mean function.
+   :param encoder: Optional encoder with which to transform input points.
+
+   .. py:method:: __call__(inputs: trieste.types.TensorType) -> trieste.types.TensorType
+
+      Call trajectory function.
+
+
+   .. py:method:: resample() -> None
+
+      Efficiently resample in-place without retracing.
+
+
+   .. py:method:: update(weight_sampler: Callable[[int], trieste.types.TensorType]) -> None
+
+      Efficiently update the trajectory with a new weight distribution and resample its weights.
+
+      :param weight_sampler: New sampler that generates feature weight samples.
+
+
+
+.. py:function:: assert_data_is_compatible(new_data: trieste.data.Dataset, existing_data: trieste.data.Dataset) -> None
+
+   Checks that new data is compatible with existing data.
+
+   :param new_data: New data.
+   :param existing_data: Existing data.
+   :raise ValueError: if trailing dimensions of the query point or observation differ.
+
+
+.. py:function:: check_optimizer(optimizer: Union[trieste.models.optimizer.BatchOptimizer, trieste.models.optimizer.Optimizer]) -> None
+
+   Check that the optimizer for the GPflow models is using a correct optimizer wrapper.
+
+   Stochastic gradient descent based methods implemented in TensorFlow would not
+   work properly without mini-batches and hence :class:`~trieste.models.optimizers.BatchOptimizer`
+   that prepares mini-batches and calls the optimizer iteratively needs to be used. GPflow's
+   :class:`~gpflow.optimizers.Scipy` optimizer on the other hand should use the non-batch wrapper
+   :class:`~trieste.models.optimizers.Optimizer`.
+
+   :param optimizer: An instance of the optimizer wrapper with the underlying optimizer.
+   :raise ValueError: If :class:`~tf.optimizers.Optimizer` is not using
+       :class:`~trieste.models.optimizers.BatchOptimizer` or :class:`~gpflow.optimizers.Scipy` is
+       using :class:`~trieste.models.optimizers.BatchOptimizer`.
+
+
+.. py:function:: randomize_hyperparameters(object: gpflow.Module) -> None
+
+   Sets hyperparameters to random samples from their prior distributions or (for Sigmoid
+   constraints with no priors) their constrained domains. Note that it is up to the caller
+   to ensure that the prior, if defined, is compatible with the transform.
+
+   :param object: Any gpflow Module.
+
+
+.. py:function:: squeeze_hyperparameters(object: gpflow.Module, alpha: float = 0.01, epsilon: float = 1e-07) -> None
+
+   Squeezes the parameters to be strictly inside their range defined by the Sigmoid,
+   or strictly greater than the limit defined by the Shift+Softplus.
+   This avoids having Inf unconstrained values when the parameters are exactly at the boundary.
+
+   :param object: Any gpflow Module.
+   :param alpha: the proportion of the range with which to squeeze for the Sigmoid case
+   :param epsilon: the value with which to offset the shift for the Softplus case.
+   :raise ValueError: If ``alpha`` is not in (0,1) or epsilon <= 0
+
+

@@ -1,0 +1,1068 @@
+
+<!DOCTYPE html>
+
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.acquisition.optimizer &#8212; trieste 0.13.2 documentation</title>
+    
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=1999514e3f237ded88cf" rel="stylesheet">
+
+    
+  <link rel="stylesheet"
+    href="../../../../_static/vendor/fontawesome/5.13.0/css/all.min.css">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-solid-900.woff2">
+  <link rel="preload" as="font" type="font/woff2" crossorigin
+    href="../../../../_static/vendor/fontawesome/5.13.0/webfonts/fa-brands-400.woff2">
+
+    <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+    <link rel="stylesheet" href="../../../../_static/styles/pydata-sphinx-theme.css" type="text/css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf">
+
+    <script id="documentation_options" data-url_root="../../../../" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/jquery.js"></script>
+    <script src="../../../../_static/underscore.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="trieste.acquisition.rule" href="../rule/index.html" />
+    <link rel="prev" title="trieste.acquisition.interface" href="../interface/index.html" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="docsearch:language" content="None">
+    
+
+    <!-- Google Analytics -->
+    
+  </head>
+  <body data-spy="scroll" data-target="#bd-toc-nav" data-offset="60">
+    
+    <div class="container-fluid" id="banner"></div>
+
+    
+    <nav class="navbar navbar-light navbar-expand-lg bg-light fixed-top bd-navbar" id="navbar-main"><div class="container-xl">
+
+  <div id="navbar-start">
+    
+    
+
+<a class="navbar-brand" href="../../../../index.html">
+  <img src="../../../../_static/logo.png" class="logo" alt="logo">
+</a>
+
+
+    
+  </div>
+
+  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbar-collapsible" aria-controls="navbar-collapsible" aria-expanded="false" aria-label="Toggle navigation">
+    <span class="navbar-toggler-icon"></span>
+  </button>
+
+  
+  <div id="navbar-collapsible" class="col-lg-9 collapse navbar-collapse">
+    <div id="navbar-center" class="mr-auto">
+      
+      <div class="navbar-center-item">
+        <ul id="navbar-main-elements" class="navbar-nav">
+    <li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../index.html">
+  Trieste
+ </a>
+</li>
+
+<li class="toctree-l1 current active nav-item">
+ <a class="reference internal nav-link" href="../../index.html">
+  API reference
+ </a>
+</li>
+
+<li class="toctree-l1 nav-item">
+ <a class="reference internal nav-link" href="../../../../tutorials.html">
+  Tutorials
+ </a>
+</li>
+
+    
+</ul>
+      </div>
+      
+    </div>
+
+    <div id="navbar-end">
+      
+      <div class="navbar-end-item">
+        <div class="dropdown" id="version_switcher">
+    <button type="button" class="btn btn-primary btn-sm navbar-btn dropdown-toggle" id="version_switcher_button" data-toggle="dropdown">
+        0.13.2  <!-- this text may get changed later by javascript -->
+        <span class="caret"></span>
+    </button>
+    <div id="version_switcher_menu" class="dropdown-menu list-group-flush py-0" aria-labelledby="version_switcher_button">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+</div>
+
+<!-- NOTE: this JS must live here (not in our global JS file) because it relies
+     on being processed by Jinja before it is run (specifically for replacing
+     variables autoapi/trieste/acquisition/optimizer/index and {'json_url': 'https://secondmind-labs.github.io/trieste/versions.json', 'version_match': '0.13.2'}.
+-->
+
+<script type="text/javascript">
+// Check if corresponding page path exists in other version of docs
+// and, if so, go there instead of the homepage of the other docs version
+function checkPageExistsAndRedirect(event) {
+    const currentFilePath = "autoapi/trieste/acquisition/optimizer/index.html",
+          tryUrl = event.target.getAttribute("href");
+    let otherDocsHomepage = tryUrl.replace(currentFilePath, "");
+    $.ajax({
+        type: 'HEAD',
+        url: tryUrl,
+        // if the page exists, go there
+        success: function() {
+            location.href = tryUrl;
+        }
+    }).fail(function() {
+        location.href = otherDocsHomepage;
+    });
+    // this prevents the browser from following the href of the clicked node
+    // (which is fine because this function takes care of redirecting)
+    return false;
+}
+
+// Populate the version switcher from the JSON config file
+(function () {
+    $.getJSON("https://secondmind-labs.github.io/trieste/versions.json", function(data, textStatus, jqXHR) {
+        const currentFilePath = "autoapi/trieste/acquisition/optimizer/index.html";
+        // create links to the corresponding page in the other docs versions
+        $.each(data, function(index, entry) {
+            // if no custom name specified (e.g., "latest"), use version string
+            if (!("name" in entry)) {
+                entry.name = entry.version;
+            }
+            // create the node
+            const node = document.createElement("a");
+            node.setAttribute("class", "list-group-item list-group-item-action py-1");
+            node.textContent = `${entry.name}`;
+            node.setAttribute("href", `${entry.url}${currentFilePath}`);
+            // on click, AJAX calls will check if the linked page exists before
+            // trying to redirect, and if not, will redirect to the homepage
+            // for that version of the docs.
+            node.onclick = checkPageExistsAndRedirect;
+            // Add dataset values for the version and name in case people want
+            // to apply CSS styling based on this information.
+            node.dataset["versionName"] = entry.name;
+            node.dataset["version"] = entry.version;
+
+            $("#version_switcher_menu").append(node);
+            // replace dropdown button text with the preferred display name of
+            // this version, rather than using sphinx's  variable.
+            // also highlight the dropdown entry for the currently-viewed
+            // version's entry
+            if (entry.version == "0.13.2") {
+                node.classList.add("active");
+                let btn = document.getElementById("version_switcher_button");
+                btn.innerText = btn.dataset["activeVersionName"] = entry.name;
+                btn.dataset["activeVersion"] = entry.version;
+            }
+        });
+    });
+})();
+</script>
+      </div>
+      
+      <div class="navbar-end-item">
+        <ul id="navbar-icon-links" class="navbar-nav" aria-label="Icon Links">
+        <li class="nav-item">
+          <a class="nav-link" href="https://github.com/secondmind-labs/trieste" rel="noopener" target="_blank" title="GitHub"><span><i class="fab fa-github-square"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+      </ul>
+      </div>
+      
+    </div>
+  </div>
+</div>
+    </nav>
+    
+
+    <div class="container-xl">
+      <div class="row">
+          
+            
+            <!-- Only show if we have sidebars configured, else just a small margin  -->
+            <div class="col-12 col-md-3 bd-sidebar">
+              <div class="sidebar-start-items"><form class="bd-search d-flex align-items-center" action="../../../../search.html" method="get">
+  <i class="icon fas fa-search"></i>
+  <input type="search" class="form-control" name="q" id="search-input" placeholder="Search the docs ..." aria-label="Search the docs ..." autocomplete="off" >
+</form><nav class="bd-links" id="bd-docs-nav" aria-label="Main navigation">
+  <div class="bd-toc-item active">
+    <ul class="current nav bd-sidenav">
+ <li class="toctree-l1 current active has-children">
+  <a class="reference internal" href="../index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.acquisition
+    </span>
+   </code>
+  </a>
+  <input checked="" class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/>
+  <label for="toctree-checkbox-1">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul class="current">
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../function/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.function
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/>
+    <label for="toctree-checkbox-2">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/active_learning/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.active_learning
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/continuous_thompson_sampling/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.continuous_thompson_sampling
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/entropy/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.entropy
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/function/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.function
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/greedy_batch/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.greedy_batch
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../function/multi_objective/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.function.multi_objective
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../multi_objective/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.multi_objective
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/>
+    <label for="toctree-checkbox-3">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../multi_objective/dominance/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.dominance
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../multi_objective/pareto/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.pareto
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../multi_objective/partition/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.acquisition.multi_objective.partition
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../interface/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.interface
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2 current active">
+    <a class="current reference internal" href="#">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../rule/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.rule
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../sampler/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.acquisition.sampler
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../models/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.models
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/>
+  <label for="toctree-checkbox-4">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../models/gpflow/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflow
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/>
+    <label for="toctree-checkbox-5">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/gpflow/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/gpflow/inducing_point_selectors/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.inducing_point_selectors
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/gpflow/optimizer/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.optimizer
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/gpflow/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflow.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../models/gpflux/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.gpflux
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/>
+    <label for="toctree-checkbox-6">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/gpflux/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.gpflux.builders
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2 has-children">
+    <a class="reference internal" href="../../models/keras/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.keras
+      </span>
+     </code>
+    </a>
+    <input class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/>
+    <label for="toctree-checkbox-7">
+     <i class="fas fa-chevron-down">
+     </i>
+    </label>
+    <ul>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/keras/architectures/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.architectures
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/keras/builders/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.builders
+        </span>
+       </code>
+      </a>
+     </li>
+     <li class="toctree-l3">
+      <a class="reference internal" href="../../models/keras/sampler/index.html">
+       <code class="xref py py-mod docutils literal notranslate">
+        <span class="pre">
+         trieste.models.keras.sampler
+        </span>
+       </code>
+      </a>
+     </li>
+    </ul>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../models/optimizer/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.models.optimizer
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1 has-children">
+  <a class="reference internal" href="../../objectives/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.objectives
+    </span>
+   </code>
+  </a>
+  <input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/>
+  <label for="toctree-checkbox-8">
+   <i class="fas fa-chevron-down">
+   </i>
+  </label>
+  <ul>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../objectives/multi_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.multi_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../objectives/single_objectives/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.single_objectives
+      </span>
+     </code>
+    </a>
+   </li>
+   <li class="toctree-l2">
+    <a class="reference internal" href="../../objectives/utils/index.html">
+     <code class="xref py py-mod docutils literal notranslate">
+      <span class="pre">
+       trieste.objectives.utils
+      </span>
+     </code>
+    </a>
+   </li>
+  </ul>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../utils/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.utils
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+<ul class="nav bd-sidenav">
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../ask_tell_optimization/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.ask_tell_optimization
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../bayesian_optimizer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.bayesian_optimizer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../data/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.data
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../logging/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.logging
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../observer/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.observer
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../space/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.space
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../types/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.types
+    </span>
+   </code>
+  </a>
+ </li>
+ <li class="toctree-l1">
+  <a class="reference internal" href="../../version/index.html">
+   <code class="xref py py-mod docutils literal notranslate">
+    <span class="pre">
+     trieste.version
+    </span>
+   </code>
+  </a>
+ </li>
+</ul>
+
+  </div>
+</nav>
+              </div>
+              <div class="sidebar-end-items">
+              </div>
+            </div>
+            
+          
+
+          
+          <div class="d-none d-xl-block col-xl-2 bd-toc">
+            
+              
+              <div class="toc-item">
+                
+<div class="tocsection onthispage mt-5 pt-1 pb-3">
+    <i class="fas fa-list"></i> On this page
+</div>
+
+<nav id="bd-toc-nav">
+    <ul class="visible nav section-nav flex-column">
+ <li class="toc-h2 nav-item toc-entry">
+  <a class="reference internal nav-link" href="#module-contents">
+   Module Contents
+  </a>
+  <ul class="nav section-nav flex-column">
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.NUM_SAMPLES_MIN">
+     NUM_SAMPLES_MIN
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.NUM_SAMPLES_DIM">
+     NUM_SAMPLES_DIM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.NUM_RUNS_DIM">
+     NUM_RUNS_DIM
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.FailedOptimizationError">
+     FailedOptimizationError
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.AcquisitionOptimizer">
+     AcquisitionOptimizer
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.automatic_optimizer_selector">
+     automatic_optimizer_selector
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.optimize_discrete">
+     optimize_discrete
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.generate_continuous_optimizer">
+     generate_continuous_optimizer
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer._perform_parallel_continuous_optimization">
+     _perform_parallel_continuous_optimization
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.ScipyLbfgsBGreenlet">
+     ScipyLbfgsBGreenlet
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.get_bounds_of_box_relaxation_around_point">
+     get_bounds_of_box_relaxation_around_point
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.batchify_joint">
+     batchify_joint
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.batchify_vectorize">
+     batchify_vectorize
+    </a>
+   </li>
+   <li class="toc-h3 nav-item toc-entry">
+    <a class="reference internal nav-link" href="#trieste.acquisition.optimizer.generate_random_search_optimizer">
+     generate_random_search_optimizer
+    </a>
+   </li>
+  </ul>
+ </li>
+</ul>
+
+</nav>
+              </div>
+              
+              <div class="toc-item">
+                
+              </div>
+              
+            
+          </div>
+          
+
+          
+          
+            
+          
+          <main class="col-12 col-md-9 col-xl-7 py-md-5 pl-md-5 pr-md-4 bd-content" role="main">
+              
+              <div>
+                
+  <div class="section" id="module-trieste.acquisition.optimizer">
+<span id="trieste-acquisition-optimizer"></span><h1><a class="reference internal" href="#module-trieste.acquisition.optimizer" title="trieste.acquisition.optimizer"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.optimizer</span></code></a><a class="headerlink" href="#module-trieste.acquisition.optimizer" title="Permalink to this headline">#</a></h1>
+<p>This module contains functionality for optimizing
+<a class="reference internal" href="../index.html#trieste.acquisition.AcquisitionFunction" title="trieste.acquisition.AcquisitionFunction"><code class="xref py py-data docutils literal notranslate"><span class="pre">AcquisitionFunction</span></code></a>s over <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>s.</p>
+<div class="section" id="module-contents">
+<h2>Module Contents<a class="headerlink" href="#module-contents" title="Permalink to this headline">#</a></h2>
+<dl class="py data">
+<dt id="trieste.acquisition.optimizer.NUM_SAMPLES_MIN">
+<code class="sig-name descname"><span class="pre">NUM_SAMPLES_MIN</span></code><em class="property"> <span class="pre">:int</span> <span class="pre">=</span> <span class="pre">5000</span></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#NUM_SAMPLES_MIN"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.NUM_SAMPLES_MIN" title="Permalink to this definition">#</a></dt>
+<dd><p>The default minimum number of initial samples for <a class="reference internal" href="#trieste.acquisition.optimizer.generate_continuous_optimizer" title="trieste.acquisition.optimizer.generate_continuous_optimizer"><code class="xref py py-func docutils literal notranslate"><span class="pre">generate_continuous_optimizer()</span></code></a> and
+<a class="reference internal" href="#trieste.acquisition.optimizer.generate_random_search_optimizer" title="trieste.acquisition.optimizer.generate_random_search_optimizer"><code class="xref py py-func docutils literal notranslate"><span class="pre">generate_random_search_optimizer()</span></code></a> function, used for determining the number of initial
+samples in the multi-start acquisition function optimization.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.acquisition.optimizer.NUM_SAMPLES_DIM">
+<code class="sig-name descname"><span class="pre">NUM_SAMPLES_DIM</span></code><em class="property"> <span class="pre">:int</span> <span class="pre">=</span> <span class="pre">1000</span></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#NUM_SAMPLES_DIM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.NUM_SAMPLES_DIM" title="Permalink to this definition">#</a></dt>
+<dd><p>The default minimum number of initial samples per dimension of the search space for
+<a class="reference internal" href="#trieste.acquisition.optimizer.generate_continuous_optimizer" title="trieste.acquisition.optimizer.generate_continuous_optimizer"><code class="xref py py-func docutils literal notranslate"><span class="pre">generate_continuous_optimizer()</span></code></a> function in <a class="reference internal" href="#trieste.acquisition.optimizer.automatic_optimizer_selector" title="trieste.acquisition.optimizer.automatic_optimizer_selector"><code class="xref py py-func docutils literal notranslate"><span class="pre">automatic_optimizer_selector()</span></code></a>, used for
+determining the number of initial samples in the multi-start acquisition function optimization.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.acquisition.optimizer.NUM_RUNS_DIM">
+<code class="sig-name descname"><span class="pre">NUM_RUNS_DIM</span></code><em class="property"> <span class="pre">:int</span> <span class="pre">=</span> <span class="pre">10</span></em><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#NUM_RUNS_DIM"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.NUM_RUNS_DIM" title="Permalink to this definition">#</a></dt>
+<dd><p>The default minimum number of optimization runs per dimension of the search space for
+<a class="reference internal" href="#trieste.acquisition.optimizer.generate_continuous_optimizer" title="trieste.acquisition.optimizer.generate_continuous_optimizer"><code class="xref py py-func docutils literal notranslate"><span class="pre">generate_continuous_optimizer()</span></code></a> function in <a class="reference internal" href="#trieste.acquisition.optimizer.automatic_optimizer_selector" title="trieste.acquisition.optimizer.automatic_optimizer_selector"><code class="xref py py-func docutils literal notranslate"><span class="pre">automatic_optimizer_selector()</span></code></a>, used for
+determining the number of acquisition function optimizations to be performed in parallel.</p>
+</dd></dl>
+
+<dl class="py exception">
+<dt id="trieste.acquisition.optimizer.FailedOptimizationError">
+<em class="property"><span class="pre">exception</span> </em><code class="sig-name descname"><span class="pre">FailedOptimizationError</span></code><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#FailedOptimizationError"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.FailedOptimizationError" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference external" href="https://docs.python.org/3/library/exceptions.html#Exception" title="(in Python v3.11)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">Exception</span></code></a></p>
+<p>Raised when an acquisition optimizer fails to optimize</p>
+<p>Initialize self.  See help(type(self)) for accurate signature.</p>
+</dd></dl>
+
+<dl class="py data">
+<dt id="trieste.acquisition.optimizer.AcquisitionOptimizer">
+<code class="sig-name descname"><span class="pre">AcquisitionOptimizer</span></code><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#AcquisitionOptimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Type alias for a function that returns the single point that maximizes an acquisition function over
+a search space or the V points that maximize a vectorized acquisition function (as represented by an
+acquisition-int tuple).</p>
+<p>If this function receives a search space with points of shape [D] and an acquisition function
+with input shape […, 1, D] output shape […, 1], the <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code></a> return shape
+should be [1, D].</p>
+<p>If instead it receives a search space and a tuple containing the acquisition function and its
+vectorization V then the <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code></a> return shape should be [V, D].</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer.automatic_optimizer_selector">
+<code class="sig-name descname"><span class="pre">automatic_optimizer_selector</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#automatic_optimizer_selector"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.automatic_optimizer_selector" title="Permalink to this definition">#</a></dt>
+<dd><p>A wrapper around our <code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer`s.</span> <span class="pre">This</span> <span class="pre">class</span> <span class="pre">performs</span>
+<span class="pre">an</span> <span class="pre">:const:`AcquisitionOptimizer</span></code> appropriate for the
+problem’s <a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><code class="xref py py-class docutils literal notranslate"><span class="pre">SearchSpace</span></code></a>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> – The space of points over which to search, for points with shape [D].</p></li>
+<li><p><strong>target_func</strong> – The function to maximise, with input shape […, 1, D] and output shape
+[…, 1].</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The batch of points in <code class="docutils literal notranslate"><span class="pre">space</span></code> that maximises <code class="docutils literal notranslate"><span class="pre">target_func</span></code>, with shape [1, D].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer.optimize_discrete">
+<code class="sig-name descname"><span class="pre">optimize_discrete</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.DiscreteSearchSpace" title="trieste.space.DiscreteSearchSpace"><span class="pre">trieste.space.DiscreteSearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Union</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a><span class="p"><span class="pre">,</span> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#optimize_discrete"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.optimize_discrete" title="Permalink to this definition">#</a></dt>
+<dd><p>An <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code></a> for :class:’DiscreteSearchSpace’ spaces.</p>
+<p>When this functions receives an acquisition-integer tuple as its <cite>target_func</cite>,it evaluates
+all the points in the search space for each of the individual V functions making
+up <cite>target_func</cite>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> – The space of points over which to search, for points with shape [D].</p></li>
+<li><p><strong>target_func</strong> – The function to maximise, with input shape […, V, D] and output shape
+[…, V].</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The V points in <code class="docutils literal notranslate"><span class="pre">space</span></code> that maximises <code class="docutils literal notranslate"><span class="pre">target_func</span></code>, with shape [V, D].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer.generate_continuous_optimizer">
+<code class="sig-name descname"><span class="pre">generate_continuous_optimizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_initial_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">NUM_SAMPLES_MIN</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_optimization_runs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_recovery_runs</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><span class="pre">Optional</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><span class="pre">AcquisitionOptimizer</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Box</span> <span class="p"><span class="pre">|</span></span> <span class="pre">TaggedProductSearchSpace</span><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#generate_continuous_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.generate_continuous_optimizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Generate a gradient-based optimizer for :class:’Box’ and :class:’TaggedProductSearchSpace’
+spaces and batches of size 1. In the case of a :class:’TaggedProductSearchSpace’, We perform
+gradient-based optimization across all :class:’Box’ subspaces, starting from the best location
+found across a sample of <cite>num_initial_samples</cite> random points.</p>
+<p>We advise the user to either use the default <cite>NUM_SAMPLES_MIN</cite> for <cite>num_initial_samples</cite>, or
+<cite>NUM_SAMPLES_DIM</cite> times the dimensionality of the search space, whichever is greater.
+Similarly, for <cite>num_optimization_runs</cite>, we recommend using <cite>NUM_RUNS_DIM</cite> times the
+dimensionality of the search space.</p>
+<p>This optimizer uses Scipy’s L-BFGS-B optimizer. We run <cite>num_optimization_runs</cite> separate
+optimizations in parallel, each starting from one of the best <cite>num_optimization_runs</cite> initial
+query points.</p>
+<p>If all <cite>num_optimization_runs</cite> optimizations fail to converge then we run
+<cite>num_recovery_runs</cite> additional runs starting from random locations (also ran in parallel).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>num_initial_samples</strong> – The size of the random sample used to find the starting point(s) of
+the optimization.</p></li>
+<li><p><strong>num_optimization_runs</strong> – The number of separate optimizations to run.</p></li>
+<li><p><strong>num_recovery_runs</strong> – The maximum number of recovery optimization runs in case of failure.</p></li>
+<li><p><strong>optimizer_args</strong> – The keyword arguments to pass to the Scipy L-BFGS-B optimizer.
+Check <cite>minimize</cite> method  of <code class="xref py py-class docutils literal notranslate"><span class="pre">optimize</span></code> for details of which arguments
+can be passed. Note that method, jac and bounds cannot/should not be changed.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The acquisition optimizer.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer._perform_parallel_continuous_optimization">
+<code class="sig-name descname"><span class="pre">_perform_parallel_continuous_optimization</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../interface/index.html#trieste.acquisition.interface.AcquisitionFunction" title="trieste.acquisition.interface.AcquisitionFunction"><span class="pre">trieste.acquisition.interface.AcquisitionFunction</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">starting_points</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer_args</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.11)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.11)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">,</span> </span><a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#_perform_parallel_continuous_optimization"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer._perform_parallel_continuous_optimization" title="Permalink to this definition">#</a></dt>
+<dd><p>A function to perform parallel optimization of our acquisition functions
+using Scipy. We perform L-BFGS-B starting from each of the locations contained
+in <cite>starting_points</cite>, i.e. the number of individual optimization runs is
+given by the leading dimension of <cite>starting_points</cite>.</p>
+<p>To provide a parallel implementation of Scipy’s L-BFGS-B that can leverage
+batch calculations with TensorFlow, this function uses the Greenlet package
+to run each individual optimization on micro-threads.</p>
+<p>L-BFGS-B updates for each individual optimization are performed by
+independent greenlets working with Numpy arrays, however, the evaluation
+of our acquisition function (and its gradients) is calculated in parallel
+(for each optimization step) using Tensorflow.</p>
+<p>For :class:’TaggedProductSearchSpace’ we only apply gradient updates to
+its :class:’Box’ subspaces, fixing the discrete elements to the best values
+found across the initial random search. To fix these discrete elements, we
+optimize over a continuous :class:’Box’ relaxation of the discrete subspaces
+which has equal upper and lower bounds, i.e. we specify an equality constraint
+for this dimension in the scipy optimizer.</p>
+<p>This function also support the maximization of vectorized target functions (with
+vectorization V).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_func</strong> – The function(s) to maximise, with input shape […, V, D] and
+output shape […, V].</p></li>
+<li><p><strong>space</strong> – The original search space.</p></li>
+<li><p><strong>starting_points</strong> – The points at which to begin our optimizations of shape
+[num_optimization_runs, V, D]. The leading dimension of
+<cite>starting_points</cite> controls the number of individual optimization runs
+for each of the V target functions.</p></li>
+<li><p><strong>optimizer_args</strong> – Keyword arguments to pass to the Scipy optimizer.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>A tuple containing the failure statuses, maximum values, maximisers and
+number of evaluations for each of our optimizations.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt id="trieste.acquisition.optimizer.ScipyLbfgsBGreenlet">
+<em class="property"><span class="pre">class</span> </em><code class="sig-name descname"><span class="pre">ScipyLbfgsBGreenlet</span></code><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#ScipyLbfgsBGreenlet"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.ScipyLbfgsBGreenlet" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <code class="xref py py-obj docutils literal notranslate"><span class="pre">greenlet.greenlet</span></code></p>
+<p>Worker greenlet that runs a single Scipy L-BFGS-B. Each greenlet performs all the L-BFGS-B
+update steps required for an individual optimization. However, the evaluation
+of our acquisition function (and its gradients) is delegated back to the main Tensorflow
+process (the parent greenlet) where evaluations can be made efficiently in parallel.</p>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer.get_bounds_of_box_relaxation_around_point">
+<code class="sig-name descname"><span class="pre">get_bounds_of_box_relaxation_around_point</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">space</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../space/index.html#trieste.space.TaggedProductSearchSpace" title="trieste.space.TaggedProductSearchSpace"><span class="pre">trieste.space.TaggedProductSearchSpace</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">current_point</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="../../types/index.html#trieste.types.TensorType" title="trieste.types.TensorType"><span class="pre">trieste.types.TensorType</span></a></span></em><span class="sig-paren">)</span> &#x2192; <span class="pre">scipy.optimize.Bounds</span><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#get_bounds_of_box_relaxation_around_point"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.get_bounds_of_box_relaxation_around_point" title="Permalink to this definition">#</a></dt>
+<dd><p>A function to return the bounds of a continuous relaxation of
+a :class:’TaggedProductSearchSpace’ space, i.e. replacing discrete
+spaces with continuous spaces. In particular, all :class:’DiscreteSearchSpace’
+subspaces are replaced with a new :class:’DiscreteSearchSpace’ fixed at their
+respective component of the specified ‘current_point’. Note that
+all :class:’Box’ subspaces remain the same.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>space</strong> – The original search space.</p></li>
+<li><p><strong>current_point</strong> – The point at which to make the continuous relaxation.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Bounds for the Scipy optimizer.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer.batchify_joint">
+<code class="sig-name descname"><span class="pre">batchify_joint</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size_one_optimizer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><span class="pre">AcquisitionOptimizer</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">trieste.space.SearchSpaceType</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><span class="pre">AcquisitionOptimizer</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">trieste.space.SearchSpaceType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#batchify_joint"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.batchify_joint" title="Permalink to this definition">#</a></dt>
+<dd><p>A wrapper around our <code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer`s.</span> <span class="pre">This</span> <span class="pre">class</span> <span class="pre">wraps</span> <span class="pre">a</span>
+<span class="pre">:const:`AcquisitionOptimizer</span></code> to allow it to jointly optimize the batch elements considered
+by a batch acquisition function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch_size_one_optimizer</strong> – An optimizer that returns only batch size one, i.e. produces a
+single point with shape [1, D].</p></li>
+<li><p><strong>batch_size</strong> – The number of points in the batch.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code></a> that will provide a batch of points with shape [B, D].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer.batchify_vectorize">
+<code class="sig-name descname"><span class="pre">batchify_vectorize</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">batch_size_one_optimizer</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><span class="pre">AcquisitionOptimizer</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">trieste.space.SearchSpaceType</span></a><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><span class="pre">AcquisitionOptimizer</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpaceType" title="trieste.space.SearchSpaceType"><span class="pre">trieste.space.SearchSpaceType</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#batchify_vectorize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.batchify_vectorize" title="Permalink to this definition">#</a></dt>
+<dd><p>A wrapper around our <code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer`s.</span> <span class="pre">This</span> <span class="pre">class</span> <span class="pre">wraps</span> <span class="pre">a</span>
+<span class="pre">:const:`AcquisitionOptimizer</span></code> to allow it to optimize batch acquisition functions.</p>
+<p>Unlike <a class="reference internal" href="#trieste.acquisition.optimizer.batchify_joint" title="trieste.acquisition.optimizer.batchify_joint"><code class="xref py py-func docutils literal notranslate"><span class="pre">batchify_joint()</span></code></a>, <a class="reference internal" href="#trieste.acquisition.optimizer.batchify_vectorize" title="trieste.acquisition.optimizer.batchify_vectorize"><code class="xref py py-func docutils literal notranslate"><span class="pre">batchify_vectorize()</span></code></a> is suitable
+for a <code class="xref py py-class docutils literal notranslate"><span class="pre">AcquisitionFunction</span></code> whose individual batch element can be
+optimized independently (i.e. they can be vectorized).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>batch_size_one_optimizer</strong> – An optimizer that returns only batch size one, i.e. produces a
+single point with shape [1, D].</p></li>
+<li><p><strong>batch_size</strong> – The number of points in the batch.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>An <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><code class="xref py py-const docutils literal notranslate"><span class="pre">AcquisitionOptimizer</span></code></a> that will provide a batch of points with shape [V, D].</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt id="trieste.acquisition.optimizer.generate_random_search_optimizer">
+<code class="sig-name descname"><span class="pre">generate_random_search_optimizer</span></code><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span> <span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.11)"><span class="pre">int</span></a></span> <span class="o"><span class="pre">=</span></span> <span class="default_value"><span class="pre">NUM_SAMPLES_MIN</span></span></em><span class="sig-paren">)</span> &#x2192; <a class="reference internal" href="#trieste.acquisition.optimizer.AcquisitionOptimizer" title="trieste.acquisition.optimizer.AcquisitionOptimizer"><span class="pre">AcquisitionOptimizer</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="../../space/index.html#trieste.space.SearchSpace" title="trieste.space.SearchSpace"><span class="pre">trieste.space.SearchSpace</span></a><span class="p"><span class="pre">]</span></span><a class="reference internal" href="../../../../_modules/trieste/acquisition/optimizer.html#generate_random_search_optimizer"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.acquisition.optimizer.generate_random_search_optimizer" title="Permalink to this definition">#</a></dt>
+<dd><p>Generate an acquisition optimizer that samples <cite>num_samples</cite> random points across the space.
+The default is to sample at <cite>NUM_SAMPLES_MIN</cite> locations.</p>
+<p>We advise the user to either use the default <cite>NUM_SAMPLES_MIN</cite> for <cite>num_samples</cite>, or
+<cite>NUM_SAMPLES_DIM</cite> times the dimensionality of the search space, whichever is smaller.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>num_samples</strong> – The number of random points to sample.</p>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>The acquisition optimizer.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</div>
+</div>
+
+
+              </div>
+              
+              
+          </main>
+          
+
+      </div>
+    </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=1999514e3f237ded88cf"></script>
+<footer class="footer mt-5 mt-md-0">
+  <div class="container">
+    
+    <div class="footer-item">
+      <p class="copyright">
+    &copy; Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.<br>
+</p>
+    </div>
+    
+    <div class="footer-item">
+      <p class="sphinx-version">
+Created using <a href="http://sphinx-doc.org/">Sphinx</a> 3.5.4.<br>
+</p>
+    </div>
+    
+  </div>
+</footer>
+  </body>
+</html>

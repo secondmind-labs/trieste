@@ -1,0 +1,64 @@
+:orphan:
+
+:py:mod:`trieste.experimental.plotting.inequality_constraints`
+==============================================================
+
+.. py:module:: trieste.experimental.plotting.inequality_constraints
+
+
+Module Contents
+---------------
+
+.. py:class:: Simulation
+
+
+   Bases: :py:obj:`typing_extensions.Protocol`
+
+   A representation of a constrained objective used for plotting.
+
+   .. py:method:: objective(input_data: trieste.types.TensorType) -> trieste.types.TensorType
+      :staticmethod:
+      :abstractmethod:
+
+      Objective function.
+
+
+   .. py:method:: constraint(input_data: trieste.types.TensorType) -> trieste.types.TensorType
+      :staticmethod:
+      :abstractmethod:
+
+      Constraint function.
+
+
+
+.. py:function:: plot_objective_and_constraints(search_space: trieste.space.SearchSpace, simulation: Type[Simulation]) -> matplotlib.figure.Figure
+
+   Plot constrained objective.
+
+   :param search_space: Search space
+   :param simulation: Constrained objective
+   :return: figure
+
+
+.. py:function:: plot_init_query_points(search_space: trieste.space.SearchSpace, simulation: Type[Simulation], objective_data: trieste.types.TensorType, constraint_data: trieste.types.TensorType, new_constraint_data: Optional[trieste.types.TensorType] = None) -> matplotlib.figure.Figure
+
+   Plot initial query points on constrained objective.
+
+   :param search_space: Search space
+   :param simulation: Constrained objective
+   :param objective_data: Objective data
+   :param constraint_data: Constraint data
+   :param new_constraint_data: Optional new constraint data
+   :return: figure
+
+
+.. py:function:: plot_2obj_cst_query_points(search_space: trieste.space.SearchSpace, simulation: Type[Simulation], objective_data: trieste.types.TensorType, constraint_data: trieste.types.TensorType) -> None
+
+   Plot 2 objective constrainted query points.
+
+   :param search_space: Search space
+   :param simulation: Constrained objective
+   :param objective_data: Objective data
+   :param constraint_data: Constraint data
+
+

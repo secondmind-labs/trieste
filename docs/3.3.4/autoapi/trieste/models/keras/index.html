@@ -1,0 +1,1397 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>trieste.models.keras &#8212; trieste 3.3.4 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'autoapi/trieste/models/keras/index';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.3.4';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+    <link rel="next" title="trieste.models.keras.architectures" href="architectures/index.html" />
+    <link rel="prev" title="trieste.models.gpflux.builders" href="../gpflux/builders/index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.3.4  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../../index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.3.4  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../acquisition/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-1" name="toctree-checkbox-1" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-1"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../acquisition/function/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-2" name="toctree-checkbox-2" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-2"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/function/active_learning/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.active_learning</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/function/continuous_thompson_sampling/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.continuous_thompson_sampling</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/function/entropy/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.entropy</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/function/function/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.function</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/function/greedy_batch/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.greedy_batch</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/function/multi_objective/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.multi_objective</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/function/utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.function.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../../acquisition/multi_objective/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-3" name="toctree-checkbox-3" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-3"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/multi_objective/dominance/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.dominance</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/multi_objective/pareto/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.pareto</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../../acquisition/multi_objective/partition/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.multi_objective.partition</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../../acquisition/interface/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.interface</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../acquisition/optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.optimizer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../acquisition/rule/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.rule</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../acquisition/sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.acquisition.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1 current active has-children"><a class="reference internal" href="../index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models</span></code></a><input checked="" class="toctree-checkbox" id="toctree-checkbox-4" name="toctree-checkbox-4" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-4"><i class="fa-solid fa-chevron-down"></i></label><ul class="current">
+<li class="toctree-l2 has-children"><a class="reference internal" href="../gpflow/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-5" name="toctree-checkbox-5" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-5"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gpflow/builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.builders</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gpflow/inducing_point_selectors/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.inducing_point_selectors</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gpflow/optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.optimizer</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="../gpflow/sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflow.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 has-children"><a class="reference internal" href="../gpflux/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflux</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-6" name="toctree-checkbox-6" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-6"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="../gpflux/builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.gpflux.builders</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2 current active has-children"><a class="current reference internal" href="#"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras</span></code></a><input checked="" class="toctree-checkbox" id="toctree-checkbox-7" name="toctree-checkbox-7" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-7"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l3"><a class="reference internal" href="architectures/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.architectures</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.builders</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.sampler</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="../optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.optimizer</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1 has-children"><a class="reference internal" href="../../objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives</span></code></a><input class="toctree-checkbox" id="toctree-checkbox-8" name="toctree-checkbox-8" type="checkbox"/><label class="toctree-toggle" for="toctree-checkbox-8"><i class="fa-solid fa-chevron-down"></i></label><ul>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/multi_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.multi_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/multifidelity_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.multifidelity_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/single_objectives/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.single_objectives</span></code></a></li>
+<li class="toctree-l2"><a class="reference internal" href="../../objectives/utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.objectives.utils</span></code></a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../../utils/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.utils</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="../../ask_tell_optimization/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.ask_tell_optimization</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../bayesian_optimizer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.bayesian_optimizer</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../data/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.data</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../logging/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.logging</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../observer/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.observer</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../space/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.space</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../types/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.types</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../version/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.version</span></code></a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../index.html" class="nav-link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste</span></code></a></li>
+    
+    
+    <li class="breadcrumb-item"><a href="../index.html" class="nav-link"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models</span></code></a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras</span></code></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="module-trieste.models.keras">
+<span id="trieste-models-keras"></span><h1><a class="reference internal" href="#module-trieste.models.keras" title="trieste.models.keras"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras</span></code></a><a class="headerlink" href="#module-trieste.models.keras" title="Permalink to this heading">#</a></h1>
+<p>This package contains the primary interface for deep neural network models. It also contains a
+number of <code class="xref py py-class docutils literal notranslate"><span class="pre">TrainableProbabilisticModel</span></code> wrappers for neural network models. Note that
+currently copying/saving models is not supported, so when
+<a class="reference internal" href="../../bayesian_optimizer/index.html#trieste.bayesian_optimizer.BayesianOptimizer" title="trieste.bayesian_optimizer.BayesianOptimizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code></a> is used <code class="docutils literal notranslate"><span class="pre">track_state</span></code> should be set
+to <cite>False</cite>.</p>
+<section id="submodules">
+<h2>Submodules<a class="headerlink" href="#submodules" title="Permalink to this heading">#</a></h2>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="architectures/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.architectures</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="builders/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.builders</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="sampler/index.html"><code class="xref py py-mod docutils literal notranslate"><span class="pre">trieste.models.keras.sampler</span></code></a></li>
+</ul>
+</div>
+</section>
+<section id="package-contents">
+<h2>Package Contents<a class="headerlink" href="#package-contents" title="Permalink to this heading">#</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.GaussianNetwork">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">GaussianNetwork</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_tensor_spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensorflow.TensorSpec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_tensor_spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensorflow.TensorSpec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">hidden_layer_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#dict" title="(in Python v3.12)"><span class="pre">dict</span></a><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">({'units':</span> <span class="pre">50,</span> <span class="pre">'activation':</span> <span class="pre">'relu'},</span> <span class="pre">{'units':</span> <span class="pre">50,</span> <span class="pre">'activation':</span> <span class="pre">'relu'})</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">independent</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/models/keras/architectures.html#GaussianNetwork"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.GaussianNetwork" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#trieste.models.keras.KerasEnsembleNetwork" title="trieste.models.keras.KerasEnsembleNetwork"><code class="xref py py-obj docutils literal notranslate"><span class="pre">KerasEnsembleNetwork</span></code></a></p>
+<p>This class defines layers of a probabilistic neural network using Keras. The network
+architecture is a multilayer fully-connected feed-forward network, with Gaussian
+distribution as an output. The layers are meant to be built as an ensemble model by
+<a class="reference internal" href="#trieste.models.keras.KerasEnsemble" title="trieste.models.keras.KerasEnsemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsemble</span></code></a>. Note that this is not a Bayesian neural network.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_tensor_spec</strong> – Tensor specification for the input to the network.</p></li>
+<li><p><strong>output_tensor_spec</strong> – Tensor specification for the output of the network.</p></li>
+<li><p><strong>hidden_layer_args</strong> – Specification for building dense hidden layers. Each element in
+the sequence should be a dictionary containing arguments (keys) and their values for a
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Dense</span></code> hidden layer. Please check Keras Dense layer API for
+available arguments. Objects in the sequence will sequentially be used to add
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Dense</span></code> layers. Length of this sequence determines the number of
+hidden layers in the network. Default value is two hidden layers, 50 nodes each, with
+ReLu activation functions. Empty sequence needs to be passed to have no hidden layers.</p></li>
+<li><p><strong>independent</strong> – In case multiple outputs are modeled, if set to <cite>True</cite> then
+<code class="xref py py-class docutils literal notranslate"><span class="pre">IndependentNormal</span></code> layer
+is used as the output layer. This models outputs as independent, only the diagonal
+elements of the covariance matrix are parametrized. If left as the default <cite>False</cite>,
+then <code class="xref py py-class docutils literal notranslate"><span class="pre">MultivariateNormalTriL</span></code> layer is used where correlations
+between outputs are learned as well.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If objects in <code class="docutils literal notranslate"><span class="pre">hidden_layer_args</span></code> are not dictionaries.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.GaussianNetwork.connect_layers">
+<span class="sig-name descname"><span class="pre">connect_layers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">tensorflow.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">tensorflow.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/architectures.html#GaussianNetwork.connect_layers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.GaussianNetwork.connect_layers" title="Permalink to this definition">#</a></dt>
+<dd><p>Connect all layers in the network. We start by generating an input tensor based on input
+tensor specification. Next we generate a sequence of hidden dense layers based on
+hidden layer arguments. Finally, we generate a dense layer whose nodes act as parameters of
+a Gaussian distribution in the final probabilistic layer.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Input and output tensor of the sequence of layers.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasEnsemble">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">KerasEnsemble</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">networks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#trieste.models.keras.KerasEnsembleNetwork" title="trieste.models.keras.KerasEnsembleNetwork"><span class="pre">KerasEnsembleNetwork</span></a><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/models/keras/architectures.html#KerasEnsemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasEnsemble" title="Permalink to this definition">#</a></dt>
+<dd><p>This class builds an ensemble of neural networks, using Keras. Individual networks must
+be instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsembleNetwork</span></code>. This class
+is meant to be used with <code class="xref py py-class docutils literal notranslate"><span class="pre">DeepEnsemble</span></code> model wrapper,
+which compiles the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>networks</strong> – A list of neural network specifications, one for each member of the
+ensemble. The ensemble will be built using these specifications.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If there are no objects in <code class="docutils literal notranslate"><span class="pre">networks</span></code> or we try to create
+a model with networks whose input or output shapes are not the same.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasEnsemble.model">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tensorflow.keras.Model</span></em><a class="headerlink" href="#trieste.models.keras.KerasEnsemble.model" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns built but uncompiled Keras ensemble model.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasEnsemble.ensemble_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ensemble_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#trieste.models.keras.KerasEnsemble.ensemble_size" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the size of the ensemble, that is, the number of base learners or individual neural
+network models in the ensemble.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasEnsemble._build_ensemble">
+<span class="sig-name descname"><span class="pre">_build_ensemble</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">tensorflow.keras.Model</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/architectures.html#KerasEnsemble._build_ensemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasEnsemble._build_ensemble" title="Permalink to this definition">#</a></dt>
+<dd><p>Builds the ensemble model by combining all the individual networks in a single Keras model.
+This method relies on <code class="docutils literal notranslate"><span class="pre">connect_layers</span></code> method of <a class="reference internal" href="#trieste.models.keras.KerasEnsembleNetwork" title="trieste.models.keras.KerasEnsembleNetwork"><code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsembleNetwork</span></code></a> objects
+to construct individual networks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The Keras model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasEnsembleNetwork">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">KerasEnsembleNetwork</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">input_tensor_spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensorflow.TensorSpec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">output_tensor_spec</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensorflow.TensorSpec</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">network_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">''</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/models/keras/architectures.html#KerasEnsembleNetwork"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasEnsembleNetwork" title="Permalink to this definition">#</a></dt>
+<dd><p>This class is an interface that defines necessary attributes and methods for neural networks
+that are meant to be used for building ensembles by
+<code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsemble</span></code>. Subclasses are not meant to
+build and compile Keras models, instead they are providing specification that
+<code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsemble</span></code> will use to build the Keras model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>input_tensor_spec</strong> – Tensor specification for the input to the network.</p></li>
+<li><p><strong>output_tensor_spec</strong> – Tensor specification for the output of the network.</p></li>
+<li><p><strong>network_name</strong> – The name to be used when building the network.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasEnsembleNetwork.connect_layers">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">connect_layers</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">tensorflow.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">tensorflow.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/architectures.html#KerasEnsembleNetwork.connect_layers"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasEnsembleNetwork.connect_layers" title="Permalink to this definition">#</a></dt>
+<dd><p>Connects the layers of the neural network. Architecture, layers and layer specifications
+need to be defined by the subclasses.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Input and output tensor of the network, required by <code class="xref py py-class docutils literal notranslate"><span class="pre">tf.keras.Model</span></code> to
+build a model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.models.keras.build_keras_ensemble">
+<span class="sig-name descname"><span class="pre">build_keras_ensemble</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">ensemble_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_hidden_layers</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">units</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">25</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">activation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">tensorflow.keras.layers.Activation</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'relu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">independent_normal</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="architectures/index.html#trieste.models.keras.architectures.KerasEnsemble" title="trieste.models.keras.architectures.KerasEnsemble"><span class="pre">trieste.models.keras.architectures.KerasEnsemble</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/builders.html#build_keras_ensemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.build_keras_ensemble" title="Permalink to this definition">#</a></dt>
+<dd><p>Builds a simple ensemble of neural networks in Keras where each network has the same
+architecture: number of hidden layers, nodes in hidden layers and activation function.</p>
+<p>Default ensemble size and activation function seem to work well in practice, in regression type
+of problems at least. Number of hidden layers and units per layer should be modified according
+to the dataset size and complexity of the function - the default values seem to work well
+for small datasets common in Bayesian optimization. Using the independent normal is relevant
+only if one is modelling multiple output variables, as it simplifies the distribution by
+ignoring correlations between outputs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>data</strong> – Data for training, used for extracting input and output tensor specifications.</p></li>
+<li><p><strong>ensemble_size</strong> – The size of the ensemble, that is, the number of base learners or
+individual neural networks in the ensemble.</p></li>
+<li><p><strong>num_hidden_layers</strong> – The number of hidden layers in each network.</p></li>
+<li><p><strong>units</strong> – The number of nodes in each hidden layer.</p></li>
+<li><p><strong>activation</strong> – The activation function in each hidden layer.</p></li>
+<li><p><strong>independent_normal</strong> – If set to <cite>True</cite> then <code class="xref py py-class docutils literal notranslate"><span class="pre">IndependentNormal</span></code> layer
+is used as the output layer. This models outputs as independent, only the diagonal
+elements of the covariance matrix are parametrized. If left as the default <cite>False</cite>,
+then <code class="xref py py-class docutils literal notranslate"><span class="pre">MultivariateNormalTriL</span></code> layer is used where correlations
+between outputs are learned as well. Note that this is only relevant for multi-output
+models.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Keras ensemble model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleModel">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DeepEnsembleModel</span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/interface.html#DeepEnsembleModel"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsembleModel" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../interfaces/index.html#trieste.models.interfaces.ProbabilisticModel" title="trieste.models.interfaces.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModel</span></code></a>, <code class="xref py py-obj docutils literal notranslate"><span class="pre">typing_extensions.Protocol</span></code></p>
+<p>This is an interface for deep ensemble type of model, primarily for usage by trajectory
+samplers, to avoid circular imports. These models can act as probabilistic models
+by deriving estimates of epistemic uncertainty from the diversity of predictions made by
+individual models in the ensemble.</p>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleModel.ensemble_size">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ensemble_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#trieste.models.keras.DeepEnsembleModel.ensemble_size" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the size of the ensemble, that is, the number of base learners or individual
+models in the ensemble.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleModel.num_outputs">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_outputs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#trieste.models.keras.DeepEnsembleModel.num_outputs" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the number of outputs trained on by each member network.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleModel.dtype">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tensorflow.DType</span></em><a class="headerlink" href="#trieste.models.keras.DeepEnsembleModel.dtype" title="Permalink to this definition">#</a></dt>
+<dd><p>The prediction dtype.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleModel.ensemble_distributions">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ensemble_distributions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">tensorflow_probability.distributions.Distribution</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Ellipsis</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/interface.html#DeepEnsembleModel.ensemble_distributions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsembleModel.ensemble_distributions" title="Permalink to this definition">#</a></dt>
+<dd><p>Return distributions for each member of the ensemble. Type of the output will depend on the
+subclass, it might be a predicted value or a distribution.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query_points</strong> – The points at which to return outputs.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The outputs for the observations at the specified <code class="docutils literal notranslate"><span class="pre">query_points</span></code> for each member
+of the ensemble.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasPredictor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">KerasPredictor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../optimizer/index.html#trieste.models.optimizer.KerasOptimizer" title="trieste.models.optimizer.KerasOptimizer"><span class="pre">trieste.models.optimizer.KerasOptimizer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/models/keras/interface.html#KerasPredictor"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasPredictor" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../interfaces/index.html#trieste.models.interfaces.ProbabilisticModel" title="trieste.models.interfaces.ProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.ProbabilisticModel</span></code></a>, <a class="reference external" href="https://docs.python.org/3/library/abc.html#abc.ABC" title="(in Python v3.12)"><code class="xref py py-obj docutils literal notranslate"><span class="pre">abc.ABC</span></code></a></p>
+<p>This is an interface for trainable wrappers of TensorFlow and Keras neural network models.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>optimizer</strong> – The optimizer wrapper containing the optimizer with which to train the
+model and arguments for the wrapper and the optimizer. The optimizer must
+be an instance of a <code class="xref py py-class docutils literal notranslate"><span class="pre">Optimizer</span></code>. Defaults to
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Adam</span></code> optimizer with default parameters.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If the optimizer is not an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">Optimizer</span></code>.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasPredictor.model">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tensorflow.keras.Model</span></em><a class="headerlink" href="#trieste.models.keras.KerasPredictor.model" title="Permalink to this definition">#</a></dt>
+<dd><p>The compiled Keras model.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasPredictor.optimizer">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">optimizer</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference internal" href="../optimizer/index.html#trieste.models.optimizer.KerasOptimizer" title="trieste.models.optimizer.KerasOptimizer"><span class="pre">trieste.models.optimizer.KerasOptimizer</span></a></em><a class="headerlink" href="#trieste.models.keras.KerasPredictor.optimizer" title="Permalink to this definition">#</a></dt>
+<dd><p>The optimizer wrapper for training the model.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasPredictor.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/interface.html#KerasPredictor.predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasPredictor.predict" title="Permalink to this definition">#</a></dt>
+<dd><p>Return the mean and variance of the independent marginal distributions at each point in
+<code class="docutils literal notranslate"><span class="pre">query_points</span></code>.</p>
+<p>This is essentially a convenience method for <code class="xref py py-meth docutils literal notranslate"><span class="pre">predict_joint()</span></code>, where non-event
+dimensions of <code class="docutils literal notranslate"><span class="pre">query_points</span></code> are all interpreted as broadcasting dimensions instead of
+batch dimensions, and the covariance is squeezed to remove redundant nesting.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query_points</strong> – The points at which to make predictions, of shape […, D].</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The mean and variance of the independent marginal distributions at each point in
+<code class="docutils literal notranslate"><span class="pre">query_points</span></code>. For a predictive distribution with event shape E, the mean and
+variance will both have shape […] + E.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasPredictor.sample">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/interface.html#KerasPredictor.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasPredictor.sample" title="Permalink to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> samples from the independent marginal distributions at
+<code class="docutils literal notranslate"><span class="pre">query_points</span></code>.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query_points</strong> – The points at which to sample, with shape […, N, D].</p></li>
+<li><p><strong>num_samples</strong> – The number of samples at each point.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples. For a predictive distribution with event shape E, this has shape
+[…, S, N] + E, where S is the number of samples.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.KerasPredictor.log">
+<span class="sig-name descname"><span class="pre">log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/interface.html#KerasPredictor.log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.KerasPredictor.log" title="Permalink to this definition">#</a></dt>
+<dd><p>Log model-specific information at a given optimization step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dataset</strong> – Optional data that can be used to log additional data-based model summaries.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DeepEnsemble</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="architectures/index.html#trieste.models.keras.architectures.KerasEnsemble" title="trieste.models.keras.architectures.KerasEnsemble"><span class="pre">trieste.models.keras.architectures.KerasEnsemble</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">optimizer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../optimizer/index.html#trieste.models.optimizer.KerasOptimizer" title="trieste.models.optimizer.KerasOptimizer"><span class="pre">trieste.models.optimizer.KerasOptimizer</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bootstrap</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">diversify</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">continuous_optimisation</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">compile_args</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="interface/index.html#trieste.models.keras.interface.KerasPredictor" title="trieste.models.keras.interface.KerasPredictor"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.keras.interface.KerasPredictor</span></code></a>, <a class="reference internal" href="../interfaces/index.html#trieste.models.interfaces.TrainableProbabilisticModel" title="trieste.models.interfaces.TrainableProbabilisticModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.TrainableProbabilisticModel</span></code></a>, <a class="reference internal" href="interface/index.html#trieste.models.keras.interface.DeepEnsembleModel" title="trieste.models.keras.interface.DeepEnsembleModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.keras.interface.DeepEnsembleModel</span></code></a>, <a class="reference internal" href="../interfaces/index.html#trieste.models.interfaces.HasTrajectorySampler" title="trieste.models.interfaces.HasTrajectorySampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.HasTrajectorySampler</span></code></a></p>
+<p>A <code class="xref py py-class docutils literal notranslate"><span class="pre">TrainableProbabilisticModel</span></code> wrapper for deep ensembles built using
+Keras.</p>
+<p>Deep ensembles are ensembles of deep neural networks that have been found to have good
+representation of uncertainty in practice (&lt;cite data-cite=”lakshminarayanan2017simple”/&gt;).
+This makes them a potentially attractive model for Bayesian optimization for use-cases with
+large number of observations, non-stationary objective functions and need for fast predictions,
+in which standard Gaussian process models are likely to struggle. The model consists of simple
+fully connected multilayer probabilistic networks as base learners, with Gaussian distribution
+as a final layer, using the negative log-likelihood loss for training the networks. The
+model relies on differences in random initialization of weights for generating diversity among
+base learners.</p>
+<p>The original formulation of the model does not include boostrapping of the data. The authors
+found that it does not improve performance the model. We include bootstrapping as an option
+as later work that more precisely measured uncertainty quantification found that boostrapping
+does help with uncertainty representation (see &lt;cite data-cite=”osband2021epistemic”/&gt;).</p>
+<p>We provide classes for constructing ensembles using Keras
+(<a class="reference internal" href="#trieste.models.keras.KerasEnsemble" title="trieste.models.keras.KerasEnsemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsemble</span></code></a>) in the <cite>architectures</cite> package that should be
+used with the <a class="reference internal" href="#trieste.models.keras.DeepEnsemble" title="trieste.models.keras.DeepEnsemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepEnsemble</span></code></a> wrapper. There we also provide a
+<a class="reference internal" href="#trieste.models.keras.GaussianNetwork" title="trieste.models.keras.GaussianNetwork"><code class="xref py py-class docutils literal notranslate"><span class="pre">GaussianNetwork</span></code></a> base learner following the original
+formulation in &lt;cite data-cite=”lakshminarayanan2017simple”/&gt;, but any user-specified network
+can be supplied, as long as it has a Gaussian distribution as a final layer and follows the
+<a class="reference internal" href="#trieste.models.keras.KerasEnsembleNetwork" title="trieste.models.keras.KerasEnsembleNetwork"><code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsembleNetwork</span></code></a> interface.</p>
+<p>A word of caution in case a learning rate scheduler is used in <code class="docutils literal notranslate"><span class="pre">fit_args</span></code> to
+<code class="xref py py-class docutils literal notranslate"><span class="pre">KerasOptimizer</span></code> optimizer instance. Typically one would not want to continue with the
+reduced learning rate in the subsequent Bayesian optimization step. Hence, we reset the
+learning rate to the original one after calling the <code class="docutils literal notranslate"><span class="pre">fit</span></code> method. In case this is not the
+behaviour you would like, you will need to subclass the model and overwrite the
+<a class="reference internal" href="#trieste.models.keras.DeepEnsemble.optimize" title="trieste.models.keras.DeepEnsemble.optimize"><code class="xref py py-meth docutils literal notranslate"><span class="pre">optimize()</span></code></a> method.</p>
+<p>Currently we do not support setting up the model with dictionary config.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – A Keras ensemble model with probabilistic networks as ensemble members. The
+model has to be built but not compiled.</p></li>
+<li><p><strong>optimizer</strong> – The optimizer wrapper with necessary specifications for compiling and
+training the model. Defaults to <a class="reference internal" href="../optimizer/index.html#trieste.models.optimizer.KerasOptimizer" title="trieste.models.optimizer.KerasOptimizer"><code class="xref py py-class docutils literal notranslate"><span class="pre">KerasOptimizer</span></code></a> with
+<code class="xref py py-class docutils literal notranslate"><span class="pre">Adam</span></code> optimizer, negative log likelihood loss, mean squared
+error metric and a dictionary of default arguments for Keras <cite>fit</cite> method: 3000 epochs,
+batch size 16, early stopping callback with patience of 50, and verbose 0.
+See <a class="reference external" href="https://keras.io/api/models/model_training_apis/#fit-method">https://keras.io/api/models/model_training_apis/#fit-method</a> for a list of possible
+arguments.</p></li>
+<li><p><strong>bootstrap</strong> – Sample with replacement data for training each network in the ensemble.
+By default set to <cite>False</cite>.</p></li>
+<li><p><strong>diversify</strong> – Whether to use quantiles from the approximate Gaussian distribution of
+the ensemble as trajectories instead of mean predictions when calling
+<a class="reference internal" href="#trieste.models.keras.DeepEnsemble.trajectory_sampler" title="trieste.models.keras.DeepEnsemble.trajectory_sampler"><code class="xref py py-meth docutils literal notranslate"><span class="pre">trajectory_sampler()</span></code></a>. This mode can be used to increase the diversity
+in case of optimizing very large batches of trajectories. By
+default set to <cite>False</cite>.</p></li>
+<li><p><strong>continuous_optimisation</strong> – If True (default), the optimizer will keep track of the
+number of epochs across BO iterations and use this number as initial_epoch. This is
+essential to allow monitoring of model training across BO iterations.</p></li>
+<li><p><strong>compile_args</strong> – Keyword arguments to pass to the <code class="docutils literal notranslate"><span class="pre">compile</span></code> method of the
+Keras model (<code class="xref py py-class docutils literal notranslate"><span class="pre">Model</span></code>).
+See <a class="reference external" href="https://keras.io/api/models/model_training_apis/#compile-method">https://keras.io/api/models/model_training_apis/#compile-method</a> for a
+list of possible arguments. The <code class="docutils literal notranslate"><span class="pre">optimizer</span></code>, <code class="docutils literal notranslate"><span class="pre">loss</span></code> and <code class="docutils literal notranslate"><span class="pre">metrics</span></code> arguments
+must not be included.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If <code class="docutils literal notranslate"><span class="pre">model</span></code> is not an instance of
+<a class="reference internal" href="#trieste.models.keras.KerasEnsemble" title="trieste.models.keras.KerasEnsemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsemble</span></code></a>, or ensemble has less than two base
+learners (networks), or <cite>compile_args</cite> contains disallowed arguments.</p>
+</dd>
+</dl>
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.model">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">model</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tensorflow.keras.Model</span></em><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.model" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns compiled Keras ensemble model.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.ensemble_size">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">ensemble_size</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.ensemble_size" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the size of the ensemble, that is, the number of base learners or individual neural
+network models in the ensemble.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.num_outputs">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">num_outputs</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></em><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.num_outputs" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns the number of outputs trained on by each member network.</p>
+</dd></dl>
+
+<dl class="py property">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.dtype">
+<em class="property"><span class="pre">property</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">dtype</span></span><em class="property"><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="pre">tensorflow.DType</span></em><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.dtype" title="Permalink to this definition">#</a></dt>
+<dd><p>The prediction dtype.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.prepare_dataset">
+<span class="sig-name descname"><span class="pre">prepare_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.prepare_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.prepare_dataset" title="Permalink to this definition">#</a></dt>
+<dd><p>Transform <code class="docutils literal notranslate"><span class="pre">dataset</span></code> into inputs and outputs with correct names that can be used for
+training the <a class="reference internal" href="#trieste.models.keras.KerasEnsemble" title="trieste.models.keras.KerasEnsemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">KerasEnsemble</span></code></a> model.</p>
+<p>If <code class="docutils literal notranslate"><span class="pre">bootstrap</span></code> argument in the <a class="reference internal" href="#trieste.models.keras.DeepEnsemble" title="trieste.models.keras.DeepEnsemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepEnsemble</span></code></a> is set to
+<cite>True</cite>, data will be additionally sampled with replacement, independently for
+each network in the ensemble.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dataset</strong> – A dataset with <code class="docutils literal notranslate"><span class="pre">query_points</span></code> and <code class="docutils literal notranslate"><span class="pre">observations</span></code> tensors.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary with input data and a dictionary with output data.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.prepare_query_points">
+<span class="sig-name descname"><span class="pre">prepare_query_points</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.prepare_query_points"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.prepare_query_points" title="Permalink to this definition">#</a></dt>
+<dd><p>Transform <code class="docutils literal notranslate"><span class="pre">query_points</span></code> into inputs with correct names that can be used for
+predicting with the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query_points</strong> – A tensor with <code class="docutils literal notranslate"><span class="pre">query_points</span></code>.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A dictionary with query_points prepared for predictions.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.ensemble_distributions">
+<span class="sig-name descname"><span class="pre">ensemble_distributions</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">tensorflow_probability.python.distributions.Distribution</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Ellipsis</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.ensemble_distributions"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.ensemble_distributions" title="Permalink to this definition">#</a></dt>
+<dd><p>Return distributions for each member of the ensemble.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query_points</strong> – The points at which to return distributions.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The distributions for the observations at the specified
+<code class="docutils literal notranslate"><span class="pre">query_points</span></code> for each member of the ensemble.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.predict">
+<span class="sig-name descname"><span class="pre">predict</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.predict"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.predict" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns mean and variance at <code class="docutils literal notranslate"><span class="pre">query_points</span></code> for the whole ensemble.</p>
+<p>Following &lt;cite data-cite=”lakshminarayanan2017simple”/&gt; we treat the ensemble as a
+uniformly-weighted Gaussian mixture model and combine the predictions as</p>
+<div class="math notranslate nohighlight">
+\[p(y|\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mathcal{N}
+(\mu_{\theta_m}(\mathbf{x}),\,\sigma_{\theta_m}^{2}(\mathbf{x}))\]</div>
+<p>We further approximate the ensemble prediction as a Gaussian whose mean and variance
+are respectively the mean and variance of the mixture, given by</p>
+<div class="math notranslate nohighlight">
+\[\mu_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M \mu_{\theta_m}(\mathbf{x})\]</div>
+<div class="math notranslate nohighlight">
+\[\sigma^2_{*}(\mathbf{x}) = M^{-1} \Sum_{m=1}^M (\sigma_{\theta_m}^{2}(\mathbf{x})
++ \mu^2_{\theta_m}(\mathbf{x})) - \mu^2_{*}(\mathbf{x})\]</div>
+<p>This method assumes that the final layer in each member of the ensemble is
+probabilistic, an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">Distribution</span></code>. In particular, given
+the nature of the approximations stated above the final layer should be a Gaussian
+distribution with <cite>mean</cite> and <cite>variance</cite> methods.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query_points</strong> – The points at which to make predictions.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The predicted mean and variance of the observations at the specified
+<code class="docutils literal notranslate"><span class="pre">query_points</span></code>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.predict_ensemble">
+<span class="sig-name descname"><span class="pre">predict_ensemble</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.predict_ensemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.predict_ensemble" title="Permalink to this definition">#</a></dt>
+<dd><p>Returns mean and variance at <code class="docutils literal notranslate"><span class="pre">query_points</span></code> for each member of the ensemble. First tensor
+is the mean and second is the variance, where each has shape […, M, N, 1], where M is
+the <code class="docutils literal notranslate"><span class="pre">ensemble_size</span></code>.</p>
+<p>This method assumes that the final layer in each member of the ensemble is
+probabilistic, an instance of <code class="xref py py-class docutils literal notranslate"><span class="pre">¬tfp.distributions.Distribution</span></code>, in particular
+<cite>mean</cite> and <cite>variance</cite> methods should be available.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>query_points</strong> – The points at which to make predictions.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The predicted mean and variance of the observations at the specified
+<code class="docutils literal notranslate"><span class="pre">query_points</span></code> for each member of the ensemble.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.sample">
+<span class="sig-name descname"><span class="pre">sample</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.sample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.sample" title="Permalink to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> samples at <code class="docutils literal notranslate"><span class="pre">query_points</span></code>. We use the mixture approximation in
+<a class="reference internal" href="#trieste.models.keras.DeepEnsemble.predict" title="trieste.models.keras.DeepEnsemble.predict"><code class="xref py py-meth docutils literal notranslate"><span class="pre">predict()</span></code></a> for <code class="docutils literal notranslate"><span class="pre">query_points</span></code> and sample <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> times from a Gaussian
+distribution given by the predicted mean and variance.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query_points</strong> – The points at which to sample, with shape […, N, D].</p></li>
+<li><p><strong>num_samples</strong> – The number of samples at each point.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples. For a predictive distribution with event shape E, this has shape
+[…, S, N] + E, where S is the number of samples.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.sample_ensemble">
+<span class="sig-name descname"><span class="pre">sample_ensemble</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">query_points</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_samples</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.sample_ensemble"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.sample_ensemble" title="Permalink to this definition">#</a></dt>
+<dd><p>Return <code class="docutils literal notranslate"><span class="pre">num_samples</span></code> samples at <code class="docutils literal notranslate"><span class="pre">query_points</span></code>. Each sample is taken from a Gaussian
+distribution given by the predicted mean and variance of a randomly chosen network in the
+ensemble. This avoids using the Gaussian mixture approximation and samples directly from
+individual Gaussian distributions given by each network in the ensemble.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>query_points</strong> – The points at which to sample, with shape […, N, D].</p></li>
+<li><p><strong>num_samples</strong> – The number of samples at each point.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The samples. For a predictive distribution with event shape E, this has shape
+[…, S, N] + E, where S is the number of samples.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.trajectory_sampler">
+<span class="sig-name descname"><span class="pre">trajectory_sampler</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../interfaces/index.html#trieste.models.interfaces.TrajectorySampler" title="trieste.models.interfaces.TrajectorySampler"><span class="pre">trieste.models.interfaces.TrajectorySampler</span></a><span class="p"><span class="pre">[</span></span><a class="reference internal" href="#trieste.models.keras.DeepEnsemble" title="trieste.models.keras.DeepEnsemble"><span class="pre">DeepEnsemble</span></a><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.trajectory_sampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.trajectory_sampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Return a trajectory sampler. For <a class="reference internal" href="#trieste.models.keras.DeepEnsemble" title="trieste.models.keras.DeepEnsemble"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepEnsemble</span></code></a>, we use an ensemble
+sampler that randomly picks a network from the ensemble and uses its predicted means
+for generating a trajectory, or optionally randomly sampled quantiles rather than means.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The trajectory sampler.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.update">
+<span class="sig-name descname"><span class="pre">update</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.update"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.update" title="Permalink to this definition">#</a></dt>
+<dd><p>Neural networks are parametric models and do not need to update data.
+<cite>TrainableProbabilisticModel</cite> interface, however, requires an update method, so
+here we simply pass the execution.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.optimize">
+<span class="sig-name descname"><span class="pre">optimize</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">keras.callbacks.History</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.optimize"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.optimize" title="Permalink to this definition">#</a></dt>
+<dd><p>Optimize the underlying Keras ensemble model with the specified <code class="docutils literal notranslate"><span class="pre">dataset</span></code>.</p>
+<p>Optimization is performed by using the Keras <cite>fit</cite> method, rather than applying the
+optimizer and using the batches supplied with the optimizer wrapper. User can pass
+arguments to the <cite>fit</cite> method through <code class="docutils literal notranslate"><span class="pre">minimize_args</span></code> argument in the optimizer wrapper.
+These default to using 100 epochs, batch size 100, and verbose 0. See
+<a class="reference external" href="https://keras.io/api/models/model_training_apis/#fit-method">https://keras.io/api/models/model_training_apis/#fit-method</a> for a list of possible
+arguments.</p>
+<p>Note that optimization does not return the result, instead optimization results are
+stored in a history attribute of the model object.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dataset</strong> – The data with which to optimize the model.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsemble.log">
+<span class="sig-name descname"><span class="pre">log</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/models.html#DeepEnsemble.log"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsemble.log" title="Permalink to this definition">#</a></dt>
+<dd><p>Log model training information at a given optimization step to the Tensorboard.
+We log several summary statistics of losses and metrics given in <code class="docutils literal notranslate"><span class="pre">fit_args</span></code> to
+<code class="docutils literal notranslate"><span class="pre">optimizer</span></code> (final, difference between inital and final loss, min and max). We also log
+epoch statistics, but as histograms, rather than time series. We also log several training
+data based metrics, such as root mean square error between predictions and observations,
+and several others.</p>
+<p>We do not log statistics of individual models in the ensemble unless specifically switched
+on with <code class="docutils literal notranslate"><span class="pre">trieste.logging.set_summary_filter(lambda</span> <span class="pre">name:</span> <span class="pre">True)</span></code>.</p>
+<p>For custom logs user will need to subclass the model and overwrite this method.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dataset</strong> – Optional data that can be used to log additional data-based model summaries.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleTrajectorySampler">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">DeepEnsembleTrajectorySampler</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="interface/index.html#trieste.models.keras.interface.DeepEnsembleModel" title="trieste.models.keras.interface.DeepEnsembleModel"><span class="pre">trieste.models.keras.interface.DeepEnsembleModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">diversify</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#DeepEnsembleTrajectorySampler"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsembleTrajectorySampler" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../interfaces/index.html#trieste.models.interfaces.TrajectorySampler" title="trieste.models.interfaces.TrajectorySampler"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.TrajectorySampler</span></code></a>[<a class="reference internal" href="interface/index.html#trieste.models.keras.interface.DeepEnsembleModel" title="trieste.models.keras.interface.DeepEnsembleModel"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.keras.interface.DeepEnsembleModel</span></code></a>]</p>
+<p>This class builds functions that approximate a trajectory by randomly choosing a network from
+the ensemble and using its predicted means as a trajectory.</p>
+<p>Option <cite>diversify</cite> can be used to increase the diversity in case of optimizing very large
+batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+using a reparametrisation trick to speed up computation. Note that quantiles are not true
+trajectories, so this will likely have some performance costs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The ensemble model to sample from.</p></li>
+<li><p><strong>diversify</strong> – Whether to use quantiles from the approximate Gaussian distribution of
+the ensemble as trajectories (<cite>False</cite> by default). See class docstring for details.</p></li>
+<li><p><strong>seed</strong> – Random number seed to use for trajectory sampling.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#NotImplementedError" title="(in Python v3.12)"><strong>NotImplementedError</strong></a> – If we try to use the model that is not instance of
+<a class="reference internal" href="#trieste.models.keras.DeepEnsembleModel" title="trieste.models.keras.DeepEnsembleModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepEnsembleModel</span></code></a>.</p>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleTrajectorySampler.get_trajectory">
+<span class="sig-name descname"><span class="pre">get_trajectory</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#DeepEnsembleTrajectorySampler.get_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsembleTrajectorySampler.get_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Generate an approximate function draw (trajectory) from the ensemble.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>A trajectory function representing an approximate trajectory
+from the model, taking an input of shape <cite>[N, B, D]</cite> and returning shape <cite>[N, B, L]</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleTrajectorySampler.update_trajectory">
+<span class="sig-name descname"><span class="pre">update_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#DeepEnsembleTrajectorySampler.update_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsembleTrajectorySampler.update_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Update a <code class="xref py py-const docutils literal notranslate"><span class="pre">TrajectoryFunction</span></code> to reflect an update in its
+underlying <a class="reference internal" href="#trieste.models.keras.DeepEnsembleModel" title="trieste.models.keras.DeepEnsembleModel"><code class="xref py py-class docutils literal notranslate"><span class="pre">DeepEnsembleModel</span></code></a> and resample accordingly.</p>
+<p>Here we rely on the underlying models being updated and we only resample the trajectory.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>trajectory</strong> – The trajectory function to be resampled.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The new trajectory function updated for a new model</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.DeepEnsembleTrajectorySampler.resample_trajectory">
+<span class="sig-name descname"><span class="pre">resample_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">trajectory</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.models.interfaces.TrajectoryFunction</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#DeepEnsembleTrajectorySampler.resample_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.DeepEnsembleTrajectorySampler.resample_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Efficiently resample a <code class="xref py py-const docutils literal notranslate"><span class="pre">TrajectoryFunction</span></code> in-place to avoid function retracing
+with every new sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>trajectory</strong> – The trajectory function to be resampled.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The new resampled trajectory function.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="trieste.models.keras.deep_ensemble_trajectory">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">deep_ensemble_trajectory</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="interface/index.html#trieste.models.keras.interface.DeepEnsembleModel" title="trieste.models.keras.interface.DeepEnsembleModel"><span class="pre">trieste.models.keras.interface.DeepEnsembleModel</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">diversify</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#bool" title="(in Python v3.12)"><span class="pre">bool</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference external" href="https://docs.python.org/3/library/functions.html#int" title="(in Python v3.12)"><span class="pre">int</span></a><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#deep_ensemble_trajectory"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.deep_ensemble_trajectory" title="Permalink to this definition">#</a></dt>
+<dd><p>Bases: <a class="reference internal" href="../interfaces/index.html#trieste.models.interfaces.TrajectoryFunctionClass" title="trieste.models.interfaces.TrajectoryFunctionClass"><code class="xref py py-obj docutils literal notranslate"><span class="pre">trieste.models.interfaces.TrajectoryFunctionClass</span></code></a></p>
+<p>Generate an approximate function draw (trajectory) by randomly choosing a batch B of
+networks from the ensemble and using their predicted means as trajectories.</p>
+<p>Option <cite>diversify</cite> can be used to increase the diversity in case of optimizing very large
+batches of trajectories. We use quantiles from the approximate Gaussian distribution of
+the ensemble as trajectories, with randomly chosen quantiles approximating a trajectory and
+using a reparametrisation trick to speed up computation. Note that quantiles are not true
+trajectories, so this will likely have some performance costs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> – The model of the objective function.</p></li>
+<li><p><strong>diversify</strong> – Whether to use samples from final probabilistic layer as trajectories
+or mean predictions.</p></li>
+<li><p><strong>seed</strong> – Optional RNG seed.</p></li>
+</ul>
+</dd>
+</dl>
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.deep_ensemble_trajectory.__call__">
+<span class="sig-name descname"><span class="pre">__call__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#deep_ensemble_trajectory.__call__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.deep_ensemble_trajectory.__call__" title="Permalink to this definition">#</a></dt>
+<dd><p>Call trajectory function. Note that we are flattening the batch dimension and
+doing a forward pass with each network in the ensemble with the whole batch. This is
+somewhat wasteful, but is necessary given the underlying <code class="docutils literal notranslate"><span class="pre">KerasEnsemble</span></code> network
+model.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.deep_ensemble_trajectory.resample">
+<span class="sig-name descname"><span class="pre">resample</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/constants.html#None" title="(in Python v3.12)"><span class="pre">None</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#deep_ensemble_trajectory.resample"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.deep_ensemble_trajectory.resample" title="Permalink to this definition">#</a></dt>
+<dd><p>Efficiently resample network indices in-place, without retracing.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="trieste.models.keras.deep_ensemble_trajectory.get_state">
+<span class="sig-name descname"><span class="pre">get_state</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#str" title="(in Python v3.12)"><span class="pre">str</span></a><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">trieste.types.TensorType</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/sampler.html#deep_ensemble_trajectory.get_state"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.deep_ensemble_trajectory.get_state" title="Permalink to this definition">#</a></dt>
+<dd><p>Return internal state variables.</p>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.models.keras.get_tensor_spec_from_data">
+<span class="sig-name descname"><span class="pre">get_tensor_spec_from_data</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference external" href="https://docs.python.org/3/library/stdtypes.html#tuple" title="(in Python v3.12)"><span class="pre">tuple</span></a><span class="p"><span class="pre">[</span></span><span class="pre">tensorflow.TensorSpec</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">tensorflow.TensorSpec</span><span class="p"><span class="pre">]</span></span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/utils.html#get_tensor_spec_from_data"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.get_tensor_spec_from_data" title="Permalink to this definition">#</a></dt>
+<dd><p>Extract tensor specifications for inputs and outputs of neural network models, based on the
+dataset. This utility faciliates constructing neural networks, providing the required
+dimensions for the input and the output of the network. For example</p>
+<div class="doctest highlight-default notranslate"><div class="highlight"><pre><span></span><span class="gp">&gt;&gt;&gt; </span><span class="n">data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+<span class="gp">... </span>    <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.2</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.4</span><span class="p">]]),</span>
+<span class="gp">... </span>    <span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([[</span><span class="mf">0.5</span><span class="p">],</span> <span class="p">[</span><span class="mf">0.7</span><span class="p">]])</span>
+<span class="gp">... </span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">input_spec</span><span class="p">,</span> <span class="n">output_spec</span> <span class="o">=</span> <span class="n">get_tensor_spec_from_data</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">input_spec</span>
+<span class="go">TensorSpec(shape=(2,), dtype=tf.float32, name=&#39;query_points&#39;)</span>
+<span class="gp">&gt;&gt;&gt; </span><span class="n">output_spec</span>
+<span class="go">TensorSpec(shape=(1,), dtype=tf.float32, name=&#39;observations&#39;)</span>
+</pre></div>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dataset</strong> – A dataset with <code class="docutils literal notranslate"><span class="pre">query_points</span></code> and <code class="docutils literal notranslate"><span class="pre">observations</span></code> tensors.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tensor specification objects for the <code class="docutils literal notranslate"><span class="pre">query_points</span></code> and <code class="docutils literal notranslate"><span class="pre">observations</span></code> tensors.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a> – If the dataset is not an instance of <a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.models.keras.negative_log_likelihood">
+<span class="sig-name descname"><span class="pre">negative_log_likelihood</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">y_true</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">trieste.types.TensorType</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y_pred</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tensorflow_probability.distributions.Distribution</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">trieste.types.TensorType</span></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/utils.html#negative_log_likelihood"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.negative_log_likelihood" title="Permalink to this definition">#</a></dt>
+<dd><p>Maximum likelihood objective function for training neural networks.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>y_true</strong> – The output variable values.</p></li>
+<li><p><strong>y_pred</strong> – The output layer of the model. It has to be a probabilistic neural network
+with a distribution as a final layer.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>Negative log likelihood values.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="trieste.models.keras.sample_with_replacement">
+<span class="sig-name descname"><span class="pre">sample_with_replacement</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><span class="pre">trieste.data.Dataset</span></a></span></span><a class="reference internal" href="../../../../_modules/trieste/models/keras/utils.html#sample_with_replacement"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#trieste.models.keras.sample_with_replacement" title="Permalink to this definition">#</a></dt>
+<dd><p>Create a new <code class="docutils literal notranslate"><span class="pre">dataset</span></code> with data sampled with replacement. This
+function is useful for creating bootstrap samples of data for training ensembles.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>dataset</strong> – The data that should be sampled.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A (new) <code class="docutils literal notranslate"><span class="pre">dataset</span></code> with sampled data.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference external" href="https://docs.python.org/3/library/exceptions.html#ValueError" title="(in Python v3.12)"><strong>ValueError</strong></a><strong> (or </strong><strong>InvalidArgumentError</strong><strong>)</strong> – If the dataset is not an instance of
+<a class="reference internal" href="../../data/index.html#trieste.data.Dataset" title="trieste.data.Dataset"><code class="xref py py-class docutils literal notranslate"><span class="pre">Dataset</span></code></a> or it is empty.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#submodules">Submodules</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#package-contents">Package Contents</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.GaussianNetwork"><code class="docutils literal notranslate"><span class="pre">GaussianNetwork</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.GaussianNetwork.connect_layers"><code class="docutils literal notranslate"><span class="pre">GaussianNetwork.connect_layers()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasEnsemble"><code class="docutils literal notranslate"><span class="pre">KerasEnsemble</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasEnsemble.model"><code class="docutils literal notranslate"><span class="pre">KerasEnsemble.model</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasEnsemble.ensemble_size"><code class="docutils literal notranslate"><span class="pre">KerasEnsemble.ensemble_size</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasEnsemble._build_ensemble"><code class="docutils literal notranslate"><span class="pre">KerasEnsemble._build_ensemble()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasEnsembleNetwork"><code class="docutils literal notranslate"><span class="pre">KerasEnsembleNetwork</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasEnsembleNetwork.connect_layers"><code class="docutils literal notranslate"><span class="pre">KerasEnsembleNetwork.connect_layers()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.build_keras_ensemble"><code class="docutils literal notranslate"><span class="pre">build_keras_ensemble()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleModel"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleModel</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleModel.ensemble_size"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleModel.ensemble_size</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleModel.num_outputs"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleModel.num_outputs</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleModel.dtype"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleModel.dtype</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleModel.ensemble_distributions"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleModel.ensemble_distributions()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasPredictor"><code class="docutils literal notranslate"><span class="pre">KerasPredictor</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasPredictor.model"><code class="docutils literal notranslate"><span class="pre">KerasPredictor.model</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasPredictor.optimizer"><code class="docutils literal notranslate"><span class="pre">KerasPredictor.optimizer</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasPredictor.predict"><code class="docutils literal notranslate"><span class="pre">KerasPredictor.predict()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasPredictor.sample"><code class="docutils literal notranslate"><span class="pre">KerasPredictor.sample()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.KerasPredictor.log"><code class="docutils literal notranslate"><span class="pre">KerasPredictor.log()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.model"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.model</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.ensemble_size"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.ensemble_size</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.num_outputs"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.num_outputs</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.dtype"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.dtype</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.prepare_dataset"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.prepare_dataset()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.prepare_query_points"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.prepare_query_points()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.ensemble_distributions"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.ensemble_distributions()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.predict"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.predict()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.predict_ensemble"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.predict_ensemble()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.sample"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.sample()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.sample_ensemble"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.sample_ensemble()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.trajectory_sampler"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.trajectory_sampler()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.update"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.update()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.optimize"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.optimize()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsemble.log"><code class="docutils literal notranslate"><span class="pre">DeepEnsemble.log()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleTrajectorySampler"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleTrajectorySampler</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleTrajectorySampler.get_trajectory"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleTrajectorySampler.get_trajectory()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleTrajectorySampler.update_trajectory"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleTrajectorySampler.update_trajectory()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.DeepEnsembleTrajectorySampler.resample_trajectory"><code class="docutils literal notranslate"><span class="pre">DeepEnsembleTrajectorySampler.resample_trajectory()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.deep_ensemble_trajectory"><code class="docutils literal notranslate"><span class="pre">deep_ensemble_trajectory</span></code></a><ul class="nav section-nav flex-column">
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.deep_ensemble_trajectory.__call__"><code class="docutils literal notranslate"><span class="pre">deep_ensemble_trajectory.__call__()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.deep_ensemble_trajectory.resample"><code class="docutils literal notranslate"><span class="pre">deep_ensemble_trajectory.resample()</span></code></a></li>
+<li class="toc-h4 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.deep_ensemble_trajectory.get_state"><code class="docutils literal notranslate"><span class="pre">deep_ensemble_trajectory.get_state()</span></code></a></li>
+</ul>
+</li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.get_tensor_spec_from_data"><code class="docutils literal notranslate"><span class="pre">get_tensor_spec_from_data()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.negative_log_likelihood"><code class="docutils literal notranslate"><span class="pre">negative_log_likelihood()</span></code></a></li>
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#trieste.models.keras.sample_with_replacement"><code class="docutils literal notranslate"><span class="pre">sample_with_replacement()</span></code></a></li>
+</ul>
+</li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

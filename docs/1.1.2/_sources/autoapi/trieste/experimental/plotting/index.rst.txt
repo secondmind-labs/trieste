@@ -1,0 +1,12 @@
+:py:mod:`trieste.experimental.plotting`
+=======================================
+
+.. py:module:: trieste.experimental.plotting
+
+.. autoapi-nested-parse::
+
+   Experimental plotting package. Not intended for production code, as it is not yet fully
+   tested and may change quickly.
+
+
+

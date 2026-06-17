@@ -1,0 +1,75 @@
+:py:mod:`trieste.models.gpflux.builders`
+========================================
+
+.. py:module:: trieste.models.gpflux.builders
+
+.. autoapi-nested-parse::
+
+   This file contains builders for GPflux models supported in Trieste. We found the default
+   configurations used here to work well in most situation, but they should not be taken as
+   universally good solutions.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: NUM_LAYERS
+   :annotation: :int = 2
+
+   Default number of layers in the deep gaussian process model.
+
+
+.. py:data:: MAX_NUM_INDUCING_POINTS
+   :annotation: :int = 500
+
+   Default maximum number of inducing points.
+
+
+.. py:data:: NUM_INDUCING_POINTS_PER_DIM
+   :annotation: :int = 50
+
+   Default number of inducing points per dimension of the search space.
+
+
+.. py:data:: INNER_LAYER_SQRT_FACTOR
+   :annotation: :float = 1e-05
+
+   Default value for a multiplicative factor used to rescale hidden layers.
+
+
+.. py:data:: LIKELIHOOD_VARIANCE
+   :annotation: :float = 0.001
+
+   Default value for an initial noise variance in the likelihood function.
+
+
+.. py:function:: build_vanilla_deep_gp(data: trieste.data.Dataset, search_space: trieste.space.SearchSpace, num_layers: int = NUM_LAYERS, num_inducing_points: Optional[int] = None, inner_layer_sqrt_factor: float = INNER_LAYER_SQRT_FACTOR, likelihood_variance: float = LIKELIHOOD_VARIANCE, trainable_likelihood: bool = True) -> gpflux.models.DeepGP
+
+   Build a :class:`~gpflux.models.DeepGP` model with sensible initial parameters. We found the
+   default configuration used here to work well in most situation, but it should not be taken as a
+   universally good solution.
+
+   Note that although we set all the relevant parameters to sensible values, we rely on
+   ``build_constant_input_dim_deep_gp`` from :mod:`~gpflux.architectures` to build the model.
+
+   :param data: Dataset from the initial design, used to estimate the variance of observations
+       and to provide query points which are used to determine inducing point locations with
+       k-means.
+   :param search_space: Search space for performing Bayesian optimization. Used for initialization
+       of inducing locations if ``num_inducing_points`` is larger than the amount of data.
+   :param num_layers: Number of layers in deep GP. By default set to ``NUM_LAYERS``.
+   :param num_inducing_points: Number of inducing points to use in each layer. If left unspecified
+       (default), this number is set to either ``NUM_INDUCING_POINTS_PER_DIM``*dimensionality of
+       the search space or value given by ``MAX_NUM_INDUCING_POINTS``, whichever is smaller.
+   :param inner_layer_sqrt_factor: A multiplicative factor used to rescale hidden layers, see
+       :class:`~gpflux.architectures.Config` for details. By default set to
+       ``INNER_LAYER_SQRT_FACTOR``.
+   :param likelihood_variance: Initial noise variance in the likelihood function, see
+       :class:`~gpflux.architectures.Config` for details. By default set to
+       ``LIKELIHOOD_VARIANCE``.
+   :return: A :class:`~gpflux.models.DeepGP` model with sensible default settings.
+   :raise: If non-positive ``num_layers``, ``inner_layer_sqrt_factor``, ``likelihood_variance``
+       or ``num_inducing_points`` is provided.
+
+

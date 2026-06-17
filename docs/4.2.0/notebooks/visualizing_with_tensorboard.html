@@ -1,0 +1,822 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Visualizing with Tensorboard &#8212; trieste 4.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../_static/documentation_options.js?v=d0ae6d56"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/visualizing_with_tensorboard';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.2.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="An overview of Trieste types" href="code_overview.html" />
+    <link rel="prev" title="Asynchronous Bayesian Optimization" href="asynchronous_greedy_multiprocessing.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="trieste 4.2.0 documentation - Home"/>
+    <script>document.write(`<img src="../_static/logo.png" class="logo__image only-dark" alt="trieste 4.2.0 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_ensembles.html">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="feasible_sets.html">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_modelling.html">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="recovering_from_errors.html">Recovering from errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_greedy_multiprocessing.html">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_overview.html">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Visualizing...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Visualizing-with-Tensorboard">
+<h1>Visualizing with Tensorboard<a class="headerlink" href="#Visualizing-with-Tensorboard" title="Link to this heading">#</a></h1>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1793</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We often wish to track or visualize the Bayesian optimization process, either during and following execution. This tutorial shows how to do this using the <a class="reference external" href="https://www.tensorflow.org/tensorboard">TensorBoard</a> visualization toolkit. By default we keep track of evolution of the found minimizer and report timings for key parts of each optimization step.</p>
+<section id="Set-up-the-problem">
+<h2>Set up the problem<a class="headerlink" href="#Set-up-the-problem" title="Link to this heading">#</a></h2>
+<p>For this tutorial, we’ll use the same set up as before.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">trieste</span>
+
+<span class="n">search_space</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">space</span><span class="o">.</span><span class="n">Box</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">observer</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">mk_observer</span><span class="p">(</span>
+    <span class="n">trieste</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">ScaledBranin</span><span class="o">.</span><span class="n">objective</span>
+<span class="p">)</span>
+<span class="n">initial_query_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample_sobol</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">initial_query_points</span><span class="p">)</span>
+
+<span class="n">gpr</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">gpflow</span><span class="o">.</span><span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">gpflow</span><span class="o">.</span><span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpr</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2024-09-20 15:52:19,804 INFO util.py:154 -- Missing packages: [&#39;ipywidgets&#39;]. Run `pip install -U ipywidgets`, then restart the notebook server for rich notebook output.
+</pre></div></div>
+</div>
+</section>
+<section id="Setting-up-TensorBoard">
+<h2>Setting up TensorBoard<a class="headerlink" href="#Setting-up-TensorBoard" title="Link to this heading">#</a></h2>
+<p>Before running the optimization loop, we decide where TensorBoard summary logs should be stored, and set a summary writer to do this.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Clear any logs from previous runs</span>
+<span class="o">!</span>rm<span class="w"> </span>-rf<span class="w"> </span>logs/tensorboard
+
+<span class="n">summary_writer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">create_file_writer</span><span class="p">(</span><span class="s2">&quot;logs/tensorboard/experiment1&quot;</span><span class="p">)</span>
+<span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_tensorboard_writer</span><span class="p">(</span><span class="n">summary_writer</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We can now also load the TensorBoard extension, though at this point there will not be any data to dispay. To run this notebook locally, remove the %%script line.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="o">%%</span><span class="k">script</span> echo Loading TensorBoard...
+
+%load_ext tensorboard
+%tensorboard --logdir &quot;logs/tensorboard&quot;
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Loading TensorBoard...
+</pre></div></div>
+</div>
+<p><img alt="TensorBoard empty page" src="../_images/tensorboard_empty.png" /></p>
+</section>
+<section id="Running-and-tracking-the-Bayesian-Optimizer">
+<h2>Running and tracking the Bayesian Optimizer<a class="headerlink" href="#Running-and-tracking-the-Bayesian-Optimizer" title="Link to this heading">#</a></h2>
+<p>By setting the summary writer, we tell Trieste to log relevant information during optimization. While the optimization is running, we can refresh TensorBoard to see its progress.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">num_steps</span> <span class="o">=</span> <span class="mi">15</span>
+<span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+<span class="n">result</span><span class="p">,</span> <span class="n">history</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="n">astuple</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+<p>The data remains available when the optimization is over.</p>
+<p><img alt="TensorBoard graphs" src="../_images/tensorboard_bo.png" /></p>
+<p>In addition to these scalar plots, there may also be histograms, textual metadata and image plots.</p>
+</section>
+<section id="Deciding-what-to-log">
+<h2>Deciding what to log<a class="headerlink" href="#Deciding-what-to-log" title="Link to this heading">#</a></h2>
+<p>When monitoring is enabled, Trieste decides what information is interesting enough to log. This includes objective and acquisition function values, query points, and some model parameters (note that model logs start at step 0 if models are fit to the initial data, i.e. <code class="docutils literal notranslate"><span class="pre">fit_initial_model=True</span></code>). Some data summaries, such as query point pairplots, are not generated by default as they can affect running time. You can control which summaries to generate and display by overriding the default
+summary filter. By default this shows any summary apart from those whose name starts with an underscore character.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_summary_filter</span><span class="p">(</span><span class="k">lambda</span> <span class="n">name</span><span class="p">:</span> <span class="kc">True</span><span class="p">)</span>  <span class="c1"># enable all summaries</span>
+</pre></div>
+</div>
+</div>
+<p>Furthermore, some summaries such as pairplots also require special plotting tools, which can be installed by running <code class="docutils literal notranslate"><span class="pre">pip</span> <span class="pre">install</span> <span class="pre">trieste[plotting]</span></code>. A warning message will be printed if you try to generate a summary without the necessary tools.</p>
+<p><img alt="TensorBoard pairplot" src="../_images/tensorboard_pairplot.png" /></p>
+</section>
+<section id="Logging-additional-model-parameters">
+<h2>Logging additional model parameters<a class="headerlink" href="#Logging-additional-model-parameters" title="Link to this heading">#</a></h2>
+<p>Where trieste’s monitoring is insufficient, you can also add your own logs. To log additional model parameters, you can define your own model subclass and override the <code class="docutils literal notranslate"><span class="pre">log</span></code> method. You can use the various <code class="docutils literal notranslate"><span class="pre">tf.summary</span></code> method wrappers in <code class="docutils literal notranslate"><span class="pre">trieste.logging</span></code> to ensure that your logs are filtered correctly. For example, the following GPR subclass also logs the average lengthscale at each step. Note that <code class="docutils literal notranslate"><span class="pre">dataset</span></code> argument is required, but here it is unused - one could use it to log
+additional data-based model summary statistics.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">GPRExtraLogging</span><span class="p">(</span><span class="n">trieste</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">gpflow</span><span class="o">.</span><span class="n">GaussianProcessRegression</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">log</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">dataset</span><span class="p">):</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">dataset</span><span class="p">)</span>
+        <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span>
+                <span class="n">step</span><span class="o">=</span><span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()</span>
+            <span class="p">):</span>
+                <span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span>
+                    <span class="s2">&quot;kernel.lengthscales.mean&quot;</span><span class="p">,</span>
+                    <span class="n">np</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">get_kernel</span><span class="p">()</span><span class="o">.</span><span class="n">lengthscales</span><span class="p">),</span>
+                <span class="p">)</span>
+
+
+<span class="n">model</span> <span class="o">=</span> <span class="n">GPRExtraLogging</span><span class="p">(</span><span class="n">gpr</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Running with this model now also produces logs for the mean lengthscale. We mark this optimization run as a separate experiment by creating a new summary writer. Tensorboard will conveniently offer an automatic comparison of the experiments.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">create_file_writer</span><span class="p">(</span><span class="s2">&quot;logs/tensorboard/experiment2&quot;</span><span class="p">)</span>
+<span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_tensorboard_writer</span><span class="p">(</span><span class="n">summary_writer</span><span class="p">)</span>
+
+<span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+<span class="n">result</span><span class="p">,</span> <span class="n">history</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">)</span><span class="o">.</span><span class="n">astuple</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Pairplot TensorBoard summaries require seaborn to be installed.
+One way to do this is to install &#39;trieste[plotting]&#39;.
+Optimization completed without errors
+</pre></div></div>
+</div>
+<p><img alt="TensorBoard custom graphs" src="../_images/tensorboard_custom.png" /></p>
+</section>
+<section id="Logging-additional-acquisition-rule-metrics">
+<h2>Logging additional acquisition rule metrics<a class="headerlink" href="#Logging-additional-acquisition-rule-metrics" title="Link to this heading">#</a></h2>
+<p>Similarly, it is possible to log additional metrics connected to the acquisition rule by overriding rule’s <code class="docutils literal notranslate"><span class="pre">acquire</span></code> method (or any other method used while evaluating the rule). For example, the following class also logs the mean coordinates of the selected points:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">class</span> <span class="nc">EGOExtraLogging</span><span class="p">(</span><span class="n">trieste</span><span class="o">.</span><span class="n">acquisition</span><span class="o">.</span><span class="n">rule</span><span class="o">.</span><span class="n">EfficientGlobalOptimization</span><span class="p">):</span>
+    <span class="k">def</span> <span class="nf">acquire</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="n">acquire</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">models</span><span class="p">,</span> <span class="n">datasets</span><span class="p">)</span>
+        <span class="n">summary_writer</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">get_tensorboard_writer</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">summary_writer</span><span class="p">:</span>
+            <span class="k">with</span> <span class="n">summary_writer</span><span class="o">.</span><span class="n">as_default</span><span class="p">(</span>
+                <span class="n">step</span><span class="o">=</span><span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">get_step_number</span><span class="p">()</span>
+            <span class="p">):</span>
+                <span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">scalar</span><span class="p">(</span>
+                    <span class="s2">&quot;EGO.points_selected.mean&quot;</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_mean</span><span class="p">(</span><span class="n">points</span><span class="p">)</span>
+                <span class="p">)</span>
+        <span class="k">return</span> <span class="n">points</span>
+
+
+<span class="n">summary_writer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">create_file_writer</span><span class="p">(</span><span class="s2">&quot;logs/tensorboard/experiment3&quot;</span><span class="p">)</span>
+<span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_tensorboard_writer</span><span class="p">(</span><span class="n">summary_writer</span><span class="p">)</span>
+
+<span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+<span class="n">result</span><span class="p">,</span> <span class="n">history</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
+    <span class="n">num_steps</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">acquisition_rule</span><span class="o">=</span><span class="n">EGOExtraLogging</span><span class="p">()</span>
+<span class="p">)</span><span class="o">.</span><span class="n">astuple</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Pairplot TensorBoard summaries require seaborn to be installed.
+One way to do this is to install &#39;trieste[plotting]&#39;.
+Optimization completed without errors
+</pre></div></div>
+</div>
+<p><img alt="TensorBoard custom rule graphs" src="../_images/tensorboard_custom_rule.png" /></p>
+</section>
+<section id="Using-Tensorboard-with-Ask-Tell-Optimization">
+<h2>Using Tensorboard with Ask-Tell Optimization<a class="headerlink" href="#Using-Tensorboard-with-Ask-Tell-Optimization" title="Link to this heading">#</a></h2>
+<p>To use Tensorboard logging with the <a class="reference internal" href="ask_tell_optimization.html"><span class="doc">Ask-Tell interface</span></a>, you must also explicitly set the optimization step number before calling ask or tell methods. If fitting the model on initialization of the Ask-Tell interface (default), then you must also set the optimization step number before initializing the interface to log initial model fitting as a different step.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">summary_writer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">summary</span><span class="o">.</span><span class="n">create_file_writer</span><span class="p">(</span><span class="s2">&quot;logs/tensorboard/experiment4&quot;</span><span class="p">)</span>
+<span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_tensorboard_writer</span><span class="p">(</span><span class="n">summary_writer</span><span class="p">)</span>
+
+<span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_step_number</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>
+<span class="n">ask_tell</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">ask_tell_optimization</span><span class="o">.</span><span class="n">AskTellOptimizer</span><span class="p">(</span>
+    <span class="n">search_space</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span>
+<span class="p">)</span>
+
+<span class="k">for</span> <span class="n">step</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">num_steps</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+    <span class="n">trieste</span><span class="o">.</span><span class="n">logging</span><span class="o">.</span><span class="n">set_step_number</span><span class="p">(</span><span class="n">step</span><span class="p">)</span>
+    <span class="n">new_point</span> <span class="o">=</span> <span class="n">ask_tell</span><span class="o">.</span><span class="n">ask</span><span class="p">()</span>
+    <span class="n">new_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">new_point</span><span class="p">)</span>
+    <span class="n">ask_tell</span><span class="o">.</span><span class="n">tell</span><span class="p">(</span><span class="n">new_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+
+Pairplot TensorBoard summaries require seaborn to be installed.
+One way to do this is to install &#39;trieste[plotting]&#39;.
+</pre></div></div>
+</div>
+</section>
+<section id="LICENSE">
+<h2>LICENSE<a class="headerlink" href="#LICENSE" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://github.com/secondmind-labs/trieste/blob/develop/LICENSE">Apache License 2.0</a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Set-up-the-problem">Set up the problem</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Setting-up-TensorBoard">Setting up TensorBoard</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Running-and-tracking-the-Bayesian-Optimizer">Running and tracking the Bayesian Optimizer</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Deciding-what-to-log">Deciding what to log</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Logging-additional-model-parameters">Logging additional model parameters</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Logging-additional-acquisition-rule-metrics">Logging additional acquisition rule metrics</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Using-Tensorboard-with-Ask-Tell-Optimization">Using Tensorboard with Ask-Tell Optimization</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#LICENSE">LICENSE</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

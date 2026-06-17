@@ -1,0 +1,40 @@
+:py:mod:`trieste.types`
+=======================
+
+.. py:module:: trieste.types
+
+.. autoapi-nested-parse::
+
+   This module contains type aliases.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: TensorType
+   
+
+   Type alias for tensor-like types.
+
+
+.. py:data:: S
+   
+
+   Unbound type variable.
+
+
+.. py:data:: T
+   
+
+   Unbound type variable.
+
+
+.. py:data:: State
+   
+
+   A `State` produces a value of type `T`, given a state of type `S`, and in doing so can update the
+   state. If the state is updated, it is not updated in-place. Instead, a new state is created. This
+   is a referentially transparent alternative to mutable state.
+
+

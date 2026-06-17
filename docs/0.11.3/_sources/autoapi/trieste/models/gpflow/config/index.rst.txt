@@ -1,0 +1,8 @@
+:orphan:
+
+:py:mod:`trieste.models.gpflow.config`
+======================================
+
+.. py:module:: trieste.models.gpflow.config
+
+

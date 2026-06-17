@@ -1,0 +1,1110 @@
+:py:mod:`trieste.acquisition.rule`
+==================================
+
+.. py:module:: trieste.acquisition.rule
+
+.. autoapi-nested-parse::
+
+   This module contains acquisition rules, which choose the optimal point(s) to query on each step of
+   the Bayesian optimization process.
+
+
+
+Module Contents
+---------------
+
+.. py:data:: ResultType
+
+   Unbound covariant type variable. 
+
+
+.. py:data:: SearchSpaceType
+
+   Contravariant type variable bound to :class:`~trieste.space.SearchSpace`. 
+
+
+.. py:data:: T
+
+   Unbound type variable. 
+
+
+.. py:class:: AcquisitionRule
+
+
+   Bases: :py:obj:`abc.ABC`, :py:obj:`Generic`\ [\ :py:obj:`ResultType`\ , :py:obj:`SearchSpaceType`\ , :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   The central component of the acquisition API.
+
+   An :class:`AcquisitionRule` can produce any value from the search space for this step, and the
+   historic data and models. This value is typically a set of query points, either on its own as
+   a `TensorType` (see e.g. :class:`EfficientGlobalOptimization`), or within some context
+   (see e.g. :class:`BatchTrustRegion`). Indeed, to use an :class:`AcquisitionRule` in the main
+   :class:`~trieste.bayesian_optimizer.BayesianOptimizer` Bayesian optimization loop, the rule
+   must return either a `TensorType` or `State`-ful `TensorType`.
+
+   Note that an :class:`AcquisitionRule` might only support models with specific features (for
+   example, if it uses an acquisition function that relies on those features). The type of
+   models supported by a rule is indicated by the generic type variable
+   class:`ProbabilisticModelType`.
+
+   .. py:method:: acquire(search_space: SearchSpaceType, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> ResultType
+      :abstractmethod:
+
+      Return a value of type `T_co`. Typically this will be a set of query points, either on its
+      own as a `TensorType` (see e.g. :class:`EfficientGlobalOptimization`), or within some
+      context (see e.g. :class:`BatchTrustRegion`). We assume that this requires at least models,
+      but it may sometimes also need data.
+
+      **Type hints:**
+        - The search space must be a :class:`~trieste.space.SearchSpace`. The exact type of
+          :class:`~trieste.space.SearchSpace` depends on the specific :class:`AcquisitionRule`.
+
+      :param search_space: The local acquisition search space for *this step*.
+      :param models: The model for each tag.
+      :param datasets: The known observer query points and observations for each tag (optional).
+      :return: A value of type `T_co`.
+
+
+   .. py:method:: acquire_single(search_space: SearchSpaceType, model: trieste.models.interfaces.ProbabilisticModelType, dataset: Optional[trieste.data.Dataset] = None) -> ResultType
+
+      A convenience wrapper for :meth:`acquire` that uses only one model, dataset pair.
+
+      :param search_space: The global search space over which the optimization problem
+          is defined.
+      :param model: The model to use.
+      :param dataset: The known observer query points and observations (optional).
+      :return: A value of type `T_co`.
+
+
+   .. py:method:: filter_datasets(models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]) -> collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]
+
+      Filter the post-acquisition datasets before they are used for model training. For example,
+      this can be used to remove points from the post-acquisition datasets that are no longer in
+      the search space.
+      Some rules may also update their internal state.
+
+      :param models: The model for each tag.
+      :param datasets: The updated datasets after previous acquisition step.
+      :return: The filtered datasets.
+
+
+
+.. py:class:: LocalDatasetsAcquisitionRule
+
+
+   Bases: :py:obj:`AcquisitionRule`\ [\ :py:obj:`ResultType`\ , :py:obj:`SearchSpaceType`\ , :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   An :class:`AcquisitionRule` that requires local datasets. For example, this is implemented
+   by :class:`BatchTrustRegion`.
+
+   .. py:property:: num_local_datasets
+      :type: int
+      :abstractmethod:
+
+      The number of local datasets required by this rule.
+
+
+
+.. py:class:: EfficientGlobalOptimization(builder: None = None, optimizer: trieste.acquisition.optimizer.AcquisitionOptimizer[SearchSpaceType] | None = None, num_query_points: int = 1, initial_acquisition_function: Optional[trieste.acquisition.interface.AcquisitionFunction] = None)
+              EfficientGlobalOptimization(builder: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.models.interfaces.ProbabilisticModelType] | trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder[trieste.models.interfaces.ProbabilisticModelType] | trieste.acquisition.interface.SingleModelAcquisitionBuilder[trieste.models.interfaces.ProbabilisticModelType] | trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder[trieste.models.interfaces.ProbabilisticModelType], optimizer: trieste.acquisition.optimizer.AcquisitionOptimizer[SearchSpaceType] | None = None, num_query_points: int = 1, initial_acquisition_function: Optional[trieste.acquisition.interface.AcquisitionFunction] = None)
+
+
+   Bases: :py:obj:`AcquisitionRule`\ [\ :py:obj:`trieste.types.TensorType`\ , :py:obj:`SearchSpaceType`\ , :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   Implements the Efficient Global Optimization, or EGO, algorithm.
+
+   :param builder: The acquisition function builder to use. Defaults to
+       :class:`~trieste.acquisition.ExpectedImprovement`.
+   :param optimizer: The optimizer with which to optimize the acquisition function built by
+       ``builder``. This should *maximize* the acquisition function, and must be compatible
+       with the global search space. Defaults to
+       :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+   :param num_query_points: The number of points to acquire.
+   :param initial_acquisition_function: The initial acquisition function to use. Defaults
+       to using the builder to construct one, but passing in a previously constructed
+       function can occasionally be useful (e.g. to preserve random seeds).
+
+   .. py:property:: acquisition_function
+      :type: Optional[trieste.acquisition.interface.AcquisitionFunction]
+
+      The current acquisition function, updated last time :meth:`acquire` was called.
+
+
+   .. py:method:: acquire(search_space: SearchSpaceType, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.TensorType
+
+      Return the query point(s) that optimizes the acquisition function produced by ``builder``
+      (see :meth:`__init__`).
+
+      :param search_space: The local acquisition search space for *this step*.
+      :param models: The model for each tag.
+      :param datasets: The known observer query points and observations. Whether this is required
+          depends on the acquisition function used.
+      :return: The single (or batch of) points to query.
+
+
+
+.. py:class:: AsynchronousRuleState
+
+
+   Stores pending points for asynchronous rules.
+   These are points which were requested but are not observed yet.
+
+   .. py:property:: has_pending_points
+      :type: bool
+
+      Returns `True` if there is at least one pending point, and `False` otherwise.
+
+
+   .. py:method:: remove_points(points_to_remove: trieste.types.TensorType) -> AsynchronousRuleState
+
+      Removes all rows from current `pending_points` that are present in `points_to_remove`.
+      If a point to remove occurs multiple times in the list of pending points,
+      only first occurrence of it will be removed.
+
+      :param points_to_remove: Points to remove.
+      :return: New instance of `AsynchronousRuleState` with updated pending points.
+
+
+   .. py:method:: add_pending_points(new_points: trieste.types.TensorType) -> AsynchronousRuleState
+
+      Adds `new_points` to the already known pending points.
+
+      :param new_points: Points to add.
+      :return: New instance of `AsynchronousRuleState` with updated pending points.
+
+
+
+.. py:class:: AsynchronousOptimization(builder: None = None, optimizer: trieste.acquisition.optimizer.AcquisitionOptimizer[SearchSpaceType] | None = None, num_query_points: int = 1)
+              AsynchronousOptimization(builder: trieste.acquisition.interface.AcquisitionFunctionBuilder[trieste.models.interfaces.ProbabilisticModelType] | trieste.acquisition.interface.SingleModelAcquisitionBuilder[trieste.models.interfaces.ProbabilisticModelType], optimizer: trieste.acquisition.optimizer.AcquisitionOptimizer[SearchSpaceType] | None = None, num_query_points: int = 1)
+
+
+   Bases: :py:obj:`AcquisitionRule`\ [\ :py:obj:`trieste.types.State`\ [\ :py:obj:`Optional`\ [\ :py:obj:`AsynchronousRuleState`\ ]\ , :py:obj:`trieste.types.TensorType`\ ]\ , :py:obj:`SearchSpaceType`\ , :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   AsynchronousOptimization rule is designed for asynchronous BO scenarios.
+   By asynchronous BO we understand a use case when multiple objective function
+   can be launched in parallel and are expected to arrive at different times.
+   Instead of waiting for the rest of observations to return, we want to immediately
+   use acquisition function to launch a new observation and avoid wasting computational resources.
+   See :cite:`Alvi:2019` or :cite:`kandasamy18a` for more details.
+
+   To make the best decision about next point to observe, acquisition function
+   needs to be aware of currently running observations.
+   We call such points "pending", and consider them a part of acquisition state.
+   We use :class:`AsynchronousRuleState` to store these points.
+
+   `AsynchronousOptimization` works with non-greedy batch acquisition functions.
+   For example, it would work with
+   :class:`~trieste.acquisition.BatchMonteCarloExpectedImprovement`,
+   but cannot be used with :class:`~trieste.acquisition.ExpectedImprovement`.
+   If there are P pending points and the batch of size B is requested,
+   the acquisition function is used with batch size P+B.
+   During optimization first P points are fixed to pending,
+   and thus we optimize and return the last B points only.
+
+   :param builder: Batch acquisition function builder. Defaults to
+       :class:`~trieste.acquisition.BatchMonteCarloExpectedImprovement` with 10 000 samples.
+   :param optimizer: The optimizer with which to optimize the acquisition function built by
+       ``builder``. This should *maximize* the acquisition function, and must be compatible
+       with the global search space. Defaults to
+       :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+   :param num_query_points: The number of points to acquire.
+
+   .. py:method:: acquire(search_space: SearchSpaceType, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.State[AsynchronousRuleState | None, trieste.types.TensorType]
+
+      Constructs a function that, given ``AsynchronousRuleState``,
+      returns a new state object and points to evaluate.
+      The state object contains currently known pending points,
+      that is points that were requested for evaluation,
+      but observation for which was not received yet.
+      To keep them up to date, pending points are compared against the given dataset,
+      and whatever points are in the dataset are deleted.
+
+      Let's suppose we have P pending points. To optimize the acquisition function
+      we call it with batches of size P+1, where first P points are fixed to pending points.
+      Optimization therefore happens over the last point only, which is returned.
+
+      :param search_space: The local acquisition search space for *this step*.
+      :param models: The model of the known data. Uses the single key `OBJECTIVE`.
+      :param datasets: The known observer query points and observations.
+      :return: A function that constructs the next acquisition state and the recommended query
+          points from the previous acquisition state.
+
+
+
+.. py:class:: AsynchronousGreedy(builder: trieste.acquisition.interface.GreedyAcquisitionFunctionBuilder[trieste.models.interfaces.ProbabilisticModelType] | trieste.acquisition.interface.SingleModelGreedyAcquisitionBuilder[trieste.models.interfaces.ProbabilisticModelType], optimizer: trieste.acquisition.optimizer.AcquisitionOptimizer[SearchSpaceType] | None = None, num_query_points: int = 1)
+
+
+   Bases: :py:obj:`AcquisitionRule`\ [\ :py:obj:`trieste.types.State`\ [\ :py:obj:`Optional`\ [\ :py:obj:`AsynchronousRuleState`\ ]\ , :py:obj:`trieste.types.TensorType`\ ]\ , :py:obj:`SearchSpaceType`\ , :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   AsynchronousGreedy rule, as name suggests,
+   is designed for asynchronous BO scenarios. To see what we understand by
+   asynchronous BO, see documentation for :class:`~trieste.acquisition.AsynchronousOptimization`.
+
+   AsynchronousGreedy rule works with greedy batch acquisition functions
+   and performs B steps of a greedy batch collection process,
+   where B is the requested batch size.
+
+   :param builder: Acquisition function builder. Only greedy batch approaches are supported,
+       because they can be told what points are pending.
+   :param optimizer: The optimizer with which to optimize the acquisition function built by
+       ``builder``. This should *maximize* the acquisition function, and must be compatible
+       with the global search space. Defaults to
+       :func:`~trieste.acquisition.optimizer.automatic_optimizer_selector`.
+   :param num_query_points: The number of points to acquire.
+
+   .. py:method:: acquire(search_space: SearchSpaceType, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.State[AsynchronousRuleState | None, trieste.types.TensorType]
+
+      Constructs a function that, given ``AsynchronousRuleState``,
+      returns a new state object and points to evaluate.
+      The state object contains currently known pending points,
+      that is points that were requested for evaluation,
+      but observation for which was not received yet.
+      To keep them up to date, pending points are compared against the given dataset,
+      and whatever points are in the dataset are deleted.
+      Then the current batch is generated by calling the acquisition function,
+      and all points in the batch are added to the known pending points.
+
+      :param search_space: The local acquisition search space for *this step*.
+      :param models: The model of the known data. Uses the single key `OBJECTIVE`.
+      :param datasets: The known observer query points and observations.
+      :return: A function that constructs the next acquisition state and the recommended query
+          points from the previous acquisition state.
+
+
+
+.. py:class:: RandomSampling(num_query_points: int = 1)
+
+
+   Bases: :py:obj:`AcquisitionRule`\ [\ :py:obj:`trieste.types.TensorType`\ , :py:obj:`trieste.space.SearchSpace`\ , :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   This class performs random search for choosing optimal points. It uses ``sample`` method
+   from :class:`~trieste.space.SearchSpace` to take random samples from the search space that
+   are used as optimal points. Hence, it does not use any acquisition function. This
+   acquisition rule can be useful as a baseline for other acquisition functions of interest.
+
+   :param num_query_points: The number of points to acquire. By default set to 1 point.
+   :raise ValueError: If ``num_query_points`` is less or equal to 0.
+
+   .. py:method:: acquire(search_space: trieste.space.SearchSpace, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.ProbabilisticModel], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.TensorType
+
+      Sample ``num_query_points`` (see :meth:`__init__`) points from the
+      ``search_space``.
+
+      :param search_space: The acquisition search space.
+      :param models: Unused.
+      :param datasets: Unused.
+      :return: The ``num_query_points`` points to query.
+
+
+
+.. py:class:: DiscreteThompsonSampling(num_search_space_samples: int, num_query_points: int, thompson_sampler: None = None, select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output)
+              DiscreteThompsonSampling(num_search_space_samples: int, num_query_points: int, thompson_sampler: Optional[trieste.acquisition.sampler.ThompsonSampler[trieste.models.interfaces.ProbabilisticModelType]] = None, select_output: Callable[[trieste.types.TensorType], trieste.types.TensorType] = select_nth_output)
+
+
+   Bases: :py:obj:`AcquisitionRule`\ [\ :py:obj:`trieste.types.TensorType`\ , :py:obj:`trieste.space.SearchSpace`\ , :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ]
+
+   Implements Thompson sampling for choosing optimal points.
+
+   This rule returns the minimizers of functions sampled from our model and evaluated across
+   a discretization of the search space (containing `N` candidate points).
+
+   The model is sampled either exactly (with an :math:`O(N^3)` complexity), or sampled
+   approximately through a random Fourier `M` feature decompisition
+   (with an :math:`O(\min(n^3,M^3))` complexity for a model trained on `n` points). The number
+   `M` of Fourier features is specified when building the model.
+
+
+   :param num_search_space_samples: The number of points at which to sample the posterior.
+   :param num_query_points: The number of points to acquire.
+   :param thompson_sampler: Sampler to sample maximisers from the underlying model.
+   :param select_output: A method that returns the desired trajectory from a trajectory
+       sampler with shape [..., B], where B is a batch dimension. Defaults to the
+       :func:~`trieste.acquisition.utils.select_nth_output` function with output dimension 0.
+
+   .. py:method:: acquire(search_space: trieste.space.SearchSpace, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.TensorType
+
+      Sample `num_search_space_samples` (see :meth:`__init__`) points from the
+      ``search_space``. Of those points, return the `num_query_points` points at which
+      random samples yield the **minima** of the model posterior.
+
+      :param search_space: The local acquisition search space for *this step*.
+      :param models: The model of the known data. Uses the single key `OBJECTIVE`.
+      :param datasets: The known observer query points and observations.
+      :return: The ``num_query_points`` points to query.
+      :raise ValueError: If ``models`` do not contain the key `OBJECTIVE`, or it contains any
+          other key.
+
+
+
+.. py:class:: UpdatableTrustRegion(region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`trieste.space.SearchSpace`
+
+   A search space that can be updated.
+
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+       When this region is part of a product search-space (via `UpdatableTrustRegionProduct`),
+       this is used to select the active dimensions of the full input space that belong to this
+       region.
+
+   .. py:property:: requires_initialization
+      :type: bool
+
+      Return `True` if the search space needs to be re-initialized with the latest models
+      and datasets, and `False` if it can be just updated.
+
+
+   .. py:method:: initialize(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+      :abstractmethod:
+
+      Initialize the search space using the given models and datasets.
+
+      Extending classes must set `self._initialized` to `True` after initialization in this
+      method.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: update(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+      :abstractmethod:
+
+      Update the search space using the given models and datasets.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: with_input_active_dims(value: trieste.types.TensorType) -> trieste.types.TensorType
+                  with_input_active_dims(value: trieste.data.Dataset) -> trieste.data.Dataset
+                  with_input_active_dims(value: trieste.models.ProbabilisticModel) -> trieste.models.ProbabilisticModel
+
+      Select and return active components from the input dimensions of the given value, using
+      `input_active_dims` of this search space. If `input_active_dims` is `None`, all dimensions
+      are returned.
+
+      For datasets, the active selection is applied to the query points. For models, no
+      selection is applied; they are returned as is.
+
+      :param value: The value to select the active input dimensions for.
+      :return: The value with the active input dimensions selected.
+
+
+   .. py:method:: select_in_region(mapping: None) -> None
+                  select_in_region(mapping: collections.abc.Mapping[trieste.types.Tag, trieste.types.TensorType]) -> collections.abc.Mapping[trieste.types.Tag, trieste.types.TensorType]
+                  select_in_region(mapping: collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]) -> collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]
+                  select_in_region(mapping: collections.abc.Mapping[trieste.types.Tag, trieste.models.ProbabilisticModel]) -> collections.abc.Mapping[trieste.types.Tag, trieste.models.ProbabilisticModel]
+
+      Select items belonging to this region for acquisition.
+
+      :param mapping: The mapping of items for each tag.
+      :return: The items belonging to this region (or `None` if there aren't any).
+
+
+   .. py:method:: get_datasets_filter_mask(datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]]) -> Optional[collections.abc.Mapping[trieste.types.Tag, tensorflow.Tensor]]
+
+      Return a boolean mask that can be used to filter out points from the datasets that
+      belong to this region.
+
+      :param datasets: The dataset for each tag.
+      :return: A mapping for each tag belonging to this region, to a boolean mask that can be
+          used to filter out points from the datasets. A value of `True` indicates that the
+          corresponding point should be kept.
+
+
+
+.. py:data:: UpdatableTrustRegionType
+
+   A type variable bound to :class:`UpdatableTrustRegion`. 
+
+
+.. py:class:: BatchTrustRegion(init_subspaces: Union[None, UpdatableTrustRegionType, Sequence[UpdatableTrustRegionType]] = None, rule: AcquisitionRule[trieste.types.TensorType, trieste.space.SearchSpace, trieste.models.interfaces.ProbabilisticModelType] | None = None)
+
+
+   Bases: :py:obj:`LocalDatasetsAcquisitionRule`\ [\ :py:obj:`trieste.types.State`\ [\ :py:obj:`Optional`\ [\ :py:obj:`BatchTrustRegion`\ ]\ , :py:obj:`trieste.types.TensorType`\ ]\ , :py:obj:`trieste.space.SearchSpace`\ , :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ ], :py:obj:`Generic`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ , :py:obj:`UpdatableTrustRegionType`\ ]
+
+   Abstract class for multi trust region acquisition rules. These are batch algorithms where
+   each query point is optimized in parallel, with its own separate trust region.
+
+   Note: to restart or continue an optimization with this rule, either the same instance of the
+   rule must be used, or a new instance must be created with the subspaces from a previous
+   state. This is because the internal state of the rule cannot be restored directly from a state
+   object.
+
+   :param init_subspaces: The initial search spaces for each trust region. If `None`, default
+       subspaces of type :class:`UpdatableTrustRegionType` will be created, with length
+       equal to the number of query points in the base `rule`.
+   :param rule: The acquisition rule that defines how to search for a new query point in each
+       subspace.
+
+       If `None`, defaults to :class:`~trieste.acquisition.DiscreteThompsonSampling` with
+       a batch size of 1 for `TURBOBox` subspaces, and
+       :class:`~trieste.acquisition.EfficientGlobalOptimization` otherwise.
+
+   .. py:class:: State
+
+
+      The acquisition state for the :class:`BatchTrustRegion` acquisition rule.
+
+      .. py:attribute:: acquisition_space
+         :type: trieste.space.TaggedMultiSearchSpace
+
+         The search space. 
+
+
+
+   .. py:property:: num_local_datasets
+      :type: int
+
+      The number of local datasets required by this rule.
+
+
+   .. py:method:: acquire(search_space: trieste.space.SearchSpace, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.State[trieste.types.State | None, trieste.types.TensorType]
+
+      Use the ``rule`` specified at :meth:`~BatchTrustRegion.__init__` to find new
+      query points. Return a function that constructs these points given a previous trust region
+      state.
+
+      If state is None, initialize the subspaces by picking new locations. Otherwise,
+      update the existing subspaces.
+
+      Re-initialize the subspaces if necessary, potentially looking at the entire group.
+
+      :param search_space: The acquisition search space for *this step*.
+      :param models: The model for each tag.
+      :param datasets: The known observer query points and observations for each tag.
+      :return: A function that constructs the next acquisition state and the recommended query
+          points from the previous acquisition state.
+
+
+   .. py:method:: maybe_initialize_subspaces(subspaces: Sequence[UpdatableTrustRegionType], models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Initialize subspaces if necessary.
+      Get a mask of subspaces that need to be initialized using an abstract method.
+      Initialize individual subpaces by calling the method of the UpdatableTrustRegionType class.
+
+      This method can be overridden by subclasses to change this behaviour.
+
+
+   .. py:method:: get_initialize_subspaces_mask(subspaces: Sequence[UpdatableTrustRegionType], models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.TensorType
+      :abstractmethod:
+
+      Return a boolean mask for subspaces that should be initialized.
+      This method is called during the acquisition step to determine which subspaces should be
+      initialized and which should be updated. The subspaces corresponding to True values in the
+      mask will be re-initialized.
+
+      :param subspaces: The sequence of subspaces.
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+      :return: A boolean mask of length V, where V is the number of subspaces.
+
+
+   .. py:method:: filter_datasets(models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]) -> collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]
+
+      Filter the post-acquisition datasets before they are used for model training. For example,
+      this can be used to remove points from the post-acquisition datasets that are no longer in
+      the search space.
+      Some rules may also update their internal state.
+
+      :param models: The model for each tag.
+      :param datasets: The updated datasets after previous acquisition step.
+      :return: The filtered datasets.
+
+
+
+.. py:class:: UpdatableTrustRegionBox(global_search_space: trieste.space.SearchSpace, region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`trieste.space.Box`, :py:obj:`UpdatableTrustRegion`
+
+   A simple updatable box search space with a centre location and an associated global search
+   space.
+
+   :param global_search_space: The global search space this search space lives in.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+   .. py:property:: location
+      :type: trieste.types.TensorType
+
+      The centre of the box.
+
+
+   .. py:property:: global_search_space
+      :type: trieste.space.SearchSpace
+
+      The global search space this search space lives in.
+
+
+
+.. py:class:: SingleObjectiveTrustRegionBox(global_search_space: trieste.space.SearchSpace, beta: float = 0.7, kappa: float = 0.0001, zeta: float = 0.5, min_eps: float = 0.01, region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`UpdatableTrustRegionBox`
+
+   An updatable box search space for use with trust region acquisition rules.
+
+   Calculates the bounds of the box from the location/centre and global bounds.
+
+   :param global_search_space: The global search space this search space lives in.
+   :param beta: The inverse of the trust region contraction factor.
+   :param kappa: Scales the threshold for the minimal improvement required for a step to be
+       considered a success.
+   :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
+       search space.
+   :param min_eps: The minimal size of the search space. If the size of the search space is
+       smaller than this, the search space is reinitialized.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+   .. py:property:: requires_initialization
+      :type: bool
+
+      Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+      If uninitialized, or the size of the box is less than the minimum size, re-initialize
+      the box.
+
+
+   .. py:method:: initialize(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Initialize the box by sampling a location from the global search space and setting the
+      bounds.
+
+
+   .. py:method:: update(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Update this box, including centre/location, using the given dataset.
+
+      If the new optimum improves over the previous optimum by some threshold (that scales
+      linearly with ``kappa``), the previous acquisition is considered successful.
+
+      If the previous acquisition was successful, the size is increased by a factor
+      ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
+      ``beta``.
+
+
+   .. py:method:: get_dataset_min(datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]]) -> Tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Calculate the minimum of the box using the given dataset.
+
+
+
+.. py:class:: BatchTrustRegionBox(init_subspaces: Union[None, UpdatableTrustRegionType, Sequence[UpdatableTrustRegionType]] = None, rule: AcquisitionRule[trieste.types.TensorType, trieste.space.SearchSpace, trieste.models.interfaces.ProbabilisticModelType] | None = None)
+
+
+   Bases: :py:obj:`BatchTrustRegion`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ , :py:obj:`UpdatableTrustRegionBox`\ ]
+
+   Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for box regions.
+   This is intended to be used for single-objective optimization with batching.
+
+   :param init_subspaces: The initial search spaces for each trust region. If `None`, default
+       subspaces of type :class:`UpdatableTrustRegionType` will be created, with length
+       equal to the number of query points in the base `rule`.
+   :param rule: The acquisition rule that defines how to search for a new query point in each
+       subspace.
+
+       If `None`, defaults to :class:`~trieste.acquisition.DiscreteThompsonSampling` with
+       a batch size of 1 for `TURBOBox` subspaces, and
+       :class:`~trieste.acquisition.EfficientGlobalOptimization` otherwise.
+
+   .. py:method:: acquire(search_space: trieste.space.SearchSpace, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.State[BatchTrustRegion | None, trieste.types.TensorType]
+
+      Use the ``rule`` specified at :meth:`~BatchTrustRegion.__init__` to find new
+      query points. Return a function that constructs these points given a previous trust region
+      state.
+
+      If state is None, initialize the subspaces by picking new locations. Otherwise,
+      update the existing subspaces.
+
+      Re-initialize the subspaces if necessary, potentially looking at the entire group.
+
+      :param search_space: The acquisition search space for *this step*.
+      :param models: The model for each tag.
+      :param datasets: The known observer query points and observations for each tag.
+      :return: A function that constructs the next acquisition state and the recommended query
+          points from the previous acquisition state.
+
+
+   .. py:method:: get_initialize_subspaces_mask(subspaces: Sequence[UpdatableTrustRegionBox], models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.TensorType
+
+      Return a boolean mask for subspaces that should be initialized.
+      This method is called during the acquisition step to determine which subspaces should be
+      initialized and which should be updated. The subspaces corresponding to True values in the
+      mask will be re-initialized.
+
+      :param subspaces: The sequence of subspaces.
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+      :return: A boolean mask of length V, where V is the number of subspaces.
+
+
+
+.. py:class:: TREGOBox(global_search_space: trieste.space.SearchSpace, beta: float = 0.7, kappa: float = 0.0001, min_eps: float = 0.01, region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`SingleObjectiveTrustRegionBox`
+
+   A box trust region algorithm that alternates between regular EGO steps and local steps within a
+   trust region. See :cite:`diouane2022trego` for details.
+
+   At construction, starts in global mode using ``global_search_space`` as the search space
+   for the first step. Subsequent re-initializations use the trust region as the search space for
+   the next step.
+
+   If the previous acquisition was successful, ``global_search_space`` is used as the new
+   search space. If the previous step was unsuccessful, the search space is changed to the
+   trust region if it was global, and vice versa.
+
+   If the previous acquisition was over the trust region, the size of the trust region is
+   modified.
+
+   **Note:** The acquisition search space will never extend beyond the boundary of the
+   ``global_search_space``. For a local search, the actual search space will be the
+   intersection of the trust region and ``global_search_space``.
+
+   Calculates the bounds of the box from the location/centre and global bounds.
+
+   :param global_search_space: The global search space this search space lives in.
+   :param beta: The inverse of the trust region contraction factor.
+   :param kappa: Scales the threshold for the minimal improvement required for a step to be
+       considered a success.
+   :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
+       search space.
+   :param min_eps: The minimal size of the search space. If the size of the search space is
+       smaller than this, the search space is reinitialized.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+   .. py:property:: eps
+      :type: trieste.types.TensorType
+
+      The size of the search space.
+
+
+   .. py:method:: initialize(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Initialize the box by sampling a location from the global search space and setting the
+      bounds.
+
+
+   .. py:method:: get_datasets_filter_mask(datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]]) -> Optional[collections.abc.Mapping[trieste.types.Tag, tensorflow.Tensor]]
+
+      Return a boolean mask that can be used to filter out points from the datasets that
+      belong to this region.
+
+      :param datasets: The dataset for each tag.
+      :return: A mapping for each tag belonging to this region, to a boolean mask that can be
+          used to filter out points from the datasets. A value of `True` indicates that the
+          corresponding point should be kept.
+
+
+   .. py:method:: get_dataset_min(datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]]) -> Tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Calculate the minimum of the box using the given dataset.
+
+
+
+.. py:class:: TURBOBox(global_search_space: trieste.space.SearchSpace, L_min: Optional[float] = None, L_init: Optional[float] = None, L_max: Optional[float] = None, success_tolerance: int = 3, failure_tolerance: Optional[int] = None, region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`UpdatableTrustRegionBox`
+
+   Implements the TURBO algorithm as detailed in :cite:`eriksson2019scalable`.
+
+   Note that the optional parameters are set by a heuristic if not given by the user.
+
+   :param global_search_space: The global search space.
+   :param L_min: Minimum allowed length of the trust region.
+   :param L_init: Initial length of the trust region.
+   :param L_max: Maximum allowed length of the trust region.
+   :param success_tolerance: Number of consecutive successes before changing region size.
+   :param failure tolerance: Number of consecutive failures before changing region size.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+   .. py:method:: initialize(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Initialize the search space using the given models and datasets.
+
+      Extending classes must set `self._initialized` to `True` after initialization in this
+      method.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: update(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Update the search space using the given models and datasets.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: get_dataset_min(datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]]) -> Tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Calculate the minimum of the box using the given dataset.
+
+
+
+.. py:class:: UpdatableTrustRegionDiscrete(global_search_space: trieste.space.DiscreteSearchSpace, region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`trieste.space.DiscreteSearchSpace`, :py:obj:`UpdatableTrustRegion`
+
+   An updatable discrete search space with an associated global search space.
+
+   :param global_search_space: The global search space this search space lives in.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+   .. py:property:: location
+      :type: trieste.types.TensorType
+      :abstractmethod:
+
+      Center of the region.
+
+
+   .. py:property:: global_search_space
+      :type: trieste.space.DiscreteSearchSpace
+
+      The global space this search space lives in.
+
+
+
+.. py:class:: FixedPointTrustRegionDiscrete(global_search_space: trieste.space.DiscreteSearchSpace, region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`UpdatableTrustRegionDiscrete`
+
+   A discrete trust region with a fixed point location that does not change across active learning
+   steps. The fixed point is selected at random from the global (discrete) search space at
+   initialization time.
+
+   :param global_search_space: The global search space this search space lives in.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+   .. py:property:: location
+      :type: trieste.types.TensorType
+
+      The location point of the region.
+
+
+   .. py:method:: initialize(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Initialize the search space using the given models and datasets.
+
+      Extending classes must set `self._initialized` to `True` after initialization in this
+      method.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: update(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Update the search space using the given models and datasets.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+
+.. py:class:: SingleObjectiveTrustRegionDiscrete(global_search_space: trieste.space.DiscreteSearchSpace, beta: float = 0.7, kappa: float = 0.0001, zeta: float = 0.5, min_eps: float = 0.01, region_index: Optional[int] = None, input_active_dims: Optional[Union[slice, Sequence[int]]] = None)
+
+
+   Bases: :py:obj:`UpdatableTrustRegionDiscrete`
+
+   An updatable discrete trust region that maintains a set of neighboring points around a
+   single location point, allowing for local exploration of the search space. The region is
+   updated based on the best point found in the region.
+
+   This trust region is designed for discrete numerical variables. As it uses axis-aligned
+   Euclidean distance to determine the neighbors within the region, it is not suitable for
+   qualitative (categorical, ordinal and binary) variables.
+
+   When using this trust region, it is important to consider the scaling of the number of value
+   combinations. Since the region computes pairwise distances between points, the computational
+   and memory complexity increases quadratically with the number of points. For example,
+   1000 3D points will result in the distances matrix containing 1000x1000x3 entries. Therefore,
+   this trust region is not suitable for problems with a large number of points.
+
+   Select a random initial location from the global search space and select the initial
+   neighbors within the trust region.
+
+   :param global_search_space: The global search space this search space lives in.
+   :param beta: The inverse of the trust region contraction factor.
+   :param kappa: Scales the threshold for the minimal improvement required for a step to be
+       considered a success.
+   :param zeta: The initial size of the trust region is ``zeta`` times the size of the global
+       search space.
+   :param min_eps: The minimal size of the search space. If the size of the search space is
+       smaller than this, the search space is reinitialized.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+   :param input_active_dims: The active dimensions of the input space, either a slice or list
+       of indices into the columns of the space. If `None`, all dimensions are active.
+
+   .. py:property:: requires_initialization
+      :type: bool
+
+      Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+      If uninitialized, or the size of the region is less than the minimum size, re-initialize
+      the region.
+
+
+   .. py:property:: location
+      :type: trieste.types.TensorType
+
+      Center point of the region.
+
+
+   .. py:method:: initialize(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Initialize the region by sampling a location from the global search space and selecting
+      the neighboring points within the trust region.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: update(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> None
+
+      Update this region, including location and neighbors, using the given dataset.
+
+      If the new optimum improves over the previous optimum by some threshold (that scales
+      linearly with ``kappa``), the previous acquisition is considered successful.
+
+      If the previous acquisition was successful, the size is increased by a factor
+      ``1 / beta``. Conversely, if it was unsuccessful, the size is reduced by the factor
+      ``beta``.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: get_dataset_min(datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]]) -> Tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Calculate the minimum of the region using the given dataset.
+
+      :param datasets: The datasets to use for finding the minimum.
+
+
+
+.. py:data:: UpdatableTrustRegionWithGlobalSearchSpace
+
+   A type alias for updatable trust regions with a global search space.
+
+
+.. py:class:: UpdatableTrustRegionProduct(regions: Sequence[UpdatableTrustRegionWithGlobalSearchSpace], tags: Optional[Sequence[str]] = None, region_index: Optional[int] = None)
+
+
+   Bases: :py:obj:`trieste.space.TaggedProductSearchSpace`, :py:obj:`UpdatableTrustRegion`
+
+   An updatable mixed search space that is the product of multiple updatable trust sub-regions.
+
+   This is useful for combining different types of search spaces, such as continuous and discrete,
+   to form a mixed search space for trust region acquisition rules.
+
+   Note: the dtype of all the component search spaces must be the same.
+
+   :param regions: The trust sub-regions to be combined to create a product trust region.
+   :param tags: An optional list of tags giving the unique identifiers of the region's
+       sub-regions.
+   :param region_index: The index of the region in a multi-region search space. This is used to
+       identify the local models and datasets to use for acquisition. If `None`, the
+       global models and datasets are used.
+
+   .. py:property:: requires_initialization
+      :type: bool
+
+      Return `True` if the search space needs to be initialized, and `False` otherwise.
+
+      Re-initialize the whole product region if any of the sub-regions need to be re-initialized.
+
+
+   .. py:property:: region_index
+      :type: Optional[int]
+
+      The index of the region in a multi-region search space.
+
+
+   .. py:property:: regions
+      :type: collections.abc.Mapping[str, UpdatableTrustRegionWithGlobalSearchSpace]
+
+      The sub-regions of the product trust region.
+
+
+   .. py:property:: location
+      :type: trieste.types.TensorType
+
+      The location of the product trust region, concatenated from the locations of the
+      sub-regions.
+
+
+   .. py:property:: global_search_space
+      :type: trieste.space.TaggedProductSearchSpace
+
+      The global search space this search space lives in.
+
+
+   .. py:method:: initialize(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None, *args: Any, **kwargs: Any) -> None
+
+      Initialize the search space using the given models and datasets.
+
+      Extending classes must set `self._initialized` to `True` after initialization in this
+      method.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: update(models: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType]] = None, datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None, *args: Any, **kwargs: Any) -> None
+
+      Update the search space using the given models and datasets.
+
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+
+
+   .. py:method:: get_datasets_filter_mask(datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]]) -> Optional[collections.abc.Mapping[trieste.types.Tag, tensorflow.Tensor]]
+
+      Return a boolean mask that can be used to filter out points from the datasets that
+      belong to this region.
+
+      :param datasets: The dataset for each tag.
+      :return: A mapping for each tag belonging to this region, to a boolean mask that can be
+          used to filter out points from the datasets. A value of `True` indicates that the
+          corresponding point should be kept.
+
+
+
+.. py:class:: BatchTrustRegionProduct(init_subspaces: Union[None, UpdatableTrustRegionType, Sequence[UpdatableTrustRegionType]] = None, rule: AcquisitionRule[trieste.types.TensorType, trieste.space.SearchSpace, trieste.models.interfaces.ProbabilisticModelType] | None = None)
+
+
+   Bases: :py:obj:`BatchTrustRegion`\ [\ :py:obj:`trieste.models.interfaces.ProbabilisticModelType`\ , :py:obj:`UpdatableTrustRegionProduct`\ ]
+
+   Implements the :class:`BatchTrustRegion` *trust region* acquisition rule for mixed search
+   spaces. This is intended to be used for single-objective optimization with batching.
+
+   :param init_subspaces: The initial search spaces for each trust region. If `None`, default
+       subspaces of type :class:`UpdatableTrustRegionType` will be created, with length
+       equal to the number of query points in the base `rule`.
+   :param rule: The acquisition rule that defines how to search for a new query point in each
+       subspace.
+
+       If `None`, defaults to :class:`~trieste.acquisition.DiscreteThompsonSampling` with
+       a batch size of 1 for `TURBOBox` subspaces, and
+       :class:`~trieste.acquisition.EfficientGlobalOptimization` otherwise.
+
+   .. py:method:: acquire(search_space: trieste.space.SearchSpace, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.State[BatchTrustRegion | None, trieste.types.TensorType]
+
+      Use the ``rule`` specified at :meth:`~BatchTrustRegion.__init__` to find new
+      query points. Return a function that constructs these points given a previous trust region
+      state.
+
+      If state is None, initialize the subspaces by picking new locations. Otherwise,
+      update the existing subspaces.
+
+      Re-initialize the subspaces if necessary, potentially looking at the entire group.
+
+      :param search_space: The acquisition search space for *this step*.
+      :param models: The model for each tag.
+      :param datasets: The known observer query points and observations for each tag.
+      :return: A function that constructs the next acquisition state and the recommended query
+          points from the previous acquisition state.
+
+
+   .. py:method:: get_initialize_subspaces_mask(subspaces: Sequence[UpdatableTrustRegionProduct], models: collections.abc.Mapping[trieste.types.Tag, trieste.models.interfaces.ProbabilisticModelType], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.TensorType
+
+      Return a boolean mask for subspaces that should be initialized.
+      This method is called during the acquisition step to determine which subspaces should be
+      initialized and which should be updated. The subspaces corresponding to True values in the
+      mask will be re-initialized.
+
+      :param subspaces: The sequence of subspaces.
+      :param models: The model for each tag.
+      :param datasets: The dataset for each tag.
+      :return: A boolean mask of length V, where V is the number of subspaces.
+
+
+
+.. py:class:: BatchHypervolumeSharpeRatioIndicator(num_query_points: int = 1, ga_population_size: int = 500, ga_n_generations: int = 200, filter_threshold: float = 0.1, noisy_observations: bool = True)
+
+
+   Bases: :py:obj:`AcquisitionRule`\ [\ :py:obj:`trieste.types.TensorType`\ , :py:obj:`trieste.space.SearchSpace`\ , :py:obj:`trieste.models.ProbabilisticModel`\ ]
+
+   Implements the Batch Hypervolume Sharpe-ratio indicator acquisition
+   rule, designed for large batches, introduced by Binois et al, 2021.
+   See :cite:`binois2021portfolio` for details.
+
+   :param num_query_points: The number of points in a batch. Defaults to 5.
+   :param ga_population_size: The population size used in the genetic algorithm
+        that finds points on the Pareto front. Defaults to 500.
+   :param ga_n_generations: The number of genenrations to run in the genetic
+        algorithm. Defaults to 200.
+   :param filter_threshold: The probability of improvement below which to exlude
+        points from the Sharpe ratio optimisation. Defaults to 0.1.
+   :param noisy_observations: Whether the observations have noise. Defaults to True.
+
+   .. py:method:: _find_non_dominated_points(model: trieste.models.ProbabilisticModel, search_space: SearchSpaceType) -> tuple[trieste.types.TensorType, trieste.types.TensorType]
+
+      Uses NSGA-II to find high-quality non-dominated points
+
+
+   .. py:method:: acquire(search_space: trieste.space.SearchSpace, models: collections.abc.Mapping[trieste.types.Tag, trieste.models.ProbabilisticModel], datasets: Optional[collections.abc.Mapping[trieste.types.Tag, trieste.data.Dataset]] = None) -> trieste.types.TensorType
+
+      Acquire a batch of points to observe based on the batch hypervolume
+      Sharpe ratio indicator method.
+      This method uses NSGA-II to create a Pareto set of the mean and standard
+      deviation of the posterior of the probabilistic model, and then selects
+      points to observe based on maximising the Sharpe ratio.
+
+      :param search_space: The local acquisition search space for *this step*.
+      :param models: The model for each tag.
+      :param datasets: The known observer query points and observations.
+      :return: The batch of points to query.
+
+
+
+.. py:class:: _MeanStdTradeoff(probabilistic_model: trieste.models.ProbabilisticModel, search_space: SearchSpaceType)
+
+
+   Bases: :py:obj:`pymoo.core.problem.Problem`
+
+   Inner class that formulates the mean/std optimisation problem as a
+   pymoo problem
+
+   :param probabilistic_model: The probabilistic model to find optimal mean/stds from
+   :param search_space: The search space for the optimisation
+
+

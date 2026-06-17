@@ -1,0 +1,1010 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../../../../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.gpflow.inducing_point_selectors &#8212; trieste 4.2.1 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../../../../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../../../../_static/documentation_options.js?v=74d6e94f"></script>
+    <script src="../../../../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../../../../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/models/gpflow/inducing_point_selectors';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.2.1';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="trieste 4.2.1 documentation - Home"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="trieste 4.2.1 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+        
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../../../../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.mode...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <h1>Source code for trieste.models.gpflow.inducing_point_selectors</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2020 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This module is the home of  Trieste&#39;s functionality for choosing the inducing points</span>
+<span class="sd">of sparse variational Gaussian processes (i.e. our :class:`SparseVariational` wrapper).</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">ABC</span><span class="p">,</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Generic</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+<span class="kn">from</span> <span class="nn">scipy.cluster.vq</span> <span class="kn">import</span> <span class="n">kmeans</span>
+
+<span class="kn">from</span> <span class="nn">...data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+<span class="kn">from</span> <span class="nn">...space</span> <span class="kn">import</span> <span class="n">Box</span><span class="p">,</span> <span class="n">DiscreteSearchSpace</span><span class="p">,</span> <span class="n">SearchSpace</span>
+<span class="kn">from</span> <span class="nn">...types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+<span class="kn">from</span> <span class="nn">..interfaces</span> <span class="kn">import</span> <span class="n">ProbabilisticModelType</span>
+<span class="kn">from</span> <span class="nn">.interface</span> <span class="kn">import</span> <span class="n">GPflowPredictor</span>
+
+
+<div class="viewcode-block" id="InducingPointSelector">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.InducingPointSelector">[docs]</a>
+<span class="k">class</span> <span class="nc">InducingPointSelector</span><span class="p">(</span><span class="n">ABC</span><span class="p">,</span> <span class="n">Generic</span><span class="p">[</span><span class="n">ProbabilisticModelType</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class provides functionality to update the inducing points of an inducing point-based model</span>
+<span class="sd">    as the Bayesian optimization progresses.</span>
+
+<span class="sd">    The only constraint on subclasses of :class:`InducingPointSelector` is that they preserve</span>
+<span class="sd">    the shape of the inducing points so not to trigger expensive retracing.</span>
+
+<span class="sd">    It can often be beneficial to change the inducing points during optimization, for example</span>
+<span class="sd">    to allow the model to focus its limited modelling resources into promising areas of the space.</span>
+<span class="sd">    See :cite:`vakili2021scalable` for demonstrations of some of</span>
+<span class="sd">    our :class:`InducingPointSelectors`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recalc_every_model_update</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param recalc_every_model_update: If True then recalculate the inducing points for each</span>
+<span class="sd">            model update, otherwise just recalculate on the first call.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_recalc_every_model_update</span> <span class="o">=</span> <span class="n">recalc_every_model_update</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">False</span>
+
+<div class="viewcode-block" id="InducingPointSelector.calculate_inducing_points">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.InducingPointSelector.calculate_inducing_points">[docs]</a>
+    <span class="k">def</span> <span class="nf">calculate_inducing_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">current_inducing_points</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate the new inducing points given the existing inducing points.</span>
+
+<span class="sd">        If `recalc_every_model_update` is set to False then we only generate new inducing points</span>
+<span class="sd">        for the first :meth:`calculate_inducing_points` call, otherwise we just return the current</span>
+<span class="sd">        inducing points.</span>
+
+<span class="sd">        :param current_inducing_points: The current inducing points used by the model.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        :return: The new updated inducing points.</span>
+<span class="sd">        :raise NotImplementedError: If model has more than one set of inducing variables.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">current_inducing_points</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">current_inducing_points</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">NotImplementedError</span><span class="p">(</span>
+<span class="w">                </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">                InducingPointSelectors only currently support models with a single set</span>
+<span class="sd">                of inducing points.</span>
+<span class="sd">                &quot;&quot;&quot;</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="ow">not</span> <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span>
+        <span class="p">)</span> <span class="ow">or</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recalc_every_model_update</span><span class="p">:</span>  <span class="c1"># calculate new inducing points when required</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_initialized</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">M</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">current_inducing_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">new_inducing_points</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_recalculate_inducing_points</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>  <span class="c1"># [M, D]</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">current_inducing_points</span><span class="p">),</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">new_inducing_points</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">new_inducing_points</span>  <span class="c1"># [M, D]</span>
+        <span class="k">else</span><span class="p">:</span>  <span class="c1"># otherwise dont recalculate</span>
+            <span class="k">return</span> <span class="n">current_inducing_points</span>  <span class="c1"># [M, D]</span></div>
+
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="InducingPointSelector._recalculate_inducing_points">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.InducingPointSelector._recalculate_inducing_points">[docs]</a>
+    <span class="k">def</span> <span class="nf">_recalculate_inducing_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">ProbabilisticModelType</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Method for calculating new inducing points given a `model` and `dataset`.</span>
+
+<span class="sd">        This method is to be implemented by all subclasses of :class:`InducingPointSelector`.</span>
+
+<span class="sd">        :param M: Desired number of inducing points.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        :return: The new updated inducing points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="UniformInducingPointSelector">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.UniformInducingPointSelector">[docs]</a>
+<span class="k">class</span> <span class="nc">UniformInducingPointSelector</span><span class="p">(</span><span class="n">InducingPointSelector</span><span class="p">[</span><span class="n">GPflowPredictor</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An :class:`InducingPointSelector` that chooses points sampled uniformly across the search space.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">search_space</span><span class="p">:</span> <span class="n">SearchSpace</span><span class="p">,</span> <span class="n">recalc_every_model_update</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param search_space: The global search space over which the optimization is defined.</span>
+<span class="sd">        :param recalc_every_model_update: If True then recalculate the inducing points for each</span>
+<span class="sd">            model update, otherwise just recalculate on the first call.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">recalc_every_model_update</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span> <span class="o">=</span> <span class="n">search_space</span>
+
+<div class="viewcode-block" id="UniformInducingPointSelector._recalculate_inducing_points">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.UniformInducingPointSelector._recalculate_inducing_points">[docs]</a>
+    <span class="k">def</span> <span class="nf">_recalculate_inducing_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample `M` points. If `search_space` is a :class:`Box` then we use a space-filling Sobol</span>
+<span class="sd">        design to ensure high diversity.</span>
+
+<span class="sd">        :param M: Desired number of inducing points.</span>
+<span class="sd">        :param model: The sparse model .</span>
+<span class="sd">        :param dataset: The data from the observer.</span>
+<span class="sd">        :return: The new updated inducing points.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="p">,</span> <span class="n">Box</span><span class="p">):</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="o">.</span><span class="n">sample_sobol</span><span class="p">(</span><span class="n">M</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">M</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="RandomSubSampleInducingPointSelector">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.RandomSubSampleInducingPointSelector">[docs]</a>
+<span class="k">class</span> <span class="nc">RandomSubSampleInducingPointSelector</span><span class="p">(</span><span class="n">InducingPointSelector</span><span class="p">[</span><span class="n">GPflowPredictor</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An :class:`InducingPointSelector` that chooses points at random from the training data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="RandomSubSampleInducingPointSelector._recalculate_inducing_points">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.RandomSubSampleInducingPointSelector._recalculate_inducing_points">[docs]</a>
+    <span class="k">def</span> <span class="nf">_recalculate_inducing_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Sample `M` points from the training data without replacement. If we require more</span>
+<span class="sd">        inducing points than training data, then we fill the remaining points with random</span>
+<span class="sd">        samples across the search space.</span>
+
+<span class="sd">        :param M: Desired number of inducing points.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The new updated inducing points.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+
+        <span class="n">N</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>  <span class="c1"># training data size</span>
+        <span class="n">shuffled_query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>  <span class="c1"># [N, d]</span>
+        <span class="n">sub_sample</span> <span class="o">=</span> <span class="n">shuffled_query_points</span><span class="p">[:</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">N</span><span class="p">,</span> <span class="n">M</span><span class="p">),</span> <span class="p">:]</span>
+
+        <span class="k">if</span> <span class="n">N</span> <span class="o">&lt;</span> <span class="n">M</span><span class="p">:</span>  <span class="c1"># if fewer data than inducing points then sample remaining uniformly</span>
+            <span class="n">data_as_discrete_search_space</span> <span class="o">=</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>
+            <span class="n">convex_hull_of_data</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span>
+                <span class="n">lower</span><span class="o">=</span><span class="n">data_as_discrete_search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+                <span class="n">upper</span><span class="o">=</span><span class="n">data_as_discrete_search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">uniform_sampler</span> <span class="o">=</span> <span class="n">UniformInducingPointSelector</span><span class="p">(</span><span class="n">convex_hull_of_data</span><span class="p">)</span>
+            <span class="n">uniform_sample</span> <span class="o">=</span> <span class="n">uniform_sampler</span><span class="o">.</span><span class="n">_recalculate_inducing_points</span><span class="p">(</span>
+                <span class="n">M</span> <span class="o">-</span> <span class="n">N</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">dataset</span>
+            <span class="p">)</span>  <span class="c1"># [M-N, d]</span>
+            <span class="n">sub_sample</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">sub_sample</span><span class="p">,</span> <span class="n">uniform_sample</span><span class="p">],</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># [M, d]</span>
+        <span class="k">return</span> <span class="n">sub_sample</span>  <span class="c1"># [M, d]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="KMeansInducingPointSelector">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.KMeansInducingPointSelector">[docs]</a>
+<span class="k">class</span> <span class="nc">KMeansInducingPointSelector</span><span class="p">(</span><span class="n">InducingPointSelector</span><span class="p">[</span><span class="n">GPflowPredictor</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An :class:`InducingPointSelector` that chooses points as centroids of a K-means clustering</span>
+<span class="sd">    of the training data.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="KMeansInducingPointSelector._recalculate_inducing_points">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.KMeansInducingPointSelector._recalculate_inducing_points">[docs]</a>
+    <span class="k">def</span> <span class="nf">_recalculate_inducing_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate `M` centroids from a K-means clustering of the training data.</span>
+
+<span class="sd">        If the clustering returns fewer than `M` centroids or if we have fewer than `M` training</span>
+<span class="sd">        data, then we fill the remaining points with random samples across the search space.</span>
+
+<span class="sd">        :param M: Desired number of inducing points.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The new updated inducing points.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">([])])</span>
+
+        <span class="n">query_points</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span>  <span class="c1"># [N, d]</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">query_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">shuffled_query_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">shuffle</span><span class="p">(</span><span class="n">query_points</span><span class="p">)</span>  <span class="c1"># [N, d]</span>
+        <span class="n">query_points_stds</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">reduce_std</span><span class="p">(</span><span class="n">shuffled_query_points</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># [d]</span>
+
+        <span class="k">if</span> <span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">count_nonzero</span><span class="p">(</span><span class="n">query_points_stds</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">N</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span> <span class="o">==</span> <span class="n">N</span>
+        <span class="p">):</span>  <span class="c1"># standardize if all stds non zero</span>
+            <span class="n">normalize</span> <span class="o">=</span> <span class="kc">True</span>
+            <span class="n">shuffled_query_points</span> <span class="o">=</span> <span class="n">shuffled_query_points</span> <span class="o">/</span> <span class="n">query_points_stds</span>  <span class="c1"># [N, d]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">normalize</span> <span class="o">=</span> <span class="kc">False</span>
+
+        <span class="n">centroids</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">kmeans</span><span class="p">(</span><span class="n">shuffled_query_points</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">N</span><span class="p">)))</span>  <span class="c1"># [C, d]</span>
+
+        <span class="k">if</span> <span class="n">normalize</span><span class="p">:</span>
+            <span class="n">centroids</span> <span class="o">*=</span> <span class="n">query_points_stds</span>  <span class="c1"># [M, d]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">centroids</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">M</span><span class="p">:</span>  <span class="c1"># choose remaining points as random samples</span>
+            <span class="n">data_as_discrete_search_space</span> <span class="o">=</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>
+            <span class="n">convex_hull_of_data</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span>
+                <span class="n">lower</span><span class="o">=</span><span class="n">data_as_discrete_search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+                <span class="n">upper</span><span class="o">=</span><span class="n">data_as_discrete_search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">uniform_sampler</span> <span class="o">=</span> <span class="n">UniformInducingPointSelector</span><span class="p">(</span><span class="n">convex_hull_of_data</span><span class="p">)</span>
+            <span class="n">extra_centroids</span> <span class="o">=</span> <span class="n">uniform_sampler</span><span class="o">.</span><span class="n">_recalculate_inducing_points</span><span class="p">(</span>  <span class="c1"># [M-C, d]</span>
+                <span class="n">M</span> <span class="o">-</span> <span class="nb">len</span><span class="p">(</span><span class="n">centroids</span><span class="p">),</span> <span class="n">model</span><span class="p">,</span> <span class="n">dataset</span>
+            <span class="p">)</span>
+            <span class="n">centroids</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">centroids</span><span class="p">,</span> <span class="n">extra_centroids</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># [M, d]</span>
+
+        <span class="k">return</span> <span class="n">centroids</span>  <span class="c1"># [M, d]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="QualityFunction">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.QualityFunction">[docs]</a>
+<span class="k">class</span> <span class="nc">QualityFunction</span><span class="p">(</span><span class="n">ABC</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :const:`QualityFunction` uses a  `model` to measure the quality of each of</span>
+<span class="sd">    the `N` query points in the provided `dataset`, returning shape `[N]`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="QualityFunction.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.QualityFunction.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the quality of the data-points according to the model.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The quality scores.</span>
+<span class="sd">        &quot;&quot;&quot;</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="DPPInducingPointSelector">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.DPPInducingPointSelector">[docs]</a>
+<span class="k">class</span> <span class="nc">DPPInducingPointSelector</span><span class="p">(</span><span class="n">InducingPointSelector</span><span class="p">[</span><span class="n">GPflowPredictor</span><span class="p">]):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An :class:`InducingPointSelector` that follows :cite:`chen2018fast` to get a greedy appoximation</span>
+<span class="sd">    to the MAP estimate of the specified Determinantal Point Process (DPP).</span>
+
+<span class="sd">    The DPP is defined through its diveristy-quality decomposition, i.e. its similarity kernel</span>
+<span class="sd">    is just the kernel of the considered model and its quality scores come from the</span>
+<span class="sd">    provided :class:`QualityFunction`.</span>
+
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">quality_function</span><span class="p">:</span> <span class="n">QualityFunction</span><span class="p">,</span> <span class="n">recalc_every_model_update</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param quality_function: A function measuring the quality of each candidate inducing point.</span>
+<span class="sd">        :param recalc_every_model_update: If True then recalculate the inducing points for each</span>
+<span class="sd">            model update, otherwise just recalculate on the first call.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">recalc_every_model_update</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_quality_function</span> <span class="o">=</span> <span class="n">quality_function</span>
+
+<div class="viewcode-block" id="DPPInducingPointSelector._recalculate_inducing_points">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.DPPInducingPointSelector._recalculate_inducing_points">[docs]</a>
+    <span class="k">def</span> <span class="nf">_recalculate_inducing_points</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span>
+        <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param M: Desired number of inducing points.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The new updated inducing points.</span>
+<span class="sd">        :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[])</span>
+        <span class="n">N</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+
+        <span class="n">quality_scores</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_quality_function</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">dataset</span><span class="p">)</span>
+
+        <span class="n">chosen_inducing_points</span> <span class="o">=</span> <span class="n">greedy_inference_dpp</span><span class="p">(</span>
+            <span class="n">M</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">minimum</span><span class="p">(</span><span class="n">M</span><span class="p">,</span> <span class="n">N</span><span class="p">),</span>
+            <span class="n">kernel</span><span class="o">=</span><span class="n">model</span><span class="o">.</span><span class="n">get_kernel</span><span class="p">(),</span>
+            <span class="n">quality_scores</span><span class="o">=</span><span class="n">quality_scores</span><span class="p">,</span>
+            <span class="n">dataset</span><span class="o">=</span><span class="n">dataset</span><span class="p">,</span>
+        <span class="p">)</span>  <span class="c1"># [min(M,N), d]</span>
+
+        <span class="k">if</span> <span class="n">N</span> <span class="o">&lt;</span> <span class="n">M</span><span class="p">:</span>  <span class="c1"># if fewer data than inducing points then sample remaining uniformly</span>
+            <span class="n">data_as_discrete_search_space</span> <span class="o">=</span> <span class="n">DiscreteSearchSpace</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>
+            <span class="n">convex_hull_of_data</span> <span class="o">=</span> <span class="n">Box</span><span class="p">(</span>
+                <span class="n">lower</span><span class="o">=</span><span class="n">data_as_discrete_search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+                <span class="n">upper</span><span class="o">=</span><span class="n">data_as_discrete_search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">uniform_sampler</span> <span class="o">=</span> <span class="n">UniformInducingPointSelector</span><span class="p">(</span><span class="n">convex_hull_of_data</span><span class="p">)</span>
+            <span class="n">uniform_sample</span> <span class="o">=</span> <span class="n">uniform_sampler</span><span class="o">.</span><span class="n">_recalculate_inducing_points</span><span class="p">(</span>
+                <span class="n">M</span> <span class="o">-</span> <span class="n">N</span><span class="p">,</span>
+                <span class="n">model</span><span class="p">,</span>
+                <span class="n">dataset</span><span class="p">,</span>
+            <span class="p">)</span>  <span class="c1"># [M-N, d]</span>
+            <span class="n">chosen_inducing_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="p">[</span><span class="n">chosen_inducing_points</span><span class="p">,</span> <span class="n">uniform_sample</span><span class="p">],</span> <span class="mi">0</span>
+            <span class="p">)</span>  <span class="c1"># [M, d]</span>
+        <span class="k">return</span> <span class="n">chosen_inducing_points</span>  <span class="c1"># [M, d]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="UnitQualityFunction">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.UnitQualityFunction">[docs]</a>
+<span class="k">class</span> <span class="nc">UnitQualityFunction</span><span class="p">(</span><span class="n">QualityFunction</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`QualityFunction` where all points are considered equal, i.e. using</span>
+<span class="sd">    this quality function for inducing point allocation corresponds to allocating</span>
+<span class="sd">    inducing points with the sole aim of minimizing predictive variance.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="UnitQualityFunction.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.UnitQualityFunction.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the quality of the data-points according to the model.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The quality scores.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">)</span>  <span class="c1"># [N]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ModelBasedImprovementQualityFunction">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.ModelBasedImprovementQualityFunction">[docs]</a>
+<span class="k">class</span> <span class="nc">ModelBasedImprovementQualityFunction</span><span class="p">(</span><span class="n">QualityFunction</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    A :class:`QualityFunction` where the quality of points are given by their expected</span>
+<span class="sd">    improvement with respect to a conservative baseline. Expectations are according</span>
+<span class="sd">    to the model from the previous BO step). See :cite:`moss2023IPA` for details</span>
+<span class="sd">    and justification.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="ModelBasedImprovementQualityFunction.__call__">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.ModelBasedImprovementQualityFunction.__call__">[docs]</a>
+    <span class="k">def</span> <span class="fm">__call__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">model</span><span class="p">:</span> <span class="n">GPflowPredictor</span><span class="p">,</span> <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Evaluate the quality of the data-points according to the model.</span>
+<span class="sd">        :param model: The sparse model.</span>
+<span class="sd">        :param dataset: The data from the observer. Must be populated.</span>
+<span class="sd">        :return: The quality scores.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="n">mean</span><span class="p">,</span> <span class="n">variance</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>  <span class="c1"># [N, 1], [N, 1]</span>
+        <span class="n">baseline</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">reduce_max</span><span class="p">(</span><span class="n">mean</span><span class="p">)</span>
+        <span class="n">normal</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">mean</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">variance</span><span class="p">))</span>
+        <span class="n">improvement</span> <span class="o">=</span> <span class="p">(</span><span class="n">baseline</span> <span class="o">-</span> <span class="n">mean</span><span class="p">)</span> <span class="o">*</span> <span class="n">normal</span><span class="o">.</span><span class="n">cdf</span><span class="p">(</span><span class="n">baseline</span><span class="p">)</span> <span class="o">+</span> <span class="n">variance</span> <span class="o">*</span> <span class="n">normal</span><span class="o">.</span><span class="n">prob</span><span class="p">(</span>
+            <span class="n">baseline</span>
+        <span class="p">)</span>  <span class="c1"># [N, 1]</span>
+        <span class="k">return</span> <span class="n">improvement</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># [N]</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="ConditionalVarianceReduction">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.ConditionalVarianceReduction">[docs]</a>
+<span class="k">class</span> <span class="nc">ConditionalVarianceReduction</span><span class="p">(</span><span class="n">DPPInducingPointSelector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An :class:`InducingPointSelector` that greedily chooses the points with maximal (conditional)</span>
+<span class="sd">    predictive variance, see :cite:`burt2019rates`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">recalc_every_model_update</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param recalc_every_model_update: If True then recalculate the inducing points for each</span>
+<span class="sd">            model update, otherwise just recalculate on the first call.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">UnitQualityFunction</span><span class="p">(),</span> <span class="n">recalc_every_model_update</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="ConditionalImprovementReduction">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.ConditionalImprovementReduction">[docs]</a>
+<span class="k">class</span> <span class="nc">ConditionalImprovementReduction</span><span class="p">(</span><span class="n">DPPInducingPointSelector</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    An :class:`InducingPointSelector` that greedily chooses points with large predictive variance</span>
+<span class="sd">    and that are likely to be in promising regions of the search space, see :cite:`moss2023IPA`.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">recalc_every_model_update</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">True</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param recalc_every_model_update: If True then recalculate the inducing points for each</span>
+<span class="sd">            model update, otherwise just recalculate on the first call.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">ModelBasedImprovementQualityFunction</span><span class="p">(),</span> <span class="n">recalc_every_model_update</span><span class="p">)</span></div>
+
+
+
+<div class="viewcode-block" id="greedy_inference_dpp">
+<a class="viewcode-back" href="../../../../autoapi/trieste/models/gpflow/inducing_point_selectors/index.html#trieste.models.gpflow.greedy_inference_dpp">[docs]</a>
+<span class="k">def</span> <span class="nf">greedy_inference_dpp</span><span class="p">(</span>
+    <span class="n">M</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+    <span class="n">kernel</span><span class="p">:</span> <span class="n">gpflow</span><span class="o">.</span><span class="n">kernels</span><span class="o">.</span><span class="n">Kernel</span><span class="p">,</span>
+    <span class="n">quality_scores</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">,</span>
+    <span class="n">dataset</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">,</span>
+<span class="p">)</span> <span class="o">-&gt;</span> <span class="n">TensorType</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Get a greedy approximation of the MAP estimate of the Determinantal Point Process (DPP)</span>
+<span class="sd">    over ``dataset`` following the algorithm of :cite:`chen2018fast`. Note that we are using the</span>
+<span class="sd">    quality-diversity decomposition of a DPP, specifying both a similarity ``kernel``</span>
+<span class="sd">    and ``quality_scores``.</span>
+
+<span class="sd">    :param M: Desired set size.</span>
+<span class="sd">    :param kernel: The underlying kernel of the DPP.</span>
+<span class="sd">    :param quality_scores: The quality score of each item in ``dataset``.</span>
+<span class="sd">    :return: The MAP estimate of the DPP.</span>
+<span class="sd">    :raise tf.errors.InvalidArgumentError: If ``dataset`` is empty or if the shape of</span>
+<span class="sd">        ``quality_scores`` does not match that of ``dataset.observations``.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="n">dataset</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">,</span> <span class="p">[])</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">assert_equal</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="p">)[</span><span class="mi">0</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">quality_scores</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">debugging</span><span class="o">.</span><span class="n">Assert</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="n">M</span><span class="p">,</span> <span class="p">[])</span>
+
+    <span class="n">chosen_indicies</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># iteratively store chosen points</span>
+
+    <span class="n">N</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">shape</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="n">M</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="n">N</span><span class="p">))</span>  <span class="c1"># [M-1,N]</span>
+    <span class="n">d_squared</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">K_diag</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">)</span>  <span class="c1"># [N]</span>
+
+    <span class="n">scores</span> <span class="o">=</span> <span class="n">d_squared</span> <span class="o">*</span> <span class="n">quality_scores</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># [N]</span>
+    <span class="n">chosen_indicies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">scores</span><span class="p">))</span>  <span class="c1"># get first element</span>
+    <span class="k">for</span> <span class="n">m</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">M</span> <span class="o">-</span> <span class="mi">1</span><span class="p">):</span>  <span class="c1"># get remaining elements</span>
+        <span class="n">ix</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">cast</span><span class="p">(</span><span class="n">chosen_indicies</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">int32</span><span class="p">)</span>  <span class="c1"># increment Cholesky with newest point</span>
+        <span class="n">newest_point</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">[</span><span class="n">ix</span><span class="p">]</span>
+
+        <span class="n">d_temp</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">d_squared</span><span class="p">[</span><span class="n">ix</span><span class="p">])</span>  <span class="c1"># [1]</span>
+
+        <span class="n">L</span> <span class="o">=</span> <span class="n">kernel</span><span class="o">.</span><span class="n">K</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">newest_point</span><span class="p">[</span><span class="kc">None</span><span class="p">,</span> <span class="p">:])[:,</span> <span class="mi">0</span><span class="p">]</span>  <span class="c1"># [N]</span>
+        <span class="k">if</span> <span class="n">m</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">L</span> <span class="o">/</span> <span class="n">d_temp</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># [1,N]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">c_temp</span> <span class="o">=</span> <span class="n">c</span><span class="p">[:,</span> <span class="n">ix</span> <span class="p">:</span> <span class="n">ix</span> <span class="o">+</span> <span class="mi">1</span><span class="p">]</span>  <span class="c1"># [m,1]</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="p">(</span><span class="n">L</span> <span class="o">-</span> <span class="n">tf</span><span class="o">.</span><span class="n">matmul</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="n">c_temp</span><span class="p">),</span> <span class="n">c</span><span class="p">[:</span><span class="n">m</span><span class="p">]))</span> <span class="o">/</span> <span class="n">d_temp</span>  <span class="c1"># [N]</span>
+            <span class="n">c</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span><span class="n">c</span><span class="p">,</span> <span class="n">e</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>  <span class="c1"># [m+1, N]</span>
+            <span class="n">e</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">e</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">d_squared</span> <span class="o">-=</span> <span class="n">e</span><span class="o">**</span><span class="mi">2</span>
+        <span class="n">d_squared</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">maximum</span><span class="p">(</span><span class="n">d_squared</span><span class="p">,</span> <span class="mf">1e-50</span><span class="p">)</span>  <span class="c1"># numerical stability</span>
+
+        <span class="n">scores</span> <span class="o">=</span> <span class="n">d_squared</span> <span class="o">*</span> <span class="n">quality_scores</span><span class="o">**</span><span class="mi">2</span>  <span class="c1"># [N]</span>
+        <span class="n">chosen_indicies</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">argmax</span><span class="p">(</span><span class="n">scores</span><span class="p">))</span>  <span class="c1"># get next element as point with largest score</span>
+
+    <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">gather</span><span class="p">(</span><span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="p">,</span> <span class="n">chosen_indicies</span><span class="p">)</span></div>
+
+</pre></div>
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

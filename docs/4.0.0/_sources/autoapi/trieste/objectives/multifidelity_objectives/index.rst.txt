@@ -1,0 +1,35 @@
+:py:mod:`trieste.objectives.multifidelity_objectives`
+=====================================================
+
+.. py:module:: trieste.objectives.multifidelity_objectives
+
+.. autoapi-nested-parse::
+
+   This module contains synthetic multi-fidelity objective functions, useful for experimentation.
+
+
+
+Module Contents
+---------------
+
+.. py:class:: SingleObjectiveMultifidelityTestProblem
+
+
+   Bases: :py:obj:`trieste.objectives.single_objectives.SingleObjectiveTestProblem`\ [\ :py:obj:`trieste.space.SearchSpaceType`\ ]
+
+   Convenience container class for synthetic single-objective test functions,
+   including the global minimizers and minimum.
+
+   .. py:attribute:: num_fidelities
+      :type: int
+
+      The number of fidelities of test function
+
+
+   .. py:attribute:: fidelity_search_space
+      :type: trieste.space.TaggedProductSearchSpace
+
+      The search space including fidelities
+
+
+

@@ -1,0 +1,1281 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Asynchronous Bayesian Optimization &#8212; trieste 4.2.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.5.2/css/all.min.css?digest=3ee479438cf8b5e0d341" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.5.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=fd3f3429" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=ae350598" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341" />
+  <script src="../_static/vendor/fontawesome/6.5.2/js/all.min.js?digest=3ee479438cf8b5e0d341"></script>
+
+    <script src="../_static/documentation_options.js?v=d0ae6d56"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/asynchronous_greedy_multiprocessing';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.15.3';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.2.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Visualizing with Tensorboard" href="visualizing_with_tensorboard.html" />
+    <link rel="prev" title="Recovering from errors" href="recovering_from_errors.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-primary-sidebar-checkbox"/>
+  <label class="overlay overlay-primary" for="pst-primary-sidebar-checkbox"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          id="pst-secondary-sidebar-checkbox"/>
+  <label class="overlay overlay-secondary" for="pst-secondary-sidebar-checkbox"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="trieste 4.2.0 documentation - Home"/>
+    <script>document.write(`<img src="../_static/logo.png" class="logo__image only-dark" alt="trieste 4.2.0 documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <button class="sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav class="navbar-nav">
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item pst-header-nav-item">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_ensembles.html">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="feasible_sets.html">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_modelling.html">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="recovering_from_errors.html">Recovering from errors</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualizing_with_tensorboard.html">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_overview.html">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">Asynchronous...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Asynchronous-Bayesian-Optimization">
+<h1>Asynchronous Bayesian Optimization<a class="headerlink" href="#Asynchronous-Bayesian-Optimization" title="Link to this heading">#</a></h1>
+<p>In this notebook we demonstrate Trieste’s ability to perform asynchronous Bayesian optimisation, as is suitable for scenarios where the objective function can be run for several points in parallel but where observations might return back at different times. To avoid wasting resources waiting for the evaluation of the whole batch, we immediately request the next point asynchronously, taking into account points that are still being evaluated. Besides saving resources, asynchronous approach also
+can potentially <a class="reference external" href="https://arxiv.org/abs/1901.10452">improve sample efficiency</a> in comparison with synchronous batch strategies, although this is highly dependent on the use case.</p>
+<p>To contrast this approach with regular <a class="reference internal" href="batch_optimization.html"><span class="doc">batch optimization</span></a>, this notebook also shows how to run parallel synchronous batch approach.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># silence TF warnings and info messages, only print errors</span>
+<span class="c1"># https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information</span>
+<span class="kn">import</span> <span class="nn">os</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_CPP_MIN_LOG_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3&quot;</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+
+<span class="n">tf</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s2">&quot;ERROR&quot;</span><span class="p">)</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">timeit</span>
+</pre></div>
+</div>
+</div>
+<p>First, let’s define a simple objective that will emulate evaluations taking variable time. We will be using a classic Bayesian optimisation benchmark function <a class="reference external" href="https://www.sfu.ca/~ssurjano/branin.html">Branin</a> with a sleep call inserted in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.objectives</span> <span class="kn">import</span> <span class="n">ScaledBranin</span>
+
+
+<span class="k">def</span> <span class="nf">objective</span><span class="p">(</span><span class="n">points</span><span class="p">,</span> <span class="n">sleep</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="o">!=</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Incorrect input shape, expected (*, 2), got </span><span class="si">{</span><span class="n">points</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span>
+        <span class="p">)</span>
+
+    <span class="n">observations</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">points</span><span class="p">:</span>
+        <span class="n">observation</span> <span class="o">=</span> <span class="n">ScaledBranin</span><span class="o">.</span><span class="n">objective</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sleep</span><span class="p">:</span>
+            <span class="c1"># insert some artificial delay</span>
+            <span class="c1"># increases linearly with the absolute value of points</span>
+            <span class="c1"># which means our evaluations will take different time</span>
+            <span class="n">delay</span> <span class="o">=</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">np</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">point</span><span class="p">)</span>
+            <span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: Objective: pretends like it&#39;s doing something for </span><span class="si">{</span><span class="n">delay</span><span class="si">:</span><span class="s2">.2</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">,</span>
+                <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+            <span class="n">time</span><span class="o">.</span><span class="n">sleep</span><span class="p">(</span><span class="n">delay</span><span class="p">)</span>
+        <span class="n">observations</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">observation</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">(</span><span class="n">observations</span><span class="p">)</span>
+
+
+<span class="c1"># test the defined objective function</span>
+<span class="n">objective</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([[</span><span class="mf">0.1</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">]]),</span> <span class="n">sleep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2024-09-20 14:02:25,101 INFO util.py:154 -- Missing packages: [&#39;ipywidgets&#39;]. Run `pip install -U ipywidgets`, then restart the notebook server for rich notebook output.
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+array([[-0.42052567]])
+</pre></div></div>
+</div>
+<p>As always, we need to prepare the model and some initial data to kick-start the optimization process.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.space</span> <span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span> <span class="nn">trieste.data</span> <span class="kn">import</span> <span class="n">Dataset</span>
+
+<span class="n">search_space</span> <span class="o">=</span> <span class="n">Box</span><span class="p">([</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">],</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+<span class="n">num_initial_points</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="n">initial_query_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_initial_points</span><span class="p">)</span>
+<span class="n">initial_observations</span> <span class="o">=</span> <span class="n">objective</span><span class="p">(</span><span class="n">initial_query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span> <span class="n">sleep</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+    <span class="n">query_points</span><span class="o">=</span><span class="n">initial_query_points</span><span class="p">,</span>
+    <span class="n">observations</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">initial_observations</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+<span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">gpflow</span>
+<span class="kn">from</span> <span class="nn">trieste.models.gpflow</span> <span class="kn">import</span> <span class="n">GaussianProcessRegression</span><span class="p">,</span> <span class="n">build_gpr</span>
+
+<span class="c1"># We set the likelihood variance to a small number because</span>
+<span class="c1"># we are dealing with a noise-free problem.</span>
+<span class="n">gpflow_model</span> <span class="o">=</span> <span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpflow_model</span><span class="p">)</span>
+
+
+<span class="c1"># these imports will be used later for optimization</span>
+<span class="kn">from</span> <span class="nn">trieste.acquisition</span> <span class="kn">import</span> <span class="n">LocalPenalization</span>
+<span class="kn">from</span> <span class="nn">trieste.acquisition.rule</span> <span class="kn">import</span> <span class="p">(</span>
+    <span class="n">AsynchronousGreedy</span><span class="p">,</span>
+    <span class="n">EfficientGlobalOptimization</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span> <span class="nn">trieste.ask_tell_optimization</span> <span class="kn">import</span> <span class="n">AskTellOptimizer</span>
+</pre></div>
+</div>
+</div>
+<section id="Multiprocessing-setup">
+<h2>Multiprocessing setup<a class="headerlink" href="#Multiprocessing-setup" title="Link to this heading">#</a></h2>
+<p>To keep this notebook as reproducible as possible, we will only be using Python’s multiprocessing package here. In this section we will explain our setup and define some common code to be used later.</p>
+<p>In both synchronous and asynchronous scenarios we will have a fixed set of worker processes performing observations. We will also have a main process responsible for optimization process with Trieste. When Trieste suggests a new point, it is inserted into a points queue. One of the workers picks this point from the queue, performs the observation, and inserts the output into the observations queue. The main process then picks up the observation from the queue, at which moment it either waits for
+the rest of the points in the batch to come back (synchronous scenario) or immediately suggests a new point (asynchronous scenario). This process continues either for a certain number of iterations or until we accumulate necessary number of observations.</p>
+<p>The overall setup is illustrated in this diagram: <img alt="multiprocessing setup" src="../_images/async_bo.png" /></p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Necessary multiprocessing primitives</span>
+<span class="kn">from</span> <span class="nn">multiprocessing</span> <span class="kn">import</span> <span class="n">Manager</span><span class="p">,</span> <span class="n">Process</span>
+</pre></div>
+</div>
+</div>
+<p>We now define several common functions to implement the described setup. First we define a worker function that will be running a single observation in a separate process. Worker takes both queues as an input, reads next point from the points queue, makes an observation, and inserts observed data into the observations queue.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><br/><span></span><span class="k">def</span> <span class="nf">observer_proc</span><span class="p">(</span><span class="n">points_queue</span><span class="p">,</span> <span class="n">observations_queue</span><span class="p">):</span>
+    <span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
+
+    <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+        <span class="n">point_to_observe</span> <span class="o">=</span> <span class="n">points_queue</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">point_to_observe</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="k">return</span>
+
+        <span class="nb">print</span><span class="p">(</span>
+            <span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: Observer : observing data at point </span><span class="si">{</span><span class="n">point_to_observe</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+            <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">new_observation</span> <span class="o">=</span> <span class="n">objective</span><span class="p">(</span><span class="n">point_to_observe</span><span class="p">,</span> <span class="n">sleep</span><span class="o">=</span><span class="n">enable_sleep_delays</span><span class="p">)</span>
+        <span class="n">new_data</span> <span class="o">=</span> <span class="p">(</span><span class="n">point_to_observe</span><span class="p">,</span> <span class="n">new_observation</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: Observer : observed data </span><span class="si">{</span><span class="n">new_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">observations_queue</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">new_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Next we define two helper functions, one is to create a certain number of worker processes, and another is to terminate them once we are done.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><br/><span></span><span class="k">def</span> <span class="nf">create_worker_processes</span><span class="p">(</span><span class="n">n_workers</span><span class="p">,</span> <span class="n">points_queue</span><span class="p">,</span> <span class="n">obseverations_queue</span><span class="p">):</span>
+    <span class="n">observer_processes</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_workers</span><span class="p">):</span>
+        <span class="n">worker_proc</span> <span class="o">=</span> <span class="n">Process</span><span class="p">(</span>
+            <span class="n">target</span><span class="o">=</span><span class="n">observer_proc</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">points_queue</span><span class="p">,</span> <span class="n">obseverations_queue</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">worker_proc</span><span class="o">.</span><span class="n">daemon</span> <span class="o">=</span> <span class="kc">True</span>
+        <span class="n">worker_proc</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+
+        <span class="n">observer_processes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">worker_proc</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">observer_processes</span>
+
+
+<span class="k">def</span> <span class="nf">terminate_processes</span><span class="p">(</span><span class="n">processes</span><span class="p">):</span>
+    <span class="k">for</span> <span class="n">prc</span> <span class="ow">in</span> <span class="n">processes</span><span class="p">:</span>
+        <span class="n">prc</span><span class="o">.</span><span class="n">terminate</span><span class="p">()</span>
+        <span class="n">prc</span><span class="o">.</span><span class="n">join</span><span class="p">()</span>
+        <span class="n">prc</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<p>Finally we set some common parameters. See comments below for explanation of what each one means.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># Number of worker processes to run simultaneously</span>
+<span class="c1"># Setting this to 1 will turn both setups into non-batch sequential optimization</span>
+<span class="n">num_workers</span> <span class="o">=</span> <span class="mi">3</span>
+<span class="c1"># Number of iterations to run the sycnhronous scenario for</span>
+<span class="n">num_iterations</span> <span class="o">=</span> <span class="mi">10</span>
+<span class="c1"># Number of observations to collect in the asynchronous scenario</span>
+<span class="n">num_observations</span> <span class="o">=</span> <span class="n">num_workers</span> <span class="o">*</span> <span class="n">num_iterations</span>
+<span class="c1"># Set this flag to False to disable sleep delays in case you want the notebook to execute quickly</span>
+<span class="n">enable_sleep_delays</span> <span class="o">=</span> <span class="kc">True</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Asynchronous-optimization">
+<h2>Asynchronous optimization<a class="headerlink" href="#Asynchronous-optimization" title="Link to this heading">#</a></h2>
+<p>This section runs the asynchronous optimization routine. We first setup the <a class="reference internal" href="ask_tell_optimization.html"><span class="doc">ask/tell optimizer</span></a> as we cannot hand over the evaluation of the objective to Trieste. Next we create thread-safe queues for points and observations, and run the optimization loop.</p>
+<p>Crucially, even though we are using batch acquisition function Local Penalization, we specify batch size of 1. This is because we don’t really want a batch. Since the amount of workers we have is fixed, whenever we see a new observation we only need one point back. However this process can only be done with acquisition functions that implement greedy batch collection strategies, because they are able to take into account points that are currently being observed (in Trieste we call them
+“pending”). Trieste currently provides two such functions: Local Penalization and GIBBON. Notice that we use <strong>AsynchronousGreedy</strong> rule specifically designed for using greedy batch acquisition functions in asynchronous scenarios.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><br/><span></span><span class="c1"># setup Ask Tell BO</span>
+<span class="n">local_penalization_acq</span> <span class="o">=</span> <span class="n">LocalPenalization</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+<span class="n">local_penalization_rule</span> <span class="o">=</span> <span class="n">AsynchronousGreedy</span><span class="p">(</span><span class="n">builder</span><span class="o">=</span><span class="n">local_penalization_acq</span><span class="p">)</span>  <span class="c1"># type: ignore</span>
+
+<span class="n">async_bo</span> <span class="o">=</span> <span class="n">AskTellOptimizer</span><span class="p">(</span>
+    <span class="n">search_space</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">local_penalization_rule</span>
+<span class="p">)</span>
+
+<span class="c1"># retrieve process id for nice logging</span>
+<span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
+<span class="c1"># create point and observation queues</span>
+<span class="n">m</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">()</span>
+<span class="n">pq</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+<span class="n">oq</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+<span class="c1"># keep track of all workers we have launched</span>
+<span class="n">observer_processes</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="c1"># counter to keep track of collected observations</span>
+<span class="n">points_observed</span> <span class="o">=</span> <span class="mi">0</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">observer_processes</span> <span class="o">=</span> <span class="n">create_worker_processes</span><span class="p">(</span><span class="n">num_workers</span><span class="p">,</span> <span class="n">pq</span><span class="p">,</span> <span class="n">oq</span><span class="p">)</span>
+
+    <span class="c1"># init the queue with first batch of points</span>
+    <span class="k">for</span> <span class="n">_</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_workers</span><span class="p">):</span>
+        <span class="n">point</span> <span class="o">=</span> <span class="n">async_bo</span><span class="o">.</span><span class="n">ask</span><span class="p">()</span>
+        <span class="n">pq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">numpy</span><span class="p">()))</span>
+
+    <span class="k">while</span> <span class="n">points_observed</span> <span class="o">&lt;</span> <span class="n">num_observations</span><span class="p">:</span>
+        <span class="c1"># keep asking queue for new observations until one arrives</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">new_data</span> <span class="o">=</span> <span class="n">oq</span><span class="o">.</span><span class="n">get_nowait</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: Main     : received data </span><span class="si">{</span><span class="n">new_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+        <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span>
+            <span class="k">continue</span>
+
+        <span class="c1"># new_data is a tuple of (point, observation value)</span>
+        <span class="c1"># here we turn it into a Dataset and tell of it Trieste</span>
+        <span class="n">points_observed</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="n">new_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+            <span class="n">query_points</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">new_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+            <span class="n">observations</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">new_data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="n">async_bo</span><span class="o">.</span><span class="n">tell</span><span class="p">(</span><span class="n">new_data</span><span class="p">)</span>
+
+        <span class="c1"># now we can ask Trieste for one more point</span>
+        <span class="c1"># and feed that back into the points queue</span>
+        <span class="n">point</span> <span class="o">=</span> <span class="n">async_bo</span><span class="o">.</span><span class="n">ask</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: Main     : acquired point </span><span class="si">{</span><span class="n">point</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">pq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">atleast_2d</span><span class="p">(</span><span class="n">point</span><span class="p">))</span>
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">terminate_processes</span><span class="p">(</span><span class="n">observer_processes</span><span class="p">)</span>
+<span class="n">stop</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
+
+<span class="c1"># Collect the observations, compute the running time</span>
+<span class="n">async_lp_observations</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">async_bo</span><span class="o">.</span><span class="n">to_result</span><span class="p">()</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span><span class="o">.</span><span class="n">observations</span>
+    <span class="o">-</span> <span class="n">ScaledBranin</span><span class="o">.</span><span class="n">minimum</span>
+<span class="p">)</span>
+<span class="n">async_lp_time</span> <span class="o">=</span> <span class="n">stop</span> <span class="o">-</span> <span class="n">start</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">async_lp_observations</span><span class="p">)</span><span class="si">}</span><span class="s2"> observations in </span><span class="si">{</span><span class="n">async_lp_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Process 3112: Observer : observing data at point [[0.35422988 0.17803154]]
+Process 3112: Objective: pretends like it&#39;s doing something for 1.6s
+Process 3116: Observer : observing data at point [[0.28278172 0.06947003]]
+Process 3116: Objective: pretends like it&#39;s doing something for 1.1s
+Process 3120: Observer : observing data at point [[0.40428503 0.08114561]]
+Process 3120: Objective: pretends like it&#39;s doing something for 1.5s
+Process 3112: Observer : observed data (array([[0.35422988, 0.17803154]]), array([[-0.53110869]]))
+Process 3062: Main     : received data (array([[0.35422988, 0.17803154]]), array([[-0.53110869]]))
+Process 3116: Observer : observed data (array([[0.28278172, 0.06947003]]), array([[0.0209282]]))
+Process 3120: Observer : observed data (array([[0.40428503, 0.08114561]]), array([[-0.57140565]]))
+Process 3062: Main     : acquired point [[0.31983869 0.26999812]]
+Process 3062: Main     : received data (array([[0.28278172, 0.06947003]]), array([[0.0209282]]))
+Process 3112: Observer : observing data at point [[0.31983869 0.26999812]]
+Process 3112: Objective: pretends like it&#39;s doing something for 1.8s
+Process 3062: Main     : acquired point [[0.46511538 0.24661927]]
+Process 3062: Main     : received data (array([[0.40428503, 0.08114561]]), array([[-0.57140565]]))
+Process 3116: Observer : observing data at point [[0.46511538 0.24661927]]
+Process 3116: Objective: pretends like it&#39;s doing something for 2.1s
+Process 3112: Observer : observed data (array([[0.31983869, 0.26999812]]), array([[-0.5816556]]))
+Process 3062: Main     : acquired point [[0.44022609 0.16665592]]
+Process 3062: Main     : received data (array([[0.31983869, 0.26999812]]), array([[-0.5816556]]))
+Process 3120: Observer : observing data at point [[0.44022609 0.16665592]]
+Process 3120: Objective: pretends like it&#39;s doing something for 1.8s
+Process 3062: Main     : acquired point [[0.4009467  0.38000687]]
+Process 3112: Observer : observing data at point [[0.4009467  0.38000687]]
+Process 3112: Objective: pretends like it&#39;s doing something for 2.3s
+Process 3116: Observer : observed data (array([[0.46511538, 0.24661927]]), array([[-0.93331414]]))
+Process 3062: Main     : received data (array([[0.46511538, 0.24661927]]), array([[-0.93331414]]))
+Process 3120: Observer : observed data (array([[0.44022609, 0.16665592]]), array([[-0.83702598]]))
+Process 3062: Main     : acquired point [[0.5742886  0.14903356]]
+Process 3062: Main     : received data (array([[0.44022609, 0.16665592]]), array([[-0.83702598]]))
+Process 3116: Observer : observing data at point [[0.5742886  0.14903356]]
+Process 3116: Objective: pretends like it&#39;s doing something for 2.2s
+Process 3112: Observer : observed data (array([[0.4009467 , 0.38000687]]), array([[-0.73804755]]))
+Process 3062: Main     : acquired point [[0.59555925 0.04762149]]
+Process 3062: Main     : received data (array([[0.4009467 , 0.38000687]]), array([[-0.73804755]]))
+Process 3120: Observer : observing data at point [[0.59555925 0.04762149]]
+Process 3120: Objective: pretends like it&#39;s doing something for 1.9s
+Process 3062: Main     : acquired point [[0.5389053  0.20564691]]
+Process 3112: Observer : observing data at point [[0.5389053  0.20564691]]
+Process 3112: Objective: pretends like it&#39;s doing something for 2.2s
+Process 3116: Observer : observed data (array([[0.5742886 , 0.14903356]]), array([[-1.02538647]]))
+Process 3062: Main     : received data (array([[0.5742886 , 0.14903356]]), array([[-1.02538647]]))
+Process 3120: Observer : observed data (array([[0.59555925, 0.04762149]]), array([[-0.97222709]]))
+Process 3062: Main     : acquired point [[0.54390842 0.18814684]]
+Process 3062: Main     : received data (array([[0.59555925, 0.04762149]]), array([[-0.97222709]]))
+Process 3116: Observer : observing data at point [[0.54390842 0.18814684]]
+Process 3116: Objective: pretends like it&#39;s doing something for 2.2s
+Process 3062: Main     : acquired point [[0.54039905 0.15318874]]
+Process 3120: Observer : observing data at point [[0.54039905 0.15318874]]
+Process 3120: Objective: pretends like it&#39;s doing something for 2.1s
+Process 3112: Observer : observed data (array([[0.5389053 , 0.20564691]]), array([[-1.03584643]]))
+Process 3062: Main     : received data (array([[0.5389053 , 0.20564691]]), array([[-1.03584643]]))
+Process 3062: Main     : acquired point [[0.04620944 0.82653505]]
+Process 3112: Observer : observing data at point [[0.04620944 0.82653505]]
+Process 3112: Objective: pretends like it&#39;s doing something for 2.6s
+Process 3116: Observer : observed data (array([[0.54390842, 0.18814684]]), array([[-1.04132082]]))
+Process 3062: Main     : received data (array([[0.54390842, 0.18814684]]), array([[-1.04132082]]))
+Process 3120: Observer : observed data (array([[0.54039905, 0.15318874]]), array([[-1.04727623]]))
+Process 3062: Main     : acquired point [[0.         0.58259935]]
+Process 3062: Main     : received data (array([[0.54039905, 0.15318874]]), array([[-1.04727623]]))
+Process 3116: Observer : observing data at point [[0.         0.58259935]]
+Process 3116: Objective: pretends like it&#39;s doing something for 1.7s
+Process 3062: Main     : acquired point [[0. 1.]]
+Process 3120: Observer : observing data at point [[0. 1.]]
+Process 3120: Objective: pretends like it&#39;s doing something for 3.0s
+Process 3112: Observer : observed data (array([[0.04620944, 0.82653505]]), array([[-0.77881869]]))
+Process 3062: Main     : received data (array([[0.04620944, 0.82653505]]), array([[-0.77881869]]))
+Process 3116: Observer : observed data (array([[0.        , 0.58259935]]), array([[0.56378643]]))
+Process 3062: Main     : acquired point [[0.19315361 1.        ]]
+Process 3062: Main     : received data (array([[0.        , 0.58259935]]), array([[0.56378643]]))
+Process 3112: Observer : observing data at point [[0.19315361 1.        ]]
+Process 3112: Objective: pretends like it&#39;s doing something for 3.6s
+Process 3062: Main     : acquired point [[0.116602 1.      ]]
+Process 3116: Observer : observing data at point [[0.116602 1.      ]]
+Process 3116: Objective: pretends like it&#39;s doing something for 3.3s
+Process 3120: Observer : observed data (array([[0., 1.]]), array([[-0.71803081]]))
+Process 3062: Main     : received data (array([[0., 1.]]), array([[-0.71803081]]))
+Process 3062: Main     : acquired point [[0.17567634 0.91281376]]
+Process 3120: Observer : observing data at point [[0.17567634 0.91281376]]
+Process 3120: Objective: pretends like it&#39;s doing something for 3.3s
+Process 3112: Observer : observed data (array([[0.19315361, 1.        ]]), array([[-0.4591003]]))
+Process 3062: Main     : received data (array([[0.19315361, 1.        ]]), array([[-0.4591003]]))
+Process 3116: Observer : observed data (array([[0.116602, 1.      ]]), array([[-0.92974411]]))
+Process 3062: Main     : acquired point [[0.91486783 0.        ]]
+Process 3062: Main     : received data (array([[0.116602, 1.      ]]), array([[-0.92974411]]))
+Process 3112: Observer : observing data at point [[0.91486783 0.        ]]
+Process 3112: Objective: pretends like it&#39;s doing something for 2.7s
+Process 3062: Main     : acquired point [[0.10378166 0.89243692]]
+Process 3116: Observer : observing data at point [[0.10378166 0.89243692]]
+Process 3116: Objective: pretends like it&#39;s doing something for 3.0s
+Process 3120: Observer : observed data (array([[0.17567634, 0.91281376]]), array([[-0.7965376]]))
+Process 3062: Main     : received data (array([[0.17567634, 0.91281376]]), array([[-0.7965376]]))
+Process 3062: Main     : acquired point [[0.10081435 0.90200977]]
+Process 3120: Observer : observing data at point [[0.10081435 0.90200977]]
+Process 3120: Objective: pretends like it&#39;s doing something for 3.0s
+Process 3112: Observer : observed data (array([[0.91486783, 0.        ]]), array([[-0.93077339]]))
+Process 3062: Main     : received data (array([[0.91486783, 0.        ]]), array([[-0.93077339]]))
+Process 3062: Main     : acquired point [[0.79188049 0.        ]]
+Process 3112: Observer : observing data at point [[0.79188049 0.        ]]
+Process 3112: Objective: pretends like it&#39;s doing something for 2.4s
+Process 3116: Observer : observed data (array([[0.10378166, 0.89243692]]), array([[-1.03634265]]))
+Process 3062: Main     : received data (array([[0.10378166, 0.89243692]]), array([[-1.03634265]]))
+Process 3062: Main     : acquired point [[0.74905885 0.        ]]
+Process 3116: Observer : observing data at point [[0.74905885 0.        ]]
+Process 3116: Objective: pretends like it&#39;s doing something for 2.2s
+Process 3120: Observer : observed data (array([[0.10081435, 0.90200977]]), array([[-1.03322869]]))
+Process 3062: Main     : received data (array([[0.10081435, 0.90200977]]), array([[-1.03322869]]))
+Process 3112: Observer : observed data (array([[0.79188049, 0.        ]]), array([[-0.68338149]]))
+Process 3062: Main     : acquired point [[0.82990562 0.        ]]
+Process 3062: Main     : received data (array([[0.79188049, 0.        ]]), array([[-0.68338149]]))
+Process 3120: Observer : observing data at point [[0.82990562 0.        ]]
+Process 3120: Objective: pretends like it&#39;s doing something for 2.5s
+Process 3116: Observer : observed data (array([[0.74905885, 0.        ]]), array([[-0.65469303]]))
+Process 3062: Main     : acquired point [[1. 0.]]
+Process 3062: Main     : received data (array([[0.74905885, 0.        ]]), array([[-0.65469303]]))
+Process 3112: Observer : observing data at point [[1. 0.]]
+Process 3112: Objective: pretends like it&#39;s doing something for 3.0s
+Process 3062: Main     : acquired point [[1.        0.0373464]]
+Process 3116: Observer : observing data at point [[1.        0.0373464]]
+Process 3116: Objective: pretends like it&#39;s doing something for 3.1s
+Process 3120: Observer : observed data (array([[0.82990562, 0.        ]]), array([[-0.75650236]]))
+Process 3062: Main     : received data (array([[0.82990562, 0.        ]]), array([[-0.75650236]]))
+Process 3062: Main     : acquired point [[1.         0.09095472]]
+Process 3120: Observer : observing data at point [[1.         0.09095472]]
+Process 3120: Objective: pretends like it&#39;s doing something for 3.3s
+Process 3112: Observer : observed data (array([[1., 0.]]), array([[-0.84406373]]))
+Process 3062: Main     : received data (array([[1., 0.]]), array([[-0.84406373]]))
+Process 3062: Main     : acquired point [[0.17315927 0.70684177]]
+Process 3112: Observer : observing data at point [[0.17315927 0.70684177]]
+Process 3112: Objective: pretends like it&#39;s doing something for 2.6s
+Process 3116: Observer : observed data (array([[1.       , 0.0373464]]), array([[-0.90278691]]))
+Process 3062: Main     : received data (array([[1.       , 0.0373464]]), array([[-0.90278691]]))
+Process 3062: Main     : acquired point [[0.93151291 0.16136112]]
+Process 3116: Observer : observing data at point [[0.93151291 0.16136112]]
+Process 3116: Objective: pretends like it&#39;s doing something for 3.3s
+Process 3120: Observer : observed data (array([[1.        , 0.09095472]]), array([[-0.96596212]]))
+Process 3062: Main     : received data (array([[1.        , 0.09095472]]), array([[-0.96596212]]))
+Process 3112: Observer : observed data (array([[0.17315927, 0.70684177]]), array([[-0.9991599]]))
+Process 3062: Main     : acquired point [[0.93506234 0.14147237]]
+Process 3062: Main     : received data (array([[0.17315927, 0.70684177]]), array([[-0.9991599]]))
+Process 3120: Observer : observing data at point [[0.93506234 0.14147237]]
+Process 3120: Objective: pretends like it&#39;s doing something for 3.2s
+Process 3062: Main     : acquired point [[0.93574162 0.17907774]]
+Process 3112: Observer : observing data at point [[0.93574162 0.17907774]]
+Process 3112: Objective: pretends like it&#39;s doing something for 3.3s
+Process 3116: Observer : observed data (array([[0.93151291, 0.16136112]]), array([[-1.02708867]]))
+Process 3062: Main     : received data (array([[0.93151291, 0.16136112]]), array([[-1.02708867]]))
+Process 3062: Main     : acquired point [[0.13208339 0.8072659 ]]
+Process 3116: Observer : observing data at point [[0.13208339 0.8072659 ]]
+Process 3116: Objective: pretends like it&#39;s doing something for 2.8s
+Process 3120: Observer : observed data (array([[0.93506234, 0.14147237]]), array([[-1.03286008]]))
+Process 3062: Main     : received data (array([[0.93506234, 0.14147237]]), array([[-1.03286008]]))
+Process 3062: Main     : acquired point [[0.13071634 0.81075069]]
+Process 3120: Observer : observing data at point [[0.13071634 0.81075069]]
+Process 3120: Objective: pretends like it&#39;s doing something for 2.8s
+Got 33 observations in 42.66s
+</pre></div></div>
+</div>
+</section>
+<section id="Synchronous-parallel-optimization">
+<h2>Synchronous parallel optimization<a class="headerlink" href="#Synchronous-parallel-optimization" title="Link to this heading">#</a></h2>
+<p>This section runs the synchronous parallel optimization with Trieste. We again use Local Penalization acquisition function, but this time with batch size equal to the number of workers we have available. Once Trieste suggests the batch, we add all points to the point queue, and workers immediatelly pick them up, one point per worker. Therefore all points in the batch are evaluated in parallel.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># setup Ask Tell BO</span>
+<span class="n">gpflow_model</span> <span class="o">=</span> <span class="n">build_gpr</span><span class="p">(</span><span class="n">initial_data</span><span class="p">,</span> <span class="n">search_space</span><span class="p">,</span> <span class="n">likelihood_variance</span><span class="o">=</span><span class="mf">1e-7</span><span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">GaussianProcessRegression</span><span class="p">(</span><span class="n">gpflow_model</span><span class="p">)</span>
+
+<span class="n">local_penalization_acq</span> <span class="o">=</span> <span class="n">LocalPenalization</span><span class="p">(</span><span class="n">search_space</span><span class="p">,</span> <span class="n">num_samples</span><span class="o">=</span><span class="mi">2000</span><span class="p">)</span>
+<span class="n">local_penalization_rule</span> <span class="o">=</span> <span class="n">EfficientGlobalOptimization</span><span class="p">(</span>  <span class="c1"># type: ignore</span>
+    <span class="n">num_query_points</span><span class="o">=</span><span class="n">num_workers</span><span class="p">,</span> <span class="n">builder</span><span class="o">=</span><span class="n">local_penalization_acq</span>
+<span class="p">)</span>
+
+<span class="n">sync_bo</span> <span class="o">=</span> <span class="n">AskTellOptimizer</span><span class="p">(</span>
+    <span class="n">search_space</span><span class="p">,</span> <span class="n">initial_data</span><span class="p">,</span> <span class="n">model</span><span class="p">,</span> <span class="n">local_penalization_rule</span>
+<span class="p">)</span>
+
+
+<span class="c1"># retrieve process id for nice logging</span>
+<span class="n">pid</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">getpid</span><span class="p">()</span>
+<span class="c1"># create point and observation queues</span>
+<span class="n">m</span> <span class="o">=</span> <span class="n">Manager</span><span class="p">()</span>
+<span class="n">pq</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+<span class="n">oq</span> <span class="o">=</span> <span class="n">m</span><span class="o">.</span><span class="n">Queue</span><span class="p">()</span>
+<span class="c1"># keep track of all workers we have launched</span>
+<span class="n">observer_processes</span> <span class="o">=</span> <span class="p">[]</span>
+
+<span class="n">start</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">observer_processes</span> <span class="o">=</span> <span class="n">create_worker_processes</span><span class="p">(</span><span class="n">num_workers</span><span class="p">,</span> <span class="n">pq</span><span class="p">,</span> <span class="n">oq</span><span class="p">)</span>
+
+    <span class="c1"># BO loop starts here</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">num_iterations</span><span class="p">):</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: Main     : iteration </span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s2"> starts&quot;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="c1"># get a batch of points from Trieste, send them to points queue</span>
+        <span class="c1"># each worker picks up a point and processes it</span>
+        <span class="n">points</span> <span class="o">=</span> <span class="n">sync_bo</span><span class="o">.</span><span class="n">ask</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">point</span> <span class="ow">in</span> <span class="n">points</span><span class="o">.</span><span class="n">numpy</span><span class="p">():</span>
+            <span class="n">pq</span><span class="o">.</span><span class="n">put</span><span class="p">(</span><span class="n">point</span><span class="o">.</span><span class="n">reshape</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">))</span>  <span class="c1"># reshape is to make point a 2d array</span>
+
+        <span class="c1"># now we wait for all workers to finish</span>
+        <span class="c1"># we create an empty dataset and wait</span>
+        <span class="c1"># until we collected as many observations in it</span>
+        <span class="c1"># as there were points in the batch</span>
+        <span class="n">all_new_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">initial_data</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+            <span class="n">tf</span><span class="o">.</span><span class="n">zeros</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">initial_data</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]),</span> <span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+        <span class="p">)</span>
+        <span class="k">while</span> <span class="nb">len</span><span class="p">(</span><span class="n">all_new_data</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">num_workers</span><span class="p">:</span>
+            <span class="c1"># this line blocks the process until new data is available in the queue</span>
+            <span class="n">new_data</span> <span class="o">=</span> <span class="n">oq</span><span class="o">.</span><span class="n">get</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Process </span><span class="si">{</span><span class="n">pid</span><span class="si">}</span><span class="s2">: Main     : received data </span><span class="si">{</span><span class="n">new_data</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+            <span class="p">)</span>
+
+            <span class="n">new_data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span>
+                <span class="n">query_points</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">new_data</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+                <span class="n">observations</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">constant</span><span class="p">(</span><span class="n">new_data</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">tf</span><span class="o">.</span><span class="n">float64</span><span class="p">),</span>
+            <span class="p">)</span>
+
+            <span class="n">all_new_data</span> <span class="o">=</span> <span class="n">all_new_data</span> <span class="o">+</span> <span class="n">new_data</span>
+
+        <span class="c1"># tell Trieste of new batch of observations</span>
+        <span class="n">sync_bo</span><span class="o">.</span><span class="n">tell</span><span class="p">(</span><span class="n">all_new_data</span><span class="p">)</span>
+
+<span class="k">finally</span><span class="p">:</span>
+    <span class="n">terminate_processes</span><span class="p">(</span><span class="n">observer_processes</span><span class="p">)</span>
+<span class="n">stop</span> <span class="o">=</span> <span class="n">timeit</span><span class="o">.</span><span class="n">default_timer</span><span class="p">()</span>
+
+<span class="c1"># Collect the observations, compute the running time</span>
+<span class="n">sync_lp_observations</span> <span class="o">=</span> <span class="p">(</span>
+    <span class="n">sync_bo</span><span class="o">.</span><span class="n">to_result</span><span class="p">()</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span><span class="o">.</span><span class="n">observations</span>
+    <span class="o">-</span> <span class="n">ScaledBranin</span><span class="o">.</span><span class="n">minimum</span>
+<span class="p">)</span>
+<span class="n">sync_lp_time</span> <span class="o">=</span> <span class="n">stop</span> <span class="o">-</span> <span class="n">start</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Got </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sync_lp_observations</span><span class="p">)</span><span class="si">}</span><span class="s2"> observations in </span><span class="si">{</span><span class="n">sync_lp_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Process 3062: Main     : iteration 0 starts
+Process 3531: Observer : observing data at point [[0.28995734 0.06533659]]Process 3535: Observer : observing data at point [[0.409168   0.09124348]]
+
+Process 3527: Observer : observing data at point [[0.34804088 0.1815425 ]]Process 3535: Objective: pretends like it&#39;s doing something for 1.5s
+Process 3531: Objective: pretends like it&#39;s doing something for 1.1s
+
+Process 3527: Objective: pretends like it&#39;s doing something for 1.6s
+Process 3531: Observer : observed data (array([[0.28995734, 0.06533659]]), array([[0.00316611]]))
+Process 3062: Main     : received data (array([[0.28995734, 0.06533659]]), array([[0.00316611]]))
+Process 3535: Observer : observed data (array([[0.409168  , 0.09124348]]), array([[-0.61308798]]))
+Process 3062: Main     : received data (array([[0.409168  , 0.09124348]]), array([[-0.61308798]]))
+Process 3527: Observer : observed data (array([[0.34804088, 0.1815425 ]]), array([[-0.51672359]]))
+Process 3062: Main     : received data (array([[0.34804088, 0.1815425 ]]), array([[-0.51672359]]))
+Process 3062: Main     : iteration 1 starts
+Process 3531: Observer : observing data at point [[0.44921022 0.22582249]]Process 3535: Observer : observing data at point [[0.45718596 0.30052924]]Process 3527: Observer : observing data at point [[0.46618538 0.1609614 ]]
+
+
+Process 3531: Objective: pretends like it&#39;s doing something for 2.0sProcess 3527: Objective: pretends like it&#39;s doing something for 1.9s
+Process 3535: Objective: pretends like it&#39;s doing something for 2.3s
+
+Process 3527: Observer : observed data (array([[0.46618538, 0.1609614 ]]), array([[-0.9217219]]))
+Process 3062: Main     : received data (array([[0.46618538, 0.1609614 ]]), array([[-0.9217219]]))
+Process 3531: Observer : observed data (array([[0.44921022, 0.22582249]]), array([[-0.89227166]]))
+Process 3062: Main     : received data (array([[0.44921022, 0.22582249]]), array([[-0.89227166]]))
+Process 3535: Observer : observed data (array([[0.45718596, 0.30052924]]), array([[-0.89489965]]))
+Process 3062: Main     : received data (array([[0.45718596, 0.30052924]]), array([[-0.89489965]]))
+Process 3062: Main     : iteration 2 starts
+Process 3531: Observer : observing data at point [[0.59509106 0.1273306 ]]Process 3527: Observer : observing data at point [[0.56711882 0.17273051]]Process 3535: Observer : observing data at point [[0.55180228 0.2189657 ]]
+
+
+
+Process 3535: Objective: pretends like it&#39;s doing something for 2.3sProcess 3531: Objective: pretends like it&#39;s doing something for 2.2s
+Process 3527: Objective: pretends like it&#39;s doing something for 2.2s
+Process 3531: Observer : observed data (array([[0.59509106, 0.1273306 ]]), array([[-0.9927995]]))
+Process 3062: Main     : received data (array([[0.59509106, 0.1273306 ]]), array([[-0.9927995]]))
+Process 3527: Observer : observed data (array([[0.56711882, 0.17273051]]), array([[-1.02865081]]))
+Process 3062: Main     : received data (array([[0.56711882, 0.17273051]]), array([[-1.02865081]]))
+Process 3535: Observer : observed data (array([[0.55180228, 0.2189657 ]]), array([[-1.02186684]]))
+Process 3062: Main     : received data (array([[0.55180228, 0.2189657 ]]), array([[-1.02186684]]))
+Process 3062: Main     : iteration 3 starts
+Process 3535: Observer : observing data at point [[0.54042165 0.17609899]]Process 3531: Observer : observing data at point [[0.54139875 0.17125861]]Process 3527: Observer : observing data at point [[0.54228212 0.16635045]]
+
+
+Process 3535: Objective: pretends like it&#39;s doing something for 2.1sProcess 3527: Objective: pretends like it&#39;s doing something for 2.1s
+Process 3531: Objective: pretends like it&#39;s doing something for 2.1s
+
+Process 3527: Observer : observed data (array([[0.54228212, 0.16635045]]), array([[-1.04650314]]))
+Process 3062: Main     : received data (array([[0.54228212, 0.16635045]]), array([[-1.04650314]]))
+Process 3531: Observer : observed data (array([[0.54139875, 0.17125861]]), array([[-1.04586964]]))
+Process 3062: Main     : received data (array([[0.54139875, 0.17125861]]), array([[-1.04586964]]))
+Process 3535: Observer : observed data (array([[0.54042165, 0.17609899]]), array([[-1.04506915]]))
+Process 3062: Main     : received data (array([[0.54042165, 0.17609899]]), array([[-1.04506915]]))
+Process 3062: Main     : iteration 4 starts
+Process 3527: Observer : observing data at point [[0.048314   0.95202171]]Process 3531: Observer : observing data at point [[0.         0.63328911]]Process 3535: Observer : observing data at point [[0.2878177 1.       ]]
+
+
+Process 3531: Objective: pretends like it&#39;s doing something for 1.9sProcess 3527: Objective: pretends like it&#39;s doing something for 3.0s
+
+Process 3535: Objective: pretends like it&#39;s doing something for 3.9s
+Process 3531: Observer : observed data (array([[0.        , 0.63328911]]), array([[0.32761225]]))
+Process 3062: Main     : received data (array([[0.        , 0.63328911]]), array([[0.32761225]]))
+Process 3527: Observer : observed data (array([[0.048314  , 0.95202171]]), array([[-0.92571739]]))
+Process 3062: Main     : received data (array([[0.048314  , 0.95202171]]), array([[-0.92571739]]))
+Process 3535: Observer : observed data (array([[0.2878177, 1.       ]]), array([[0.46799241]]))
+Process 3062: Main     : received data (array([[0.2878177, 1.       ]]), array([[0.46799241]]))
+Process 3062: Main     : iteration 5 starts
+Process 3527: Observer : observing data at point [[0.01096267 0.98418678]]Process 3531: Observer : observing data at point [[0. 1.]]Process 3535: Observer : observing data at point [[0.         0.99792624]]
+
+
+Process 3527: Objective: pretends like it&#39;s doing something for 3.0sProcess 3535: Objective: pretends like it&#39;s doing something for 3.0sProcess 3531: Objective: pretends like it&#39;s doing something for 3.0s
+
+
+Process 3527: Observer : observed data (array([[0.01096267, 0.98418678]]), array([[-0.76636265]]))
+Process 3062: Main     : received data (array([[0.01096267, 0.98418678]]), array([[-0.76636265]]))
+Process 3535: Observer : observed data (array([[0.        , 0.99792624]]), array([[-0.7153927]]))
+Process 3062: Main     : received data (array([[0.        , 0.99792624]]), array([[-0.7153927]]))
+Process 3531: Observer : observed data (array([[0., 1.]]), array([[-0.71803081]]))
+Process 3062: Main     : received data (array([[0., 1.]]), array([[-0.71803081]]))
+Process 3062: Main     : iteration 6 starts
+Process 3535: Observer : observing data at point [[0.10382636 1.        ]]Process 3527: Observer : observing data at point [[0.0918163 1.       ]]Process 3531: Observer : observing data at point [[0.08063147 1.        ]]
+
+
+Process 3527: Objective: pretends like it&#39;s doing something for 3.3sProcess 3535: Objective: pretends like it&#39;s doing something for 3.3s
+Process 3531: Objective: pretends like it&#39;s doing something for 3.2s
+
+Process 3531: Observer : observed data (array([[0.08063147, 1.        ]]), array([[-0.98606033]]))
+Process 3062: Main     : received data (array([[0.08063147, 1.        ]]), array([[-0.98606033]]))
+Process 3527: Observer : observed data (array([[0.0918163, 1.       ]]), array([[-0.98083035]]))
+Process 3062: Main     : received data (array([[0.0918163, 1.       ]]), array([[-0.98083035]]))
+Process 3535: Observer : observed data (array([[0.10382636, 1.        ]]), array([[-0.9628625]]))
+Process 3062: Main     : received data (array([[0.10382636, 1.        ]]), array([[-0.9628625]]))
+Process 3062: Main     : iteration 7 starts
+Process 3531: Observer : observing data at point [[1. 0.]]Process 3527: Observer : observing data at point [[0.79417878 0.        ]]Process 3535: Observer : observing data at point [[0.13858189 0.80840324]]
+
+
+Process 3531: Objective: pretends like it&#39;s doing something for 3.0sProcess 3535: Objective: pretends like it&#39;s doing something for 2.8s
+
+Process 3527: Objective: pretends like it&#39;s doing something for 2.4s
+Process 3527: Observer : observed data (array([[0.79417878, 0.        ]]), array([[-0.68674888]]))
+Process 3062: Main     : received data (array([[0.79417878, 0.        ]]), array([[-0.68674888]]))
+Process 3535: Observer : observed data (array([[0.13858189, 0.80840324]]), array([[-1.04022968]]))
+Process 3062: Main     : received data (array([[0.13858189, 0.80840324]]), array([[-1.04022968]]))
+Process 3531: Observer : observed data (array([[1., 0.]]), array([[-0.84406373]]))
+Process 3062: Main     : received data (array([[1., 0.]]), array([[-0.84406373]]))
+Process 3062: Main     : iteration 8 starts
+Process 3527: Observer : observing data at point [[0.1179122  0.86646504]]Process 3531: Observer : observing data at point [[0.11917462 0.86126386]]Process 3535: Observer : observing data at point [[0.11662456 0.87168777]]
+
+
+Process 3535: Objective: pretends like it&#39;s doing something for 3.0sProcess 3527: Objective: pretends like it&#39;s doing something for 3.0sProcess 3531: Objective: pretends like it&#39;s doing something for 2.9s
+
+
+Process 3531: Observer : observed data (array([[0.11917462, 0.86126386]]), array([[-1.04262091]]))
+Process 3062: Main     : received data (array([[0.11917462, 0.86126386]]), array([[-1.04262091]]))
+Process 3527: Observer : observed data (array([[0.1179122 , 0.86646504]]), array([[-1.04173539]]))
+Process 3062: Main     : received data (array([[0.1179122 , 0.86646504]]), array([[-1.04173539]]))
+Process 3535: Observer : observed data (array([[0.11662456, 0.87168777]]), array([[-1.0407508]]))
+Process 3062: Main     : received data (array([[0.11662456, 0.87168777]]), array([[-1.0407508]]))
+Process 3062: Main     : iteration 9 starts
+Process 3527: Observer : observing data at point [[0.21466589 0.59500478]]Process 3531: Observer : observing data at point [[1.         0.22805275]]
+Process 3535: Observer : observing data at point [[0.20001275 0.63077614]]
+
+Process 3531: Objective: pretends like it&#39;s doing something for 3.7sProcess 3527: Objective: pretends like it&#39;s doing something for 2.4s
+Process 3535: Objective: pretends like it&#39;s doing something for 2.5s
+
+Process 3527: Observer : observed data (array([[0.21466589, 0.59500478]]), array([[-0.8990117]]))
+Process 3062: Main     : received data (array([[0.21466589, 0.59500478]]), array([[-0.8990117]]))
+Process 3535: Observer : observed data (array([[0.20001275, 0.63077614]]), array([[-0.93835753]]))
+Process 3062: Main     : received data (array([[0.20001275, 0.63077614]]), array([[-0.93835753]]))
+Process 3531: Observer : observed data (array([[1.        , 0.22805275]]), array([[-1.01428823]]))
+Process 3062: Main     : received data (array([[1.        , 0.22805275]]), array([[-1.01428823]]))
+Got 33 observations in 42.91s
+</pre></div></div>
+</div>
+</section>
+<section id="Comparison">
+<h2>Comparison<a class="headerlink" href="#Comparison" title="Link to this heading">#</a></h2>
+<p>To compare outcomes of sync and async runs, let’s plot their respective regrets side by side, and print out the running time. For this toy problem we expect async scenario to run a little bit faster on machines with multiple CPU.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">trieste.experimental.plotting</span> <span class="kn">import</span> <span class="n">plot_regret</span>
+<span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="k">as</span> <span class="nn">plt</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+
+<span class="n">sync_lp_min_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">sync_lp_observations</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+<span class="n">async_lp_min_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">async_lp_observations</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="n">plot_regret</span><span class="p">(</span>
+    <span class="n">sync_lp_observations</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+    <span class="n">num_init</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">initial_data</span><span class="p">),</span>
+    <span class="n">idx_best</span><span class="o">=</span><span class="n">sync_lp_min_idx</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Regret&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">0.0000001</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;# evaluations&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;Sync LP, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">sync_lp_observations</span><span class="p">)</span><span class="si">}</span><span class="s2"> points, time </span><span class="si">{</span><span class="n">sync_lp_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">&quot;</span>
+<span class="p">)</span>
+
+<span class="n">plot_regret</span><span class="p">(</span>
+    <span class="n">async_lp_observations</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+    <span class="n">num_init</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">initial_data</span><span class="p">),</span>
+    <span class="n">idx_best</span><span class="o">=</span><span class="n">async_lp_min_idx</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_yscale</span><span class="p">(</span><span class="s2">&quot;log&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Regret&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mf">0.0000001</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;# evaluations&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span>
+    <span class="sa">f</span><span class="s2">&quot;Async LP, </span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">async_lp_observations</span><span class="p">)</span><span class="si">}</span><span class="s2"> points, time </span><span class="si">{</span><span class="n">async_lp_time</span><span class="si">:</span><span class="s2">.2f</span><span class="si">}</span><span class="s2">s&quot;</span>
+<span class="p">)</span>
+
+<span class="n">fig</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_asynchronous_greedy_multiprocessing_19_0.png" src="../_images/notebooks_asynchronous_greedy_multiprocessing_19_0.png" />
+</div>
+</div>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Multiprocessing-setup">Multiprocessing setup</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Asynchronous-optimization">Asynchronous optimization</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Synchronous-parallel-optimization">Synchronous parallel optimization</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Comparison">Comparison</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=3ee479438cf8b5e0d341"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=3ee479438cf8b5e0d341"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.3.7.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.15.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

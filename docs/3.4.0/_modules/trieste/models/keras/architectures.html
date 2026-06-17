@@ -1,0 +1,822 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>trieste.models.keras.architectures &#8212; trieste 3.4.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../../../../_static/styles/theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/bootstrap.css?digest=e353d410970836974a52" rel="stylesheet" />
+<link href="../../../../_static/styles/pydata-sphinx-theme.css?digest=e353d410970836974a52" rel="stylesheet" />
+
+  
+  <link href="../../../../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=e353d410970836974a52" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../../../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/graphviz.css" />
+    <link rel="stylesheet" type="text/css" href="../../../../_static/css/custom.css" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52" />
+<link rel="preload" as="script" href="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52" />
+
+    <script data-url_root="../../../../" id="documentation_options" src="../../../../_static/documentation_options.js"></script>
+    <script src="../../../../_static/doctools.js"></script>
+    <script src="../../../../_static/sphinx_highlight.js"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = '_modules/trieste/models/keras/architectures';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '3.4.0';
+        </script>
+    <link rel="index" title="Index" href="../../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../../../../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  <div class="navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="../../../../index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../../../../_static/logo.png" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="../../../../_static/logo.png" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.4.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn search-button search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+  </button>
+`);
+</script>
+    </div>
+  
+
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../index.html">
+                        Trieste
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../autoapi/trieste/index.html">
+                        API reference
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../tutorials.html">
+                        Tutorials
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../../../../bibliography.html">
+                        Bibliography
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button type="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown">
+      3.4.0  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div class="version-switcher__menu dropdown-menu list-group-flush py-0">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-square-github"></i></span>
+            <label class="sr-only">GitHub</label></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumbs">
+  <ul class="bd-breadcrumbs" role="navigation" aria-label="Breadcrumb">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../../../../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../../../index.html" class="nav-link">Module code</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">trieste.models.keras.architectures</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <h1>Source code for trieste.models.keras.architectures</h1><div class="highlight"><pre>
+<span></span><span class="c1"># Copyright 2021 The Trieste Contributors</span>
+<span class="c1">#</span>
+<span class="c1"># Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);</span>
+<span class="c1"># you may not use this file except in compliance with the License.</span>
+<span class="c1"># You may obtain a copy of the License at</span>
+<span class="c1">#</span>
+<span class="c1">#     http://www.apache.org/licenses/LICENSE-2.0</span>
+<span class="c1">#</span>
+<span class="c1"># Unless required by applicable law or agreed to in writing, software</span>
+<span class="c1"># distributed under the License is distributed on an &quot;AS IS&quot; BASIS,</span>
+<span class="c1"># WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.</span>
+<span class="c1"># See the License for the specific language governing permissions and</span>
+<span class="c1"># limitations under the License.</span>
+
+<span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">This file contains implementations of neural network architectures with Keras.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">from</span> <span class="nn">__future__</span> <span class="kn">import</span> <span class="n">annotations</span>
+
+<span class="kn">import</span> <span class="nn">contextlib</span>
+<span class="kn">from</span> <span class="nn">abc</span> <span class="kn">import</span> <span class="n">abstractmethod</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Any</span><span class="p">,</span> <span class="n">Callable</span><span class="p">,</span> <span class="n">Sequence</span>
+
+<span class="kn">import</span> <span class="nn">dill</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">tensorflow</span> <span class="k">as</span> <span class="nn">tf</span>
+<span class="kn">import</span> <span class="nn">tensorflow_probability</span> <span class="k">as</span> <span class="nn">tfp</span>
+
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span> <span class="nn">keras.src.saving.serialization_lib</span> <span class="kn">import</span> <span class="n">SafeModeScope</span>
+<span class="k">except</span> <span class="ne">ImportError</span><span class="p">:</span>  <span class="c1"># pragma: no cover (tested but not by coverage)</span>
+    <span class="n">SafeModeScope</span> <span class="o">=</span> <span class="n">contextlib</span><span class="o">.</span><span class="n">nullcontext</span>
+<span class="kn">from</span> <span class="nn">tensorflow_probability.python.layers.distribution_layer</span> <span class="kn">import</span> <span class="n">DistributionLambda</span><span class="p">,</span> <span class="n">_serialize</span>
+
+<span class="kn">from</span> <span class="nn">trieste.types</span> <span class="kn">import</span> <span class="n">TensorType</span>
+
+
+<div class="viewcode-block" id="KerasEnsemble"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/index.html#trieste.models.keras.architectures.KerasEnsemble">[docs]</a><span class="k">class</span> <span class="nc">KerasEnsemble</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class builds an ensemble of neural networks, using Keras. Individual networks must</span>
+<span class="sd">    be instance of :class:`~trieste.models.keras_networks.KerasEnsembleNetwork`. This class</span>
+<span class="sd">    is meant to be used with :class:`~trieste.models.keras_networks.DeepEnsemble` model wrapper,</span>
+<span class="sd">    which compiles the model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">networks</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="n">KerasEnsembleNetwork</span><span class="p">],</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param networks: A list of neural network specifications, one for each member of the</span>
+<span class="sd">            ensemble. The ensemble will be built using these specifications.</span>
+<span class="sd">        :raise ValueError: If there are no objects in ``networks`` or we try to create</span>
+<span class="sd">            a model with networks whose input or output shapes are not the same.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">networks</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;networks should consist of KerasEnsembleNetwork objects, however&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="n">networks</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="n">input_shapes</span><span class="p">,</span> <span class="n">output_shapes</span><span class="p">,</span> <span class="n">output_dtypes</span> <span class="o">=</span> <span class="p">[],</span> <span class="p">[],</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">network</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">networks</span><span class="p">):</span>
+            <span class="n">network</span><span class="o">.</span><span class="n">network_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;model_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">_&quot;</span>
+            <span class="n">input_shapes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">network</span><span class="o">.</span><span class="n">input_tensor_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">output_shapes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">network</span><span class="o">.</span><span class="n">output_tensor_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span>
+            <span class="n">output_dtypes</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">network</span><span class="o">.</span><span class="n">output_tensor_spec</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">input_shapes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">input_shapes</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Input shapes for all networks must be the same, however&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="n">input_shapes</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">output_shapes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">output_shapes</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Output shapes for all networks must be the same, however&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="n">output_shapes</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">all</span><span class="p">(</span><span class="n">x</span> <span class="o">==</span> <span class="n">output_dtypes</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">output_dtypes</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;Output dtypes for all networks must be the same, however&quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="n">output_dtypes</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">num_outputs</span> <span class="o">=</span> <span class="n">networks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">flattened_output_shape</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_dtype</span> <span class="o">=</span> <span class="n">networks</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">output_tensor_spec</span><span class="o">.</span><span class="n">dtype</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_networks</span> <span class="o">=</span> <span class="n">networks</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_build_ensemble</span><span class="p">()</span>
+
+    <span class="k">def</span> <span class="fm">__repr__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="sa">f</span><span class="s2">&quot;KerasEnsemble(</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_networks</span><span class="si">!r}</span><span class="s2">)&quot;</span>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="KerasEnsemble.model"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/architectures/index.html#trieste.models.keras.architectures.KerasEnsemble.model">[docs]</a>    <span class="k">def</span> <span class="nf">model</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;Returns built but uncompiled Keras ensemble model.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span></div>
+
+    <span class="nd">@property</span>
+<div class="viewcode-block" id="KerasEnsemble.ensemble_size"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/architectures/index.html#trieste.models.keras.architectures.KerasEnsemble.ensemble_size">[docs]</a>    <span class="k">def</span> <span class="nf">ensemble_size</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Returns the size of the ensemble, that is, the number of base learners or individual neural</span>
+<span class="sd">        network models in the ensemble.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="nb">len</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_networks</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="KerasEnsemble._build_ensemble"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/index.html#trieste.models.keras.architectures.KerasEnsemble._build_ensemble">[docs]</a>    <span class="k">def</span> <span class="nf">_build_ensemble</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Builds the ensemble model by combining all the individual networks in a single Keras model.</span>
+<span class="sd">        This method relies on ``connect_layers`` method of :class:`KerasEnsembleNetwork` objects</span>
+<span class="sd">        to construct individual networks.</span>
+
+<span class="sd">        :return: The Keras model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span><span class="o">*</span><span class="p">[</span><span class="n">network</span><span class="o">.</span><span class="n">connect_layers</span><span class="p">()</span> <span class="k">for</span> <span class="n">network</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_networks</span><span class="p">])</span>
+
+        <span class="k">return</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Model</span><span class="p">(</span><span class="n">inputs</span><span class="o">=</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="o">=</span><span class="n">outputs</span><span class="p">)</span></div>
+
+    <span class="k">def</span> <span class="nf">__getstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="c1"># When pickling use to_json to save the model.</span>
+        <span class="n">state</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_model&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">to_json</span><span class="p">()</span>
+        <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_weights&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">get_weights</span><span class="p">()</span>
+
+        <span class="c1"># Save the history callback (serializing any model)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="p">:</span>
+            <span class="n">history_model</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">history_model</span> <span class="ow">is</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">:</span>
+                    <span class="c1"># no need to serialize the main model, just use a special value instead</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="o">...</span>
+                <span class="k">elif</span> <span class="n">history_model</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="p">(</span>
+                        <span class="n">history_model</span><span class="o">.</span><span class="n">to_json</span><span class="p">(),</span>
+                        <span class="n">history_model</span><span class="o">.</span><span class="n">get_weights</span><span class="p">(),</span>
+                    <span class="p">)</span>
+                <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_history&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="p">)</span>
+            <span class="k">finally</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="o">=</span> <span class="n">history_model</span>
+
+        <span class="k">return</span> <span class="n">state</span>
+
+    <span class="k">def</span> <span class="nf">__setstate__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="c1"># When unpickling restore the model using model_from_json.</span>
+        <span class="bp">self</span><span class="o">.</span><span class="vm">__dict__</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">state</span><span class="p">)</span>
+        <span class="c1"># TF 2.15 disallows loading lambdas without &quot;safe-mode&quot; being disabled</span>
+        <span class="c1"># unfortunately, tfp.layers.DistributionLambda seems to use lambdas</span>
+        <span class="k">with</span> <span class="n">SafeModeScope</span><span class="p">(</span><span class="kc">False</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">model_from_json</span><span class="p">(</span>
+                <span class="n">state</span><span class="p">[</span><span class="s2">&quot;_model&quot;</span><span class="p">],</span> <span class="n">custom_objects</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;MultivariateNormalTriL&quot;</span><span class="p">:</span> <span class="n">MultivariateNormalTriL</span><span class="p">}</span>
+            <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">set_weights</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;_weights&quot;</span><span class="p">])</span>
+
+        <span class="c1"># Restore the history (including any model it contains)</span>
+        <span class="k">if</span> <span class="s2">&quot;_history&quot;</span> <span class="ow">in</span> <span class="n">state</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span> <span class="o">=</span> <span class="n">dill</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">state</span><span class="p">[</span><span class="s2">&quot;_history&quot;</span><span class="p">])</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span> <span class="ow">is</span> <span class="o">...</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="p">)</span>
+            <span class="k">elif</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span><span class="p">:</span>
+                <span class="n">model_json</span><span class="p">,</span> <span class="n">weights</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">model</span>
+                <span class="n">model</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">models</span><span class="o">.</span><span class="n">model_from_json</span><span class="p">(</span>
+                    <span class="n">model_json</span><span class="p">,</span>
+                    <span class="n">custom_objects</span><span class="o">=</span><span class="p">{</span><span class="s2">&quot;MultivariateNormalTriL&quot;</span><span class="p">:</span> <span class="n">MultivariateNormalTriL</span><span class="p">},</span>
+                <span class="p">)</span>
+                <span class="n">model</span><span class="o">.</span><span class="n">set_weights</span><span class="p">(</span><span class="n">weights</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_model</span><span class="o">.</span><span class="n">history</span><span class="o">.</span><span class="n">set_model</span><span class="p">(</span><span class="n">model</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="KerasEnsembleNetwork"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/index.html#trieste.models.keras.architectures.KerasEnsembleNetwork">[docs]</a><span class="k">class</span> <span class="nc">KerasEnsembleNetwork</span><span class="p">:</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class is an interface that defines necessary attributes and methods for neural networks</span>
+<span class="sd">    that are meant to be used for building ensembles by</span>
+<span class="sd">    :class:`~trieste.models.keras_networks.KerasEnsemble`. Subclasses are not meant to</span>
+<span class="sd">    build and compile Keras models, instead they are providing specification that</span>
+<span class="sd">    :class:`~trieste.models.keras_networks.KerasEnsemble` will use to build the Keras model.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_tensor_spec</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">,</span>
+        <span class="n">output_tensor_spec</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">,</span>
+        <span class="n">network_name</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param input_tensor_spec: Tensor specification for the input to the network.</span>
+<span class="sd">        :param output_tensor_spec: Tensor specification for the output of the network.</span>
+<span class="sd">        :param network_name: The name to be used when building the network.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">input_tensor_spec</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;input_tensor_spec must be an instance of tf.TensorSpec, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">input_tensor_spec</span><span class="p">)</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">output_tensor_spec</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">):</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s2">&quot;output_tensor_spec must be an instance of tf.TensorSpec, &quot;</span>
+                <span class="sa">f</span><span class="s2">&quot;received </span><span class="si">{</span><span class="nb">type</span><span class="p">(</span><span class="n">output_tensor_spec</span><span class="p">)</span><span class="si">}</span><span class="s2"> instead.&quot;</span>
+            <span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">input_tensor_spec</span> <span class="o">=</span> <span class="n">input_tensor_spec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">output_tensor_spec</span> <span class="o">=</span> <span class="n">output_tensor_spec</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">network_name</span> <span class="o">=</span> <span class="n">network_name</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">input_layer_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_name</span> <span class="o">+</span> <span class="s2">&quot;input&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">output_layer_name</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">network_name</span> <span class="o">+</span> <span class="s2">&quot;output&quot;</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span> <span class="nf">flattened_output_shape</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+        <span class="k">return</span> <span class="nb">int</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">prod</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">output_tensor_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">))</span>
+
+    <span class="nd">@abstractmethod</span>
+<div class="viewcode-block" id="KerasEnsembleNetwork.connect_layers"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/index.html#trieste.models.keras.architectures.KerasEnsembleNetwork.connect_layers">[docs]</a>    <span class="k">def</span> <span class="nf">connect_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connects the layers of the neural network. Architecture, layers and layer specifications</span>
+<span class="sd">        need to be defined by the subclasses.</span>
+
+<span class="sd">        :return: Input and output tensor of the network, required by :class:`tf.keras.Model` to</span>
+<span class="sd">            build a model.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">raise</span> <span class="ne">NotImplementedError</span></div></div>
+
+
+<div class="viewcode-block" id="MultivariateNormalTriL"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/architectures/index.html#trieste.models.keras.architectures.MultivariateNormalTriL">[docs]</a><span class="k">class</span> <span class="nc">MultivariateNormalTriL</span><span class="p">(</span><span class="n">tfp</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">MultivariateNormalTriL</span><span class="p">):</span>  <span class="c1"># type: ignore[misc]</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Fixed version of tfp.layers.MultivariateNormalTriL that handles saving.&quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">event_size</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span>
+        <span class="n">convert_to_tensor_fn</span><span class="p">:</span> <span class="n">Callable</span><span class="p">[</span>
+            <span class="p">[</span><span class="n">tfp</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Distribution</span><span class="p">],</span> <span class="n">TensorType</span>
+        <span class="p">]</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Distribution</span><span class="o">.</span><span class="n">sample</span><span class="p">,</span>
+        <span class="n">validate_args</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span><span class="p">:</span> <span class="n">Any</span><span class="p">,</span>
+    <span class="p">)</span> <span class="o">-&gt;</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_event_size</span> <span class="o">=</span> <span class="n">event_size</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span> <span class="o">=</span> <span class="n">validate_args</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">event_size</span><span class="p">,</span> <span class="n">convert_to_tensor_fn</span><span class="p">,</span> <span class="n">validate_args</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+    <span class="k">def</span> <span class="nf">get_config</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]:</span>
+        <span class="n">config</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s2">&quot;event_size&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_event_size</span><span class="p">,</span>
+            <span class="s2">&quot;validate_args&quot;</span><span class="p">:</span> <span class="bp">self</span><span class="o">.</span><span class="n">_validate_args</span><span class="p">,</span>
+            <span class="s2">&quot;convert_to_tensor_fn&quot;</span><span class="p">:</span> <span class="n">_serialize</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_convert_to_tensor_fn</span><span class="p">),</span>
+        <span class="p">}</span>
+        <span class="c1"># skip DistributionLambda&#39;s get_config because we don&#39;t want to serialize the</span>
+        <span class="c1"># make_distribution_fn: both to avoid confusing the constructor, and because it doesn&#39;t</span>
+        <span class="c1"># seem to work in TF2.4.</span>
+        <span class="n">base_config</span> <span class="o">=</span> <span class="nb">super</span><span class="p">(</span><span class="n">DistributionLambda</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">get_config</span><span class="p">()</span>
+        <span class="k">return</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">base_config</span><span class="o">.</span><span class="n">items</span><span class="p">())</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">config</span><span class="o">.</span><span class="n">items</span><span class="p">()))</span></div>
+
+
+<div class="viewcode-block" id="GaussianNetwork"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/index.html#trieste.models.keras.architectures.GaussianNetwork">[docs]</a><span class="k">class</span> <span class="nc">GaussianNetwork</span><span class="p">(</span><span class="n">KerasEnsembleNetwork</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This class defines layers of a probabilistic neural network using Keras. The network</span>
+<span class="sd">    architecture is a multilayer fully-connected feed-forward network, with Gaussian</span>
+<span class="sd">    distribution as an output. The layers are meant to be built as an ensemble model by</span>
+<span class="sd">    :class:`KerasEnsemble`. Note that this is not a Bayesian neural network.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span>
+        <span class="n">input_tensor_spec</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">,</span>
+        <span class="n">output_tensor_spec</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">TensorSpec</span><span class="p">,</span>
+        <span class="n">hidden_layer_args</span><span class="p">:</span> <span class="n">Sequence</span><span class="p">[</span><span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;units&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;activation&quot;</span><span class="p">:</span> <span class="s2">&quot;relu&quot;</span><span class="p">},</span>
+            <span class="p">{</span><span class="s2">&quot;units&quot;</span><span class="p">:</span> <span class="mi">50</span><span class="p">,</span> <span class="s2">&quot;activation&quot;</span><span class="p">:</span> <span class="s2">&quot;relu&quot;</span><span class="p">},</span>
+        <span class="p">),</span>
+        <span class="n">independent</span><span class="p">:</span> <span class="nb">bool</span> <span class="o">=</span> <span class="kc">False</span><span class="p">,</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        :param input_tensor_spec: Tensor specification for the input to the network.</span>
+<span class="sd">        :param output_tensor_spec: Tensor specification for the output of the network.</span>
+<span class="sd">        :param hidden_layer_args: Specification for building dense hidden layers. Each element in</span>
+<span class="sd">            the sequence should be a dictionary containing arguments (keys) and their values for a</span>
+<span class="sd">            :class:`~tf.keras.layers.Dense` hidden layer. Please check Keras Dense layer API for</span>
+<span class="sd">            available arguments. Objects in the sequence will sequentially be used to add</span>
+<span class="sd">            :class:`~tf.keras.layers.Dense` layers. Length of this sequence determines the number of</span>
+<span class="sd">            hidden layers in the network. Default value is two hidden layers, 50 nodes each, with</span>
+<span class="sd">            ReLu activation functions. Empty sequence needs to be passed to have no hidden layers.</span>
+<span class="sd">        :param independent: In case multiple outputs are modeled, if set to `True` then</span>
+<span class="sd">            :class:`~tfp.layers.IndependentNormal` layer</span>
+<span class="sd">            is used as the output layer. This models outputs as independent, only the diagonal</span>
+<span class="sd">            elements of the covariance matrix are parametrized. If left as the default `False`,</span>
+<span class="sd">            then :class:`~tfp.layers.MultivariateNormalTriL` layer is used where correlations</span>
+<span class="sd">            between outputs are learned as well.</span>
+<span class="sd">        :raise ValueError: If objects in ``hidden_layer_args`` are not dictionaries.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="nb">super</span><span class="p">()</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">input_tensor_spec</span><span class="p">,</span> <span class="n">output_tensor_spec</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">_hidden_layer_args</span> <span class="o">=</span> <span class="n">hidden_layer_args</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_independent</span> <span class="o">=</span> <span class="n">independent</span>
+
+    <span class="k">def</span> <span class="nf">_gen_input_tensor</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">:</span>
+        <span class="n">input_tensor</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">Input</span><span class="p">(</span>
+            <span class="n">shape</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_tensor_spec</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_tensor_spec</span><span class="o">.</span><span class="n">dtype</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">input_layer_name</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">input_tensor</span>
+
+    <span class="k">def</span> <span class="nf">_gen_hidden_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">hidden_layer_args</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_hidden_layer_args</span><span class="p">):</span>
+            <span class="n">layer_name</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="bp">self</span><span class="o">.</span><span class="n">network_name</span><span class="si">}</span><span class="s2">dense_</span><span class="si">{</span><span class="n">index</span><span class="si">}</span><span class="s2">&quot;</span>
+            <span class="n">layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span>
+                <span class="o">**</span><span class="n">hidden_layer_args</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">layer_name</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">input_tensor</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">name</span>
+            <span class="p">)</span>
+            <span class="n">input_tensor</span> <span class="o">=</span> <span class="n">layer</span><span class="p">(</span><span class="n">input_tensor</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">input_tensor</span>
+
+    <span class="k">def</span> <span class="nf">_gen_multi_output_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">dist_layer</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">IndependentNormal</span> <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_independent</span> <span class="k">else</span> <span class="n">MultivariateNormalTriL</span>
+        <span class="n">n_params</span> <span class="o">=</span> <span class="n">dist_layer</span><span class="o">.</span><span class="n">params_size</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">flattened_output_shape</span><span class="p">)</span>
+
+        <span class="n">parameter_layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span>
+            <span class="n">n_params</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">network_name</span> <span class="o">+</span> <span class="s2">&quot;dense_parameters&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">input_tensor</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">name</span>
+        <span class="p">)(</span><span class="n">input_tensor</span><span class="p">)</span>
+
+        <span class="n">distribution</span> <span class="o">=</span> <span class="n">dist_layer</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">flattened_output_shape</span><span class="p">,</span>
+            <span class="n">tfp</span><span class="o">.</span><span class="n">python</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Distribution</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_layer_name</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">input_tensor</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="p">)(</span><span class="n">parameter_layer</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">distribution</span>
+
+    <span class="k">def</span> <span class="nf">_gen_single_output_layer</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">input_tensor</span><span class="p">:</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">:</span>
+        <span class="n">parameter_layer</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">Dense</span><span class="p">(</span>
+            <span class="mi">2</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">network_name</span> <span class="o">+</span> <span class="s2">&quot;dense_parameters&quot;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">input_tensor</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">name</span>
+        <span class="p">)(</span><span class="n">input_tensor</span><span class="p">)</span>
+
+        <span class="k">def</span> <span class="nf">distribution_fn</span><span class="p">(</span><span class="n">inputs</span><span class="p">:</span> <span class="n">TensorType</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Distribution</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Normal</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="mi">1</span><span class="p">],</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">softplus</span><span class="p">(</span><span class="n">inputs</span><span class="p">[</span><span class="o">...</span><span class="p">,</span> <span class="mi">1</span><span class="p">:]))</span>
+
+        <span class="n">distribution</span> <span class="o">=</span> <span class="n">tfp</span><span class="o">.</span><span class="n">layers</span><span class="o">.</span><span class="n">DistributionLambda</span><span class="p">(</span>
+            <span class="n">make_distribution_fn</span><span class="o">=</span><span class="n">distribution_fn</span><span class="p">,</span>
+            <span class="n">convert_to_tensor_fn</span><span class="o">=</span><span class="n">tfp</span><span class="o">.</span><span class="n">distributions</span><span class="o">.</span><span class="n">Distribution</span><span class="o">.</span><span class="n">mean</span><span class="p">,</span>
+            <span class="n">name</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">output_layer_name</span><span class="p">,</span>
+            <span class="n">dtype</span><span class="o">=</span><span class="n">input_tensor</span><span class="o">.</span><span class="n">dtype</span><span class="o">.</span><span class="n">name</span><span class="p">,</span>
+        <span class="p">)(</span><span class="n">parameter_layer</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">distribution</span>
+
+<div class="viewcode-block" id="GaussianNetwork.connect_layers"><a class="viewcode-back" href="../../../../autoapi/trieste/models/keras/index.html#trieste.models.keras.architectures.GaussianNetwork.connect_layers">[docs]</a>    <span class="k">def</span> <span class="nf">connect_layers</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">tuple</span><span class="p">[</span><span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">,</span> <span class="n">tf</span><span class="o">.</span><span class="n">Tensor</span><span class="p">]:</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connect all layers in the network. We start by generating an input tensor based on input</span>
+<span class="sd">        tensor specification. Next we generate a sequence of hidden dense layers based on</span>
+<span class="sd">        hidden layer arguments. Finally, we generate a dense layer whose nodes act as parameters of</span>
+<span class="sd">        a Gaussian distribution in the final probabilistic layer.</span>
+
+<span class="sd">        :return: Input and output tensor of the sequence of layers.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">input_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gen_input_tensor</span><span class="p">()</span>
+        <span class="n">hidden_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gen_hidden_layers</span><span class="p">(</span><span class="n">input_tensor</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">flattened_output_shape</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">output_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gen_single_output_layer</span><span class="p">(</span><span class="n">hidden_tensor</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output_tensor</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_gen_multi_output_layer</span><span class="p">(</span><span class="n">hidden_tensor</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">input_tensor</span><span class="p">,</span> <span class="n">output_tensor</span></div></div>
+</pre></div>
+
+                </article>
+              
+              
+              
+            </div>
+            
+            
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../../../../_static/scripts/bootstrap.js?digest=e353d410970836974a52"></script>
+<script src="../../../../_static/scripts/pydata-sphinx-theme.js?digest=e353d410970836974a52"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.0.1.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.13.3.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
