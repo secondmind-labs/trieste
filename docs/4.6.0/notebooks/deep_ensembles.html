@@ -1,0 +1,1012 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Deep ensembles &#8212; trieste 4.6.0 documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!--
+    this give us a css class that will be invisible only if js is disabled
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=8878045cc6db502f8baf" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=8f2a1f02" />
+    <link rel="stylesheet" type="text/css" href="../_static/graphviz.css?v=4ae1632d" />
+    <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+    <link rel="stylesheet" type="text/css" href="../_static/css/custom.css?v=ae350598" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=8878045cc6db502f8baf"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf" />
+
+    <script src="../_static/documentation_options.js?v=cc8a4273"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+    <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+    <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'notebooks/deep_ensembles';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://secondmind-labs.github.io/trieste/versions.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = '4.6.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner =
+            false;
+        </script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Active learning" href="active_learning.html" />
+    <link rel="prev" title="Deep Gaussian processes" href="deep_gaussian_processes.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.png" class="logo__image only-light" alt="trieste 4.6.0 documentation - Home"/>
+    <img src="../_static/logo.png" class="logo__image only-dark pst-js-only" alt="trieste 4.6.0 documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../index.html">
+    Trieste
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../autoapi/trieste/index.html">
+    API reference
+  </a>
+</li>
+
+
+<li class="nav-item current active">
+  <a class="nav-link nav-internal" href="../tutorials.html">
+    Tutorials
+  </a>
+</li>
+
+
+<li class="nav-item ">
+  <a class="nav-link nav-internal" href="../bibliography.html">
+    Bibliography
+  </a>
+</li>
+
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/secondmind-labs/trieste" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-square-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="expected_improvement.html">Introduction to Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="log_expected_improvement.html">Introduction to LogEI</a></li>
+<li class="toctree-l1"><a class="reference internal" href="batch_optimization.html">Batch Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="thompson_sampling.html">Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="inequality_constraints.html">Inequality constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="explicit_constraints.html">Explicit constraints</a></li>
+<li class="toctree-l1"><a class="reference internal" href="failure_ego.html">Failure regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multi_objective_ehvi.html">Multi-objective optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="deep_gaussian_processes.html">Deep Gaussian processes</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">Deep ensembles</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning.html">Active learning</a></li>
+<li class="toctree-l1"><a class="reference internal" href="active_learning_for_binary_classification.html">Active learning for binary classification</a></li>
+<li class="toctree-l1"><a class="reference internal" href="feasible_sets.html">Active learning of feasibility regions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="openai_gym_lunar_lander.html">OpenAI Gym</a></li>
+<li class="toctree-l1"><a class="reference internal" href="scalable_thompson_sampling_using_sparse_gaussian_processes.html">Scalable Thompson sampling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="qhsri-tutorial.html">Batching with Sharpe Ratio</a></li>
+<li class="toctree-l1"><a class="reference internal" href="multifidelity_modelling.html">Multifidelity modelling</a></li>
+<li class="toctree-l1"><a class="reference internal" href="rembo.html">High-dimensional Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="trust_region.html">Trust region Bayesian optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="mixed_search_spaces.html">Mixed search spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space.html">Hierarchical search spaces</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space_gpflow_kernel.html">A GPflow hierarchical kernel over a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code></a></li>
+<li class="toctree-l1"><a class="reference internal" href="hierarchical_search_space_constraints.html">Constraints on a <code class="docutils literal notranslate"><span class="pre">HierarchicalSearchSpace</span></code></a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="ask_tell_optimization.html">Ask-Tell optimization interface</a></li>
+<li class="toctree-l1"><a class="reference internal" href="data_transformation.html">Data transformation</a></li>
+
+<li class="toctree-l1"><a class="reference internal" href="recovering_from_errors.html">Recovering from errors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_greedy_multiprocessing.html">Asynchronous Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="asynchronous_nongreedy_batch_ray.html">Asynchronous batch Bayesian Optimization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="visualizing_with_tensorboard.html">Visualizing with Tensorboard</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code_overview.html">An overview of Trieste types</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+      <div class="sidebar-primary-item">
+<div id="ethical-ad-placement"
+      class="flat"
+      data-ea-publisher="readthedocs"
+      data-ea-type="readthedocs-sidebar"
+      data-ea-manual="true">
+</div></div>
+  </div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../tutorials.html" class="nav-link">Tutorials</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">Deep ensembles</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="Deep-ensembles">
+<h1>Deep ensembles<a class="headerlink" href="#Deep-ensembles" title="Link to this heading">#</a></h1>
+<p>Gaussian processes as a surrogate models are hard to beat on smaller datasets and optimization budgets. However, they scale poorly with amount of data, cannot easily capture non-stationarities and they are rather slow at prediction time. Here we show how uncertainty-aware neural networks can be effective alternative to Gaussian processes in Bayesian optimisation, in particular for large budgets, non-stationary objective functions or when predictions need to be made quickly.</p>
+<p>Check out our tutorial on <a class="reference internal" href="deep_gaussian_processes.html"><span class="doc">Deep Gaussian Processes for Bayesian optimization</span></a> as another alternative model type supported by Trieste that can model non-stationary functions (but also deal well with small datasets).</p>
+<p>Let’s start by importing some essential packages and modules.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+<span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s2">&quot;TF_CPP_MIN_LOG_LEVEL&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="s2">&quot;3&quot;</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">tensorflow</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">tf</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">trieste</span>
+
+<span class="c1"># silence TF warnings and info messages, only print errors</span>
+<span class="c1"># https://stackoverflow.com/questions/35911252/disable-tensorflow-debugging-information</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">get_logger</span><span class="p">()</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="s2">&quot;ERROR&quot;</span><span class="p">)</span>
+
+<span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">seed</span><span class="p">(</span><span class="mi">1794</span><span class="p">)</span>
+<span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">set_seed</span><span class="p">(</span><span class="mi">1794</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+2026-06-17 13:45:59,657 INFO util.py:154 -- Missing packages: [&#39;ipywidgets&#39;]. Run `pip install -U ipywidgets`, then restart the notebook server for rich notebook output.
+</pre></div></div>
+</div>
+<section id="What-are-deep-ensembles?">
+<h2>What are deep ensembles?<a class="headerlink" href="#What-are-deep-ensembles?" title="Link to this heading">#</a></h2>
+<p>Deep neural networks typically output only mean predictions, not posterior distributions as probabilistic models such as Gaussian processes do. Posterior distributions encode mean predictions, but also <em>epistemic</em> uncertainty - type of uncertainty that stems from model misspecification, and which can be eliminated with further data. Aleatoric uncertainty that stems from stochasticity of the data generating process is not contained in the posterior, but can be learned from the data. Bayesian
+optimization requires probabilistic models because epistemic uncertainty plays a key role in balancing between exploration and exploitation.</p>
+<p>Recently, however, there has been some development of uncertainty-aware deep neural networks. Ensembles of deep neural networks, introduced recently by <span id="id1">[<a class="reference internal" href="../bibliography.html#id44" title="Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell. Simple and scalable predictive uncertainty estimation using deep ensembles. arXiv preprint arXiv:1612.01474, 2016.">LPB16</a>]</span>, is a type of such networks. Main ingredients are probabilistic feed-forward networks as members of the ensemble, where the final layers is a Gaussian distribution, training with maximum likelihood instead of typical root mean square error, and different random initialization of weights for generating diversity
+among the networks.</p>
+<p>Monte carlo dropout (<span id="id2">[<a class="reference internal" href="../bibliography.html#id45" title="Yarin Gal and Zoubin Ghahramani. Dropout as a bayesian approximation: representing model uncertainty in deep learning. In International Conference on Machine Learning, 1050–1059. PMLR, 2016.">GG16</a>]</span>), Bayes-by-backprop (<span id="id3">[<a class="reference internal" href="../bibliography.html#id46" title="Charles Blundell, Julien Cornebise, Koray Kavukcuoglu, and Daan Wierstra. Weight uncertainty in neural network. In International Conference on Machine Learning, 1613–1622. PMLR, 2015.">BCKW15</a>]</span>) or evidential deep regression (<span id="id4">[<a class="reference internal" href="../bibliography.html#id42" title="Alexander Amini, Wilko Schwarting, Ava Soleimany, and Daniela Rus. Deep evidential regression. arXiv preprint arXiv:1910.02600, 2019.">ASSR19</a>]</span>) are some of the other types of uncertainty-aware deep neural networks. Systematic comparisons however show that deep ensembles represent the uncertainty the best and are probably the simplest of the major alternatives (see, for example, <span id="id5">[<a class="reference internal" href="../bibliography.html#id41" title="Ian Osband, Zheng Wen, Mohammad Asghari, Morteza Ibrahimi, Xiyuan Lu, and Benjamin Van Roy. Epistemic neural networks. arXiv preprint arXiv:2107.08924, 2021.">OWA+21</a>]</span>). Good estimates of uncertainty makes deep ensembles a potentially attractive model for
+Bayesian optimization.</p>
+<section id="How-good-is-uncertainty-representation-of-deep-ensembles?">
+<h3>How good is uncertainty representation of deep ensembles?<a class="headerlink" href="#How-good-is-uncertainty-representation-of-deep-ensembles?" title="Link to this heading">#</a></h3>
+<p>We will use a simple one-dimensional toy problem introduced by <span id="id6">[<a class="reference internal" href="../bibliography.html#id43" title="José Miguel Hernández-Lobato and Ryan Adams. Probabilistic backpropagation for scalable learning of bayesian neural networks. In International Conference on Machine Learning, 1861–1869. PMLR, 2015.">HernandezLA15</a>]</span>, which was used in <span id="id7">[<a class="reference internal" href="../bibliography.html#id44" title="Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell. Simple and scalable predictive uncertainty estimation using deep ensembles. arXiv preprint arXiv:1612.01474, 2016.">LPB16</a>]</span> to provide some illustrative evidence that deep ensembles do a good job of estimating uncertainty. We will replicate this exercise here.</p>
+<p>The toy problem is a simple cubic function with some Normally distributed noise around it. We will randomly sample 20 input points from [-4,4] interval that we will use as a training data later on.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[2]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.space</span><span class="w"> </span><span class="kn">import</span> <span class="n">Box</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.data</span><span class="w"> </span><span class="kn">import</span> <span class="n">Dataset</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">objective</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">error</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">pow</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">error</span><span class="p">:</span>
+        <span class="n">y</span> <span class="o">+=</span> <span class="n">tf</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">normal</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">shape</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">dtype</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">y</span>
+
+
+<span class="n">num_points</span> <span class="o">=</span> <span class="mi">20</span>
+
+<span class="c1"># we define the [-4,4] interval using a `Box` search space that has convenient sampling methods</span>
+<span class="n">search_space</span> <span class="o">=</span> <span class="n">Box</span><span class="p">([</span><span class="o">-</span><span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">])</span>
+<span class="n">inputs</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample_sobol</span><span class="p">(</span><span class="n">num_points</span><span class="p">)</span>
+<span class="n">outputs</span> <span class="o">=</span> <span class="n">objective</span><span class="p">(</span><span class="n">inputs</span><span class="p">)</span>
+<span class="n">data</span> <span class="o">=</span> <span class="n">Dataset</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Next we define a deep ensemble model and train it. Trieste supports neural network models defined as TensorFlow’s Keras models. Since creating ensemble models in Keras can be somewhat involved, Trieste provides some basic architectures. Here we use the <code class="docutils literal notranslate"><span class="pre">build_keras_ensemble</span></code> function which builds a simple ensemble of neural networks in Keras where each network has the same architecture: number of hidden layers, nodes in hidden layers and activation function. It uses sensible defaults for many
+parameters and finally returns a model of <code class="docutils literal notranslate"><span class="pre">KerasEnsemble</span></code> class.</p>
+<p>As with other supported types of models (e.g. Gaussian process models from GPflow), we cannot use <code class="docutils literal notranslate"><span class="pre">KerasEnsemble</span></code> directly in Bayesian optimization routines, we need to pass it through an appropriate wrapper, <code class="docutils literal notranslate"><span class="pre">DeepEnsemble</span></code> wrapper in this case. One difference with respect to other model types is that we need to use a Keras specific optimizer wrapper <code class="docutils literal notranslate"><span class="pre">KerasOptimizer</span></code> where we need to specify a stochastic optimizer (Adam is used by default, but we can use other stochastic optimizers from
+TensorFlow), objective function (here negative log likelihood) and we can provide custom arguments for the Keras <code class="docutils literal notranslate"><span class="pre">fit</span></code> method (here we modify the default arguments; check <a class="reference external" href="https://keras.io/api/models/model_training_apis/#fit-method">Keras API documentation</a> for a list of possible arguments).</p>
+<p>For the cubic function toy problem we use the same architecture as in <span id="id8">[<a class="reference internal" href="../bibliography.html#id44" title="Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell. Simple and scalable predictive uncertainty estimation using deep ensembles. arXiv preprint arXiv:1612.01474, 2016.">LPB16</a>]</span>: ensemble size of 5 networks, where each network has one hidden layer with 100 nodes. All other implementation details were missing and we used sensible choices, as well as details about training the network.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">gpflow.keras</span><span class="w"> </span><span class="kn">import</span> <span class="n">tf_keras</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.models.keras</span><span class="w"> </span><span class="kn">import</span> <span class="p">(</span>
+    <span class="n">DeepEnsemble</span><span class="p">,</span>
+    <span class="n">KerasPredictor</span><span class="p">,</span>
+    <span class="n">build_keras_ensemble</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.models.optimizer</span><span class="w"> </span><span class="kn">import</span> <span class="n">KerasOptimizer</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">build_cubic_model</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DeepEnsemble</span><span class="p">:</span>
+    <span class="n">ensemble_size</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">num_hidden_layers</span> <span class="o">=</span> <span class="mi">1</span>
+    <span class="n">num_nodes</span> <span class="o">=</span> <span class="mi">100</span>
+
+    <span class="n">keras_ensemble</span> <span class="o">=</span> <span class="n">build_keras_ensemble</span><span class="p">(</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">ensemble_size</span><span class="p">,</span> <span class="n">num_hidden_layers</span><span class="p">,</span> <span class="n">num_nodes</span>
+    <span class="p">)</span>
+
+    <span class="n">fit_args</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">KerasOptimizer</span><span class="p">(</span><span class="n">tf_keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="mf">0.01</span><span class="p">),</span> <span class="n">fit_args</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">DeepEnsemble</span><span class="p">(</span><span class="n">keras_ensemble</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">)</span>
+
+
+<span class="c1"># building and optimizing the model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">build_cubic_model</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+&lt;tf_keras.src.callbacks.History at 0x7f31ac1e9150&gt;
+</pre></div></div>
+</div>
+<p>Let’s illustrate the results of the model training. We create a test set that includes points outside the interval on which the model has been trained. These extrapolation points are a good test of model’s representation of uncertainty. What would we expect to see? Bayesian inference provides a reference frame. Predictive uncertainty should increase the farther we are from the training data and the predictive mean should start returning to the prior mean (assuming standard zero mean function).</p>
+<p>We can see in the figure below that predictive distribution of deep ensembles indeed exhibits these features. The figure also replicates fairly well Figure 1 (rightmost panel) from <span id="id9">[<a class="reference internal" href="../bibliography.html#id44" title="Balaji Lakshminarayanan, Alexander Pritzel, and Charles Blundell. Simple and scalable predictive uncertainty estimation using deep ensembles. arXiv preprint arXiv:1612.01474, 2016.">LPB16</a>]</span> and provides a reasonable match to Bayesian neural network trained on same toy problem with Hamiltonian Monte Carlo (golden standard that is usually very expensive) as illustrated in Figure 1 (upper right panel) <span id="id10">[<a class="reference internal" href="../bibliography.html#id43" title="José Miguel Hernández-Lobato and Ryan Adams. Probabilistic backpropagation for scalable learning of bayesian neural networks. In International Conference on Machine Learning, 1861–1869. PMLR, 2015.">HernandezLA15</a>]</span>. This gives us some assurance that
+deep ensembles might provide uncertainty that is good enough for trading off between exploration and exploitation in Bayesian optimization.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+
+
+<span class="c1"># test data that includes extrapolation points</span>
+<span class="n">test_points</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="o">-</span><span class="mi">6</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">1000</span><span class="p">)</span>
+
+<span class="c1"># generating a plot with ground truth function, mean prediction and 3 standard</span>
+<span class="c1"># deviations around it</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">scatter</span><span class="p">(</span><span class="n">inputs</span><span class="p">,</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s2">&quot;.&quot;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;red&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;data&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span>
+    <span class="n">test_points</span><span class="p">,</span> <span class="n">objective</span><span class="p">(</span><span class="n">test_points</span><span class="p">,</span> <span class="kc">False</span><span class="p">),</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;blue&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;function&quot;</span>
+<span class="p">)</span>
+<span class="n">y_hat</span><span class="p">,</span> <span class="n">y_var</span> <span class="o">=</span> <span class="n">model</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">test_points</span><span class="p">)</span>
+<span class="n">y_hat_minus_3sd</span> <span class="o">=</span> <span class="n">y_hat</span> <span class="o">-</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">y_var</span><span class="p">)</span>
+<span class="n">y_hat_plus_3sd</span> <span class="o">=</span> <span class="n">y_hat</span> <span class="o">+</span> <span class="mi">3</span> <span class="o">*</span> <span class="n">tf</span><span class="o">.</span><span class="n">math</span><span class="o">.</span><span class="n">sqrt</span><span class="p">(</span><span class="n">y_var</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">test_points</span><span class="p">,</span> <span class="n">y_hat</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s2">&quot;model $\mu$&quot;</span><span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+    <span class="n">test_points</span><span class="p">,</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">y_hat_minus_3sd</span><span class="p">),</span>
+    <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">y_hat_plus_3sd</span><span class="p">),</span>
+    <span class="n">color</span><span class="o">=</span><span class="s2">&quot;gray&quot;</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.5</span><span class="p">,</span>
+    <span class="n">label</span><span class="o">=</span><span class="s2">&quot;$\mu -/+ 3SD$&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">ylim</span><span class="p">([</span><span class="o">-</span><span class="mi">100</span><span class="p">,</span> <span class="mi">100</span><span class="p">])</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_deep_ensembles_8_0.png" src="../_images/notebooks_deep_ensembles_8_0.png" />
+</div>
+</div>
+</section>
+</section>
+<section id="Non-stationary-toy-problem">
+<h2>Non-stationary toy problem<a class="headerlink" href="#Non-stationary-toy-problem" title="Link to this heading">#</a></h2>
+<p>Now we turn to a somewhat more serious synthetic optimization problem. We want to find the minimum of the two-dimensional version of the <a class="reference external" href="https://www.sfu.ca/~ssurjano/michal.html">Michalewicz function</a>. Even though we stated that deep ensembles should be used with larger budget sizes, here we will show them on a small dataset to provide a problem that is feasible for the scope of the tutorial.</p>
+<p>The Michalewicz function is defined on the search space of <span class="math notranslate nohighlight">\([0, \pi]^2\)</span>. Below we plot the function over this space. The Michalewicz function is interesting case for deep ensembles as it features sharp ridges that are difficult to capture with Gaussian processes. This occurs because lengthscale parameters in typical kernels cannot easily capture both ridges (requiring smaller lengthscales) and fairly flat areas everywhere else (requiring larger lengthscales).</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.objectives</span><span class="w"> </span><span class="kn">import</span> <span class="n">Michalewicz2</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.experimental.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_function_plotly</span>
+
+<span class="n">search_space</span> <span class="o">=</span> <span class="n">Michalewicz2</span><span class="o">.</span><span class="n">search_space</span>
+<span class="n">function</span> <span class="o">=</span> <span class="n">Michalewicz2</span><span class="o">.</span><span class="n">objective</span>
+<span class="n">MINIMUM</span> <span class="o">=</span> <span class="n">Michalewicz2</span><span class="o">.</span><span class="n">minimum</span>
+<span class="n">MINIMIZER</span> <span class="o">=</span> <span class="n">Michalewicz2</span><span class="o">.</span><span class="n">minimum</span>
+
+<span class="c1"># we illustrate the 2-dimensional Michalewicz function</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plot_function_plotly</span><span class="p">(</span>
+    <span class="n">function</span><span class="p">,</span> <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span> <span class="n">search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span> <span class="n">grid_density</span><span class="o">=</span><span class="mi">20</span>
+<span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+</section>
+<section id="Initial-design">
+<h2>Initial design<a class="headerlink" href="#Initial-design" title="Link to this heading">#</a></h2>
+<p>We set up the observer as usual, using Sobol sampling to sample the initial points.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.objectives.utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">mk_observer</span>
+
+<span class="n">num_initial_points</span> <span class="o">=</span> <span class="mi">20</span>
+
+<span class="n">initial_query_points</span> <span class="o">=</span> <span class="n">search_space</span><span class="o">.</span><span class="n">sample</span><span class="p">(</span><span class="n">num_initial_points</span><span class="p">)</span>
+<span class="n">observer</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">objectives</span><span class="o">.</span><span class="n">utils</span><span class="o">.</span><span class="n">mk_observer</span><span class="p">(</span><span class="n">function</span><span class="p">)</span>
+<span class="n">initial_data</span> <span class="o">=</span> <span class="n">observer</span><span class="p">(</span><span class="n">initial_query_points</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Modelling-the-objective-function">
+<h2>Modelling the objective function<a class="headerlink" href="#Modelling-the-objective-function" title="Link to this heading">#</a></h2>
+<p>The Bayesian optimization procedure estimates the next best points to query by using a probabilistic model of the objective. Here we use a deep ensemble instead of a typical probabilistic model. Same as above we use the <code class="docutils literal notranslate"><span class="pre">build_keras_ensemble</span></code> function to build a simple ensemble of neural networks in Keras and wrap it with a <code class="docutils literal notranslate"><span class="pre">DeepEnsemble</span></code> wrapper so it can be used in Trieste’s Bayesian optimization loop.</p>
+<p>Some notes on choosing the model architecture are necessary. Unfortunately, choosing an architecture that works well for small datasets, a common setting in Bayesian optimization, is not easy. Here we do demonstrate it can work with smaller datasets, but choosing the architecture and model optimization parameters was a lengthy process that does not necessarily generalize to other problems. Hence, we advise to use deep ensembles with larger datasets and ideally large batches so that the model is
+not retrained after adding a single point.</p>
+<p>We can offer some practical advices, however. Architecture parameters like the ensemble size, the number of hidden layers, the number of nodes in the layers and so on affect the capacity of the model. If the model is too large for the amount of data, it will be difficult to train the model and result will be a poor model that cannot be used for optimizing the objective function. Hence, with small datasets like the one used here, we advise to always err on the smaller size, one or two hidden
+layers, and up to 25 nodes per layer. If we suspect the objective function is more complex these numbers should be increased slightly. With regards to model optimization we advise using a lot of epochs, typically at least 1000, and potentially higher learning rates. Ideally, every once in a while capacity should be increased to be able to use larger amount of data more effectively. Unfortunately, there is almost no research literature that would guide us in how to do this properly.</p>
+<p>Interesting alternative to a manual architecture search is to use a separate Bayesian optimization process to optimize the architecture and model optimizer parameters (see recent work by <span id="id11">[<a class="reference internal" href="../bibliography.html#id47" title="Arlind Kadra, Marius Lindauer, Frank Hutter, and Josif Grabocka. Well-tuned simple nets excel on tabular datasets. Advances in Neural Information Processing Systems, 2021.">KLHG21</a>]</span>). This optimization is much faster as it optimizes model performance. It would slow down the original optimization, so its worthwhile only if optimizing the objective function is much more costly.</p>
+<p>Below we change the <code class="docutils literal notranslate"><span class="pre">build_model</span></code> function to adapt the model slightly for the Michalewicz function. Since it’s a more complex function we increase the number of hidden layers but keep the number of nodes per layer on the lower side. Note the large number of epochs</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">build_model</span><span class="p">(</span><span class="n">data</span><span class="p">:</span> <span class="n">Dataset</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">DeepEnsemble</span><span class="p">:</span>
+    <span class="n">ensemble_size</span> <span class="o">=</span> <span class="mi">5</span>
+    <span class="n">num_hidden_layers</span> <span class="o">=</span> <span class="mi">3</span>
+    <span class="n">num_nodes</span> <span class="o">=</span> <span class="mi">25</span>
+
+    <span class="n">keras_ensemble</span> <span class="o">=</span> <span class="n">build_keras_ensemble</span><span class="p">(</span>
+        <span class="n">data</span><span class="p">,</span> <span class="n">ensemble_size</span><span class="p">,</span> <span class="n">num_hidden_layers</span><span class="p">,</span> <span class="n">num_nodes</span>
+    <span class="p">)</span>
+
+    <span class="n">fit_args</span> <span class="o">=</span> <span class="p">{</span>
+        <span class="s2">&quot;batch_size&quot;</span><span class="p">:</span> <span class="mi">10</span><span class="p">,</span>
+        <span class="s2">&quot;epochs&quot;</span><span class="p">:</span> <span class="mi">1000</span><span class="p">,</span>
+        <span class="s2">&quot;callbacks&quot;</span><span class="p">:</span> <span class="p">[</span>
+            <span class="n">tf_keras</span><span class="o">.</span><span class="n">callbacks</span><span class="o">.</span><span class="n">EarlyStopping</span><span class="p">(</span><span class="n">monitor</span><span class="o">=</span><span class="s2">&quot;loss&quot;</span><span class="p">,</span> <span class="n">patience</span><span class="o">=</span><span class="mi">100</span><span class="p">)</span>
+        <span class="p">],</span>
+        <span class="s2">&quot;verbose&quot;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span>
+    <span class="p">}</span>
+    <span class="n">optimizer</span> <span class="o">=</span> <span class="n">KerasOptimizer</span><span class="p">(</span><span class="n">tf_keras</span><span class="o">.</span><span class="n">optimizers</span><span class="o">.</span><span class="n">Adam</span><span class="p">(</span><span class="mf">0.001</span><span class="p">),</span> <span class="n">fit_args</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">DeepEnsemble</span><span class="p">(</span><span class="n">keras_ensemble</span><span class="p">,</span> <span class="n">optimizer</span><span class="p">)</span>
+
+
+<span class="c1"># building and optimizing the model</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">build_model</span><span class="p">(</span><span class="n">initial_data</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+<section id="Run-the-optimization-loop">
+<h2>Run the optimization loop<a class="headerlink" href="#Run-the-optimization-loop" title="Link to this heading">#</a></h2>
+<p>In Bayesian optimization we use an acquisition function to choose where in the search space to evaluate the objective function in each optimization step. Deep ensemble model uses probabilistic neural networks whose output is at the end approximated with a single Gaussian distribution, which acts as a predictive posterior distribution. This means that any acquisition function can be used that requires only predictive mean and variance. For example, predictive mean and variance is sufficient for
+standard acquisition functions such as Expected improvement (see <code class="docutils literal notranslate"><span class="pre">ExpectedImprovement</span></code>), Lower confidence bound (see <code class="docutils literal notranslate"><span class="pre">NegativeLowerConfidenceBound</span></code>) or Thompson sampling (see <code class="docutils literal notranslate"><span class="pre">ExactThompsonSampling</span></code>). Some acquisition functions have additional requirements and these cannot be used (e.g. covariance between sets of query points, as in an entropy-based acquisition function <code class="docutils literal notranslate"><span class="pre">GIBBON</span></code>).</p>
+<p>Here we will illustrate Deep ensembles with a Thompson sampling acquisition function. We use a discrete Thompson sampling strategy that samples a fixed number of points (<code class="docutils literal notranslate"><span class="pre">grid_size</span></code>) from the search space and takes a certain number of samples at each point based on the model posterior (<code class="docutils literal notranslate"><span class="pre">num_samples</span></code>, if more than 1 then this is a batch strategy).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.acquisition.rule</span><span class="w"> </span><span class="kn">import</span> <span class="n">DiscreteThompsonSampling</span>
+
+<span class="n">grid_size</span> <span class="o">=</span> <span class="mi">2000</span>
+<span class="n">num_samples</span> <span class="o">=</span> <span class="mi">4</span>
+
+<span class="c1"># note that `DiscreteThompsonSampling` by default uses `ExactThompsonSampler`</span>
+<span class="n">acquisition_rule</span> <span class="o">=</span> <span class="n">DiscreteThompsonSampling</span><span class="p">(</span><span class="n">grid_size</span><span class="p">,</span> <span class="n">num_samples</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We can now run the Bayesian optimization loop by defining a <code class="docutils literal notranslate"><span class="pre">BayesianOptimizer</span></code> and calling its <code class="docutils literal notranslate"><span class="pre">optimize</span></code> method.</p>
+<p>Note that the optimization might take a while!</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">bo</span> <span class="o">=</span> <span class="n">trieste</span><span class="o">.</span><span class="n">bayesian_optimizer</span><span class="o">.</span><span class="n">BayesianOptimizer</span><span class="p">(</span><span class="n">observer</span><span class="p">,</span> <span class="n">search_space</span><span class="p">)</span>
+
+<span class="n">num_steps</span> <span class="o">=</span> <span class="mi">25</span>
+
+<span class="c1"># The Keras interface does not currently support using `track_state=True` which saves the model</span>
+<span class="c1"># in each iteration. This will be addressed in a future update.</span>
+<span class="n">result</span> <span class="o">=</span> <span class="n">bo</span><span class="o">.</span><span class="n">optimize</span><span class="p">(</span>
+    <span class="n">num_steps</span><span class="p">,</span>
+    <span class="n">initial_data</span><span class="p">,</span>
+    <span class="n">model</span><span class="p">,</span>
+    <span class="n">acquisition_rule</span><span class="o">=</span><span class="n">acquisition_rule</span><span class="p">,</span>
+    <span class="n">track_state</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">dataset</span> <span class="o">=</span> <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_dataset</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Optimization completed without errors
+</pre></div></div>
+</div>
+</section>
+<section id="Explore-the-results">
+<h2>Explore the results<a class="headerlink" href="#Explore-the-results" title="Link to this heading">#</a></h2>
+<p>We can now get the best point found by the optimizer. Note this isn’t necessarily the point that was last evaluated.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="n">query_points</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">query_points</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+<span class="n">observations</span> <span class="o">=</span> <span class="n">dataset</span><span class="o">.</span><span class="n">observations</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">arg_min_idx</span> <span class="o">=</span> <span class="n">tf</span><span class="o">.</span><span class="n">squeeze</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">argmin</span><span class="p">(</span><span class="n">observations</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">0</span><span class="p">))</span>
+
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Minimizer query point: </span><span class="si">{</span><span class="n">query_points</span><span class="p">[</span><span class="n">arg_min_idx</span><span class="p">,</span><span class="w"> </span><span class="p">:]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Minimum observation: </span><span class="si">{</span><span class="n">observations</span><span class="p">[</span><span class="n">arg_min_idx</span><span class="p">,</span><span class="w"> </span><span class="p">:]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;True minimum: </span><span class="si">{</span><span class="n">MINIMUM</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Minimizer query point: [2.21381846 1.57227431]
+Minimum observation: [-1.79927236]
+True minimum: [-1.8013034]
+</pre></div></div>
+</div>
+<p>We can visualise how the optimizer performed as a three-dimensional plot. Crosses mark the initial data points while dots mark the points chosen during the Bayesian optimization run. You can see that there are some samples on the flat regions of the space, while most of the points are exploring the ridges, in particular in the vicinity of the minimum point.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.experimental.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">add_bo_points_plotly</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plot_function_plotly</span><span class="p">(</span>
+    <span class="n">function</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+    <span class="n">alpha</span><span class="o">=</span><span class="mf">0.7</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">add_bo_points_plotly</span><span class="p">(</span>
+    <span class="n">x</span><span class="o">=</span><span class="n">query_points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="n">y</span><span class="o">=</span><span class="n">query_points</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="n">z</span><span class="o">=</span><span class="n">observations</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="n">num_init</span><span class="o">=</span><span class="n">num_initial_points</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="o">=</span><span class="n">arg_min_idx</span><span class="p">,</span>
+    <span class="n">fig</span><span class="o">=</span><span class="n">fig</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<p>We can visualise the model over the objective function by plotting the mean and 95% confidence intervals of its predictive distribution. Since it is not easy to choose the architecture of the deep ensemble we advise to always check with these types of plots whether the model seems to be doing a good job at modelling the objective function. In this case we can see that the model was able to capture the relevant parts of the objective function.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.pyplot</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">plt</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">trieste.experimental.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_model_predictions_plotly</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plot_model_predictions_plotly</span><span class="p">(</span>
+    <span class="n">result</span><span class="o">.</span><span class="n">try_get_final_model</span><span class="p">(),</span>
+    <span class="n">search_space</span><span class="o">.</span><span class="n">lower</span><span class="p">,</span>
+    <span class="n">search_space</span><span class="o">.</span><span class="n">upper</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">fig</span> <span class="o">=</span> <span class="n">add_bo_points_plotly</span><span class="p">(</span>
+    <span class="n">x</span><span class="o">=</span><span class="n">query_points</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="n">y</span><span class="o">=</span><span class="n">query_points</span><span class="p">[:,</span> <span class="mi">1</span><span class="p">],</span>
+    <span class="n">z</span><span class="o">=</span><span class="n">observations</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">],</span>
+    <span class="n">num_init</span><span class="o">=</span><span class="n">num_initial_points</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="o">=</span><span class="n">arg_min_idx</span><span class="p">,</span>
+    <span class="n">fig</span><span class="o">=</span><span class="n">fig</span><span class="p">,</span>
+    <span class="n">figrow</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+    <span class="n">figcol</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="admonition warning">
+<p>Data type cannot be displayed: application/vnd.plotly.v1+json</p>
+</div>
+</div>
+</div>
+<p>Finally, let’s plot the regret over time, i.e. difference between the minimum of the objective function and lowest observations found by the Bayesian optimization over time. Below you can see two plots. The left hand plot shows the regret over time: the observations (crosses and dots), the current best (orange line), and the start of the optimization loop (blue line). The right hand plot is a two-dimensional search space that shows where in the search space initial points were located (crosses
+again) and where Bayesian optimization allocated samples (dots). The best point is shown in each (purple dot) and on the left plot you can see that we come very close to 0 which is the minimum of the objective function.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">trieste.experimental.plotting</span><span class="w"> </span><span class="kn">import</span> <span class="n">plot_regret</span><span class="p">,</span> <span class="n">plot_bo_points</span>
+
+<span class="n">suboptimality</span> <span class="o">=</span> <span class="n">observations</span> <span class="o">-</span> <span class="n">MINIMUM</span><span class="o">.</span><span class="n">numpy</span><span class="p">()</span>
+
+<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+<span class="n">plot_regret</span><span class="p">(</span>
+    <span class="n">suboptimality</span><span class="p">,</span>
+    <span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span>
+    <span class="n">num_init</span><span class="o">=</span><span class="n">num_initial_points</span><span class="p">,</span>
+    <span class="n">idx_best</span><span class="o">=</span><span class="n">arg_min_idx</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">plot_bo_points</span><span class="p">(</span>
+    <span class="n">query_points</span><span class="p">,</span> <span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">num_init</span><span class="o">=</span><span class="n">num_initial_points</span><span class="p">,</span> <span class="n">idx_best</span><span class="o">=</span><span class="n">arg_min_idx</span>
+<span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Minimum achieved&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;Regret&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;# evaluations&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s2">&quot;$x_2$&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span><span class="s2">&quot;$x_1$&quot;</span><span class="p">)</span>
+<span class="n">ax</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s2">&quot;Points in the search space&quot;</span><span class="p">)</span>
+<span class="n">fig</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/notebooks_deep_ensembles_26_0.png" src="../_images/notebooks_deep_ensembles_26_0.png" />
+</div>
+</div>
+</section>
+<section id="LICENSE">
+<h2>LICENSE<a class="headerlink" href="#LICENSE" title="Link to this heading">#</a></h2>
+<p><a class="reference external" href="https://github.com/secondmind-labs/trieste/blob/develop/LICENSE">Apache License 2.0</a></p>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#What-are-deep-ensembles?">What are deep ensembles?</a><ul class="nav section-nav flex-column">
+<li class="toc-h3 nav-item toc-entry"><a class="reference internal nav-link" href="#How-good-is-uncertainty-representation-of-deep-ensembles?">How good is uncertainty representation of deep ensembles?</a></li>
+</ul>
+</li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Non-stationary-toy-problem">Non-stationary toy problem</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Initial-design">Initial design</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Modelling-the-objective-function">Modelling the objective function</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Run-the-optimization-loop">Run the optimization loop</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#Explore-the-results">Explore the results</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#LICENSE">LICENSE</a></li>
+</ul>
+  </nav></div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=8878045cc6db502f8baf"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=8878045cc6db502f8baf"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright Copyright 2020 The Trieste Contributors
+
+Licensed under the Apache License, Version 2.0 (the &#34;License&#34;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &#34;AS IS&#34; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  <!-- # L10n: Setting the PST URL as an argument as this does not need to be localized -->
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
