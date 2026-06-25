@@ -41,6 +41,104 @@ from tensorflow_probability.python.layers.distribution_layer import Distribution
 from trieste.types import TensorType
 
 
+def _vectorized_ensemble_uses_tensorflow_keras() -> bool:
+    """
+    Whether the vectorized ensemble must be built with ``tensorflow.keras``.
+
+    TFP before 0.23 registers distribution outputs on ``tf.keras``. When gpflow selects
+    standalone ``tf_keras`` (prod: TF 2.14 + TFP 0.22 + ``tf_keras`` 2.16), batched
+    :class:`~tfp.layers.DistributionLambda` outputs are rejected by ``tf_keras.Model`` but
+    accepted by ``tf.keras.Model``. Aligned stacks (no separate ``tf_keras`` package, or
+    TFP 0.23+) keep using ``gpflow.keras.tf_keras``.
+    """
+    try:
+        import tf_keras as _standalone_tf_keras
+    except ImportError:
+        return False
+    if _standalone_tf_keras is tf.keras:
+        return False
+    try:
+        tfp_major, tfp_minor = (int(x) for x in tfp.__version__.split(".")[:2])
+    except (ValueError, IndexError):
+        return False
+    return (tfp_major, tfp_minor) < (0, 23)
+
+
+def _keras_for_vectorized_ensemble_build() -> Any:
+    return tf.keras if _vectorized_ensemble_uses_tensorflow_keras() else tf_keras
+
+
+def _keras_models_module(*, use_tensorflow_keras: bool) -> Any:
+    keras = tf.keras if use_tensorflow_keras else tf_keras
+    return keras.models
+
+
+def _glorot_uniform_vectorized_class(keras: Any) -> type:
+    class _GlorotUniformVectorized(keras.initializers.Initializer):  # type: ignore[misc]
+        """Glorot uniform initialiser for [E, fan_in, fan_out] weight tensors."""
+
+        def __call__(self, shape: Any, dtype: Any = None) -> tf.Tensor:
+            fan_in, fan_out = float(shape[1]), float(shape[2])
+            limit = np.sqrt(6.0 / (fan_in + fan_out))
+            return tf.random.uniform(shape, -limit, limit, dtype=dtype)
+
+        def get_config(self) -> dict[str, Any]:
+            return {}
+
+    return _GlorotUniformVectorized
+
+
+def _vectorized_ensemble_dense_layer_class(keras: Any) -> type:
+    glorot_uniform_vectorized = _glorot_uniform_vectorized_class(keras)
+
+    class VectorizedEnsembleDenseLayer(keras.layers.Layer):  # type: ignore[misc]
+        """Dense layer that processes E ensemble members in parallel via a single batched matmul."""
+
+        def __init__(self, ensemble_size: int, units: int, activation: Any = None, **kwargs: Any):
+            super().__init__(**kwargs)
+            self.ensemble_size = ensemble_size
+            self.units = units
+            self._activation = activation
+            self.activation_fn = keras.activations.get(activation)
+
+        def build(self, input_shape: Any) -> None:
+            fan_in = int(input_shape[-1])
+            self.kernel = self.add_weight(
+                "kernel",
+                shape=[self.ensemble_size, fan_in, self.units],
+                initializer=glorot_uniform_vectorized(),
+            )
+            self.bias = self.add_weight(
+                "bias",
+                shape=[self.ensemble_size, self.units],
+                initializer="zeros",
+            )
+            super().build(input_shape)
+
+        def call(self, x: TensorType) -> TensorType:
+            h = tf.matmul(x, self.kernel) + self.bias[:, tf.newaxis, :]
+            if self.activation_fn is not None:
+                h = self.activation_fn(h)
+            return h
+
+        def get_config(self) -> dict[str, Any]:
+            return {
+                **super().get_config(),
+                "ensemble_size": self.ensemble_size,
+                "units": self.units,
+                "activation": self._activation,
+            }
+
+    VectorizedEnsembleDenseLayer.__name__ = "VectorizedEnsembleDenseLayer"
+    VectorizedEnsembleDenseLayer.__qualname__ = "VectorizedEnsembleDenseLayer"
+    return VectorizedEnsembleDenseLayer
+
+
+# Default tf_keras implementations (imports, isinstance against the common build path).
+_GlorotUniformVectorized = _glorot_uniform_vectorized_class(tf_keras)
+VectorizedEnsembleDenseLayer = _vectorized_ensemble_dense_layer_class(tf_keras)
+
+
 class KerasEnsemble:
     """
     This class builds an ensemble of neural networks, using Keras. Individual networks must
@@ -91,6 +189,7 @@ class KerasEnsemble:
         self.output_dtype = networks[0].output_tensor_spec.dtype
 
         self._networks = networks
+        self._vectorized_uses_tensorflow_keras = False
 
         self._model = self._build_ensemble()
 
@@ -114,20 +213,91 @@ class KerasEnsemble:
     def _build_ensemble(self) -> tf_keras.Model:
         """
         Builds the ensemble model by combining all the individual networks in a single Keras model.
-        This method relies on ``connect_layers`` method of :class:`KerasEnsembleNetwork` objects
-        to construct individual networks.
+
+        For :class:`GaussianNetwork` ensembles with a single output dimension, a vectorized
+        model is constructed using batched matmuls across all ensemble members in one pass.
+        For other network types, falls back to the original per-member functional model.
 
         :return: The Keras model.
         """
+        if all(
+            isinstance(n, GaussianNetwork) and n.flattened_output_shape == 1 for n in self._networks
+        ):
+            return self._build_vectorized_ensemble()
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
-
         return tf_keras.Model(inputs=inputs, outputs=outputs)
+
+    def _build_vectorized_ensemble(self) -> tf_keras.Model:
+        """Vectorized ensemble with a single stacked input and a single batched output.
+
+        A single input ``"ensemble_input"`` of shape ``[E * D]`` is reshaped to
+        ``[E, batch, D]`` inside the model and fed through one shared set of
+        :class:`VectorizedEnsembleDenseLayer` layers (one batched matmul per layer).
+        The ``[E, batch, 2]`` parameter tensor is transposed to ``[batch, E, 2]`` and
+        wrapped in a single :class:`~tfp.layers.DistributionLambda`, yielding a
+        ``Normal`` with ``batch_shape = [batch, E, 1]``.
+
+        On prod pins (standalone ``tf_keras`` with TFP 0.22), the functional model is built
+        with ``tensorflow.keras`` so batched distribution outputs are accepted as model outputs.
+
+        Using one input and one output instead of E of each eliminates E-fold tensor
+        handling overhead per training step in the ``tf.data`` pipeline and Keras metrics.
+        """
+        assert all(isinstance(n, GaussianNetwork) for n in self._networks)
+
+        keras = _keras_for_vectorized_ensemble_build()
+        self._vectorized_uses_tensorflow_keras = keras is tf.keras
+        vectorized_dense_layer = _vectorized_ensemble_dense_layer_class(keras)
+
+        E = len(self._networks)
+        network = self._networks[0]
+        dtype = network.input_tensor_spec.dtype.name
+        input_dim = int(np.prod(network.input_tensor_spec.shape))
+
+        # Single stacked input: [batch, E * input_dim]
+        stacked_input = keras.Input(shape=(E * input_dim,), dtype=dtype, name="ensemble_input")
+
+        # Reshape to [E, batch, input_dim] for vectorized layers
+        h = keras.layers.Lambda(
+            lambda x: tf.transpose(tf.reshape(x, [-1, E, input_dim]), [1, 0, 2]),
+            name="ensemble_reshape",
+        )(stacked_input)
+
+        # Vectorized hidden layers
+        for j, layer_args in enumerate(network._hidden_layer_args):  # type: ignore
+            h = vectorized_dense_layer(
+                E,
+                layer_args["units"],
+                layer_args.get("activation"),
+                name=f"vec_dense_{j}",
+                dtype=dtype,
+            )(h)
+
+        # Output layer: 2 parameters per member (mean + raw scale)
+        params = vectorized_dense_layer(E, 2, None, name="vec_params", dtype=dtype)(h)
+        # [E, batch, 2] → [batch, E, 2]
+        params_T = keras.layers.Lambda(
+            lambda x: tf.transpose(x, [1, 0, 2]), name="ensemble_transpose"
+        )(params)
+
+        def _dist_fn(t: TensorType) -> tfp.distributions.Distribution:
+            return tfp.distributions.Normal(t[..., :1], tf.math.softplus(t[..., 1:]))
+
+        output = tfp.layers.DistributionLambda(
+            make_distribution_fn=_dist_fn,
+            convert_to_tensor_fn=tfp.distributions.Distribution.mean,
+            name="ensemble_output",
+            dtype=dtype,
+        )(params_T)
+
+        return keras.Model(inputs=stacked_input, outputs=output)
 
     def __getstate__(self) -> dict[str, Any]:
         # When pickling use to_json to save the model.
         state = self.__dict__.copy()
         state["_model"] = self._model.to_json()
         state["_weights"] = self._model.get_weights()
+        state["_vectorized_uses_tensorflow_keras"] = self._vectorized_uses_tensorflow_keras
 
         # Save the history callback (serializing any model)
         if self._model.history:
@@ -150,11 +320,14 @@ class KerasEnsemble:
     def __setstate__(self, state: dict[str, Any]) -> None:
         # When unpickling restore the model using model_from_json.
         self.__dict__.update(state)
+        use_tensorflow_keras = state.get("_vectorized_uses_tensorflow_keras", False)
+        keras_models = _keras_models_module(use_tensorflow_keras=use_tensorflow_keras)
+        custom_objects = keras_ensemble_custom_objects(use_tensorflow_keras=use_tensorflow_keras)
         # TF 2.15 disallows loading lambdas without "safe-mode" being disabled
         # unfortunately, tfp.layers.DistributionLambda uses lambdas
         with SafeModeScope(False):
-            self._model = tf_keras.models.model_from_json(
-                state["_model"], custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL}
+            self._model = keras_models.model_from_json(
+                state["_model"], custom_objects=custom_objects
             )
         self._model.set_weights(state["_weights"])
 
@@ -165,10 +338,7 @@ class KerasEnsemble:
                 self._model.history.set_model(self._model)
             elif self._model.history.model:
                 model_json, weights = self._model.history.model
-                model = tf_keras.models.model_from_json(
-                    model_json,
-                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
-                )
+                model = keras_models.model_from_json(model_json, custom_objects=custom_objects)
                 model.set_weights(weights)
                 self._model.history.set_model(model)
 
@@ -259,6 +429,25 @@ class MultivariateNormalTriL(tfp.layers.MultivariateNormalTriL):  # type: ignore
         # seem to work in TF2.4.
         base_config = super(DistributionLambda, self).get_config()
         return dict(list(base_config.items()) + list(config.items()))
+
+
+def keras_ensemble_custom_objects(*, use_tensorflow_keras: bool = False) -> dict[str, Any]:
+    """
+    Custom Keras objects required to deserialize vectorized ensemble models from JSON.
+
+    Used when unpickling :class:`KerasEnsemble` and when restoring callback models on
+    :class:`DeepEnsemble`.
+
+    :param use_tensorflow_keras: If True, layer classes target ``tensorflow.keras`` (prod
+        vectorized build); otherwise ``gpflow.keras.tf_keras``.
+    :return: Mapping of class names to layer/initializer classes for ``model_from_json``.
+    """
+    keras = tf.keras if use_tensorflow_keras else tf_keras
+    return {
+        "MultivariateNormalTriL": MultivariateNormalTriL,
+        "VectorizedEnsembleDenseLayer": _vectorized_ensemble_dense_layer_class(keras),
+        "_GlorotUniformVectorized": _glorot_uniform_vectorized_class(keras),
+    }
 
 
 class GaussianNetwork(KerasEnsembleNetwork):

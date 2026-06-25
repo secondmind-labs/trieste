@@ -38,10 +38,15 @@ from ..interfaces import (
 )
 from ..optimizer import KerasOptimizer
 from ..utils import write_summary_data_based_metrics
-from .architectures import KerasEnsemble, MultivariateNormalTriL
+from .architectures import KerasEnsemble, keras_ensemble_custom_objects
 from .interface import DeepEnsembleModel, KerasPredictor
 from .sampler import DeepEnsembleTrajectorySampler
-from .utils import negative_log_likelihood, sample_model_index, sample_with_replacement
+from .utils import (
+    aggregate_member_losses,
+    compile_metrics_for_ensemble,
+    negative_log_likelihood,
+    sample_model_index,
+)
 
 
 class DeepEnsemble(
@@ -157,14 +162,29 @@ class DeepEnsemble(
         if self.optimizer.loss is None:
             self.optimizer.loss = negative_log_likelihood
 
-        if self.optimizer.metrics is None:
-            self.optimizer.metrics = ["mse"]
+        # Single-output vectorized models: one loss/metric in compile, but aggregate over E so
+        # the scalar matches legacy sum of per-member batch-mean losses (not mean over E).
+        base_loss = (
+            self.optimizer.loss if self.optimizer.loss is not None else negative_log_likelihood
+        )
+        n_outputs = len(model.model.outputs)
+        if n_outputs == 1:
+            compile_loss = aggregate_member_losses(base_loss)
+        else:
+            compile_loss = [base_loss] * n_outputs  # type: ignore
+        self._compile_args = dict(compile_args)
+        compile_metrics = compile_metrics_for_ensemble(
+            n_outputs,
+            self.optimizer.metrics,
+            model.ensemble_size,
+            compile_args=self._compile_args,
+        )
 
         model.model.compile(
             optimizer=self.optimizer.optimizer,
-            loss=[self.optimizer.loss] * model.ensemble_size,
-            metrics=[self.optimizer.metrics] * model.ensemble_size,
-            **compile_args,
+            loss=compile_loss,
+            metrics=compile_metrics,
+            **self._compile_args,
         )
 
         if not isinstance(
@@ -221,18 +241,60 @@ class DeepEnsemble(
             bootstrap. This can be useful for preparing validation data.
         :return: A dictionary with input data and a dictionary with output data.
         """
+        E = self.ensemble_size
+        single_input = len(self.model.input_names) == 1
+
+        if single_input:
+            # Single stacked input/output model: pack all E members' data into one tensor.
+            n_rows = dataset.observations.shape[0]
+            if self._bootstrap and not do_not_bootstrap:
+                all_indices = tf.random.uniform((E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32)
+                all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
+                all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
+            else:
+                all_X = tf.tile(dataset.query_points[tf.newaxis], [E, 1, 1])  # [E, N, D]
+                all_y = tf.tile(dataset.observations[tf.newaxis], [E, 1, 1])  # [E, N, 1]
+            # [E, N, D] → [N, E*D]  (row-major: member 0 features first, then member 1, …)
+            X_stacked = tf.reshape(tf.transpose(all_X, [1, 0, 2]), [n_rows, -1])
+            # [E, N, 1] → [N, E, 1]
+            y_stacked = tf.transpose(all_y, [1, 0, 2])
+            return (
+                {self.model.input_names[0]: X_stacked},
+                {self.model.output_names[0]: y_stacked},
+            )
+
         inputs = {}
         outputs = {}
-        for index in range(self.ensemble_size):
-            if self._bootstrap and not do_not_bootstrap:
-                resampled_data = sample_with_replacement(dataset)
-            else:
-                resampled_data = dataset
-            input_name = self.model.input_names[index]
-            output_name = self.model.output_names[index]
-            inputs[input_name], outputs[output_name] = resampled_data.astuple()
+        input_names = self.model.input_names
+        output_names = self.model.output_names
+
+        if self._bootstrap and not do_not_bootstrap:
+            # Generate all E bootstrap index sets in one call, then gather once per tensor.
+            n_rows = dataset.observations.shape[0]
+            all_indices = tf.random.uniform((E, n_rows), maxval=n_rows, dtype=tf.dtypes.int32)
+            all_X = tf.gather(dataset.query_points, all_indices)  # [E, N, D]
+            all_y = tf.gather(dataset.observations, all_indices)  # [E, N, 1]
+            for index in range(E):
+                inputs[input_names[index]] = all_X[index]
+                outputs[output_names[index]] = all_y[index]
+        else:
+            X, y = dataset.astuple()
+            for index in range(E):
+                inputs[input_names[index]] = X
+                outputs[output_names[index]] = y
 
         return inputs, outputs
+
+    def _stack_query_points_for_vectorized(self, query_points: TensorType) -> TensorType:
+        """Stack ``[..., D]`` query points into ``[..., E * D]`` for ``ensemble_input``."""
+        E = self.ensemble_size
+        qp = tf.convert_to_tensor(query_points)
+        if qp.shape.rank == 1:
+            qp = qp[..., tf.newaxis]
+        # [..., D] -> [..., E, D] -> [..., E * D]
+        stacked = tf.repeat(qp[..., tf.newaxis, :], repeats=E, axis=-2)
+        feature_dim = tf.shape(qp)[-1]
+        return tf.reshape(stacked, tf.concat([tf.shape(qp)[:-1], [E * feature_dim]], axis=0))
 
     def prepare_query_points(self, query_points: TensorType) -> Dict[str, TensorType]:
         """
@@ -242,6 +304,11 @@ class DeepEnsemble(
         :param query_points: A tensor with ``query_points``.
         :return: A dictionary with query_points prepared for predictions.
         """
+        if len(self.model.input_names) == 1:
+            return {
+                self.model.input_names[0]: self._stack_query_points_for_vectorized(query_points)
+            }
+
         inputs = {}
         for index in range(self.ensemble_size):
             inputs[self.model.input_names[index]] = query_points
@@ -257,7 +324,13 @@ class DeepEnsemble(
             ``query_points`` for each member of the ensemble.
         """
         x_transformed: dict[str, TensorType] = self.prepare_query_points(query_points)
-        return self._model.model(x_transformed)
+        result = self._model.model(x_transformed)
+        if isinstance(result, tfd.Distribution):
+            # Single batched output from the vectorized model: batch_shape [N, E, 1].
+            # Split into a tuple of E Normal distributions with batch_shape [N, 1].
+            E = self.ensemble_size
+            return tuple(tfd.Normal(result.loc[:, i, :], result.scale[:, i, :]) for i in range(E))
+        return result
 
     def predict_encoded(self, query_points: TensorType) -> tuple[TensorType, TensorType]:
         r"""
@@ -380,8 +453,16 @@ class DeepEnsemble(
         :return: The predicted mean and variance of the observations at the specified
             ``query_points`` for each member of the ensemble.
         """
-        input_dims = min(len(query_points.shape), len(self.model.input_shape[0]))
-        flat_x, unflatten = flatten_leading_dims(query_points, output_dims=input_dims)
+        member_input_shape = tuple(self.model.inputs[0].shape.as_list())
+        # flatten_leading_dims keeps the last (output_dims - 1) feature axes of each member input.
+        feature_rank = len(member_input_shape) - 1
+        flatten_output_dims = feature_rank + 1
+        query_points_tensor = tf.convert_to_tensor(query_points)
+        while query_points_tensor.shape.rank < flatten_output_dims:
+            query_points_tensor = query_points_tensor[..., tf.newaxis]
+        flat_x, unflatten = flatten_leading_dims(
+            query_points_tensor, output_dims=flatten_output_dims
+        )
         ensemble_distributions = self.ensemble_distributions(flat_x)
         predicted_means = tf.stack(
             [unflatten(dist.mean()) for dist in ensemble_distributions], axis=-3
@@ -514,6 +595,30 @@ class DeepEnsemble(
     def _build_tf_dataset(
         self, x: Dict[str, tf.Tensor], y: Dict[str, tf.Tensor]
     ) -> tf.data.Dataset:
+        # When batch_size is known and N is exactly divisible, pre-batch the tensors so that
+        # each Dataset element is already a full batch. This replaces the stack-B-samples
+        # operation in tf.data.batch() with a single O(1) slice per step.
+        if (
+            "steps_per_epoch" not in self.optimizer.fit_args
+            and "batch_size" in self.optimizer.fit_args
+        ):
+            batch_size = self.optimizer.fit_args["batch_size"]
+            n = next(iter(x.values())).shape[0]
+            if n is not None and n > 0 and n % batch_size == 0:
+                n_batches = n // batch_size
+
+                def _prebatch(t: tf.Tensor) -> tf.Tensor:
+                    static_tail = t.shape[1:].as_list()
+                    if all(d is not None for d in static_tail):
+                        return tf.reshape(t, [n_batches, batch_size] + static_tail)
+                    return tf.reshape(
+                        t, tf.concat([[n_batches, batch_size], tf.shape(t)[1:]], axis=0)
+                    )
+
+                x_pre = {k: _prebatch(v) for k, v in x.items()}
+                y_pre = {k: _prebatch(v) for k, v in y.items()}
+                return tf.data.Dataset.from_tensor_slices((x_pre, y_pre))
+
         tf_dataset = tf.data.Dataset.from_tensor_slices((x, y))
 
         if "steps_per_epoch" in self.optimizer.fit_args:
@@ -640,18 +745,38 @@ class DeepEnsemble(
                 callback.set_model(self.model)
             elif callback.model:
                 model_json, weights = callback.model
-                model = tf_keras.models.model_from_json(
+                use_tensorflow_keras = self._model._vectorized_uses_tensorflow_keras
+                keras_models = tf.keras.models if use_tensorflow_keras else tf_keras.models
+                model = keras_models.model_from_json(
                     model_json,
-                    custom_objects={"MultivariateNormalTriL": MultivariateNormalTriL},
+                    custom_objects=keras_ensemble_custom_objects(
+                        use_tensorflow_keras=use_tensorflow_keras
+                    ),
                 )
                 model.set_weights(weights)
                 callback.set_model(model)
 
         # Recompile the model
+        base_loss = (
+            self.optimizer.loss if self.optimizer.loss is not None else negative_log_likelihood
+        )
+        n_outputs = len(self._model.model.outputs)
+        if n_outputs == 1:
+            compile_loss = aggregate_member_losses(base_loss)
+        else:
+            compile_loss = [base_loss] * self._model.ensemble_size  # type: ignore
+        compile_args = getattr(self, "_compile_args", {})
+        compile_metrics = compile_metrics_for_ensemble(
+            n_outputs,
+            self.optimizer.metrics,
+            self._model.ensemble_size,
+            compile_args=compile_args,
+        )
         self.model.compile(
             self.optimizer.optimizer,
-            loss=[self.optimizer.loss] * self._model.ensemble_size,
-            metrics=[self.optimizer.metrics] * self._model.ensemble_size,
+            loss=compile_loss,
+            metrics=compile_metrics,
+            **compile_args,
         )
 
         # recover optimization result if necessary (and possible)

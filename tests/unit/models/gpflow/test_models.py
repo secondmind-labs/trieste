@@ -366,6 +366,7 @@ def test_gpflow_models_cached_predictions_correct(
     npt.assert_allclose(cached_yvar - model.get_observation_noise(), cached_fvar, atol=5e-5)
 
 
+@pytest.mark.slow
 @random_seed
 def test_gpflow_models_cached_predictions_faster(
     gpflow_interface_factory: ModelFactoryType,

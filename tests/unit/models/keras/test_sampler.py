@@ -403,7 +403,8 @@ def test_ensemble_trajectory_sampler_update_trajectory_updates_and_doesnt_retrac
 @random_seed
 def test_ensemble_trajectory_sampler_trajectory_on_subsets_same_as_set(diversify: bool) -> None:
     """
-    We check if the trajectory called on a set of data is the same as calling it on subsets.
+    We check if the trajectory called on a set of data is the same as calling it on subsets,
+    up to floating-point tolerance when batching ``N`` differently.
     """
     x_train = 10 * tf.random.uniform([10000, 1])  # [N, d]
     train_data = Dataset(x_train, quadratic(x_train))
@@ -423,7 +424,13 @@ def test_ensemble_trajectory_sampler_trajectory_on_subsets_same_as_set(diversify
     eval_2 = trajectory(test_data[100:200, :])
     eval_3 = trajectory(test_data[200:300, :])
 
-    npt.assert_allclose(eval_all, tf.concat([eval_1, eval_2, eval_3], axis=0), rtol=1e-5)
+    # Vectorized batched inference can differ slightly by total batch size (float32 order).
+    npt.assert_allclose(
+        eval_all,
+        tf.concat([eval_1, eval_2, eval_3], axis=0),
+        rtol=1e-5,
+        atol=1e-6,
+    )
 
 
 @random_seed
