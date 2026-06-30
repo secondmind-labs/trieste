@@ -16,16 +16,30 @@ from __future__ import annotations
 
 import operator
 from abc import ABC, abstractmethod
+from collections import Counter
+from dataclasses import dataclass, field
 from functools import reduce
 from itertools import chain
-from typing import Callable, Optional, Sequence, Tuple, TypeVar, Union, overload
+from itertools import product as itertools_product
+from typing import (
+    Callable,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    TypeVar,
+    Union,
+    overload,
+)
 
+import gpflow.kernels
 import numpy as np
 import scipy.optimize as spo
 import tensorflow as tf
 import tensorflow_probability as tfp
 from check_shapes import check_shapes
 from gpflow.keras import tf_keras
+from gpflow.kernels import ActivityCondition
 from typing_extensions import Protocol, runtime_checkable
 
 from .types import TensorType
@@ -205,6 +219,53 @@ Constraint = Union[LinearConstraint, NonlinearConstraint]
 """ Type alias for constraints. """
 
 
+def _embed_constraint(
+    constraint: Constraint, offset: int, part_dim: int, combined_dim: int
+) -> Constraint:
+    """Re-express a constraint defined on a ``part_dim``-wide sub-vector so it applies to a wider
+    ``combined_dim``-wide flat vector, with the sub-vector occupying columns
+    ``[offset, offset + part_dim)`` and all other columns ignored.
+
+    Used to carry a search space's (positional) constraints through a Cartesian product, where the
+    space's columns are relocated to a contiguous block of the combined flat vector.
+
+    :param constraint: A :class:`LinearConstraint` or :class:`NonlinearConstraint` over the
+        ``part_dim``-wide sub-vector.
+    :param offset: Index of the sub-vector's first column in the combined vector.
+    :param part_dim: Width of the sub-vector the constraint was defined on.
+    :param combined_dim: Width of the combined vector.
+    :return: An equivalent constraint over the combined vector.
+    :raises NotImplementedError: For an unsupported constraint type.
+    """
+    if isinstance(constraint, LinearConstraint):
+        A = tf.convert_to_tensor(constraint.A)
+        if int(A.shape[-1]) != part_dim:
+            raise ValueError(
+                f"LinearConstraint matrix A has {int(A.shape[-1])} columns but the space it "
+                f"constrains has dimension {part_dim}; global constraints must span the full "
+                f"flat vector."
+            )
+        padded = tf.pad(A, [[0, 0], [offset, combined_dim - offset - part_dim]])
+        return LinearConstraint(padded, constraint.lb, constraint.ub, constraint.keep_feasible)
+    if isinstance(constraint, NonlinearConstraint):
+        orig_fun = constraint._orig_fun
+
+        def shifted_fun(
+            x: TensorType,
+            _fun: Callable[[TensorType], TensorType] = orig_fun,
+            _o: int = offset,
+            _w: int = part_dim,
+        ) -> TensorType:
+            return _fun(x[..., _o : _o + _w])
+
+        return NonlinearConstraint(
+            shifted_fun, constraint.lb, constraint.ub, constraint.keep_feasible
+        )
+    raise NotImplementedError(
+        f"Cannot embed constraint of type {type(constraint).__name__} into a wider space."
+    )
+
+
 class SearchSpace(ABC):
     """
     A :class:`SearchSpace` represents the domain over which an objective function is optimized.
@@ -288,6 +349,9 @@ class SearchSpace(ABC):
         """
         :param other: A search space of the same type as this search space.
         :return: The Cartesian product of this search space with the ``other``.
+            Subclasses that do not support a same-type product should raise
+            :exc:`NotImplementedError`; :meth:`__mul__` then falls back to a
+            :class:`TaggedProductSearchSpace`.
         """
 
     @overload
@@ -306,12 +370,17 @@ class SearchSpace(ABC):
         """
         :param other: A search space.
         :return: The Cartesian product of this search space with the ``other``.
-            If both spaces are of the same type then this calls the :meth:`product` method.
+            If both spaces are of the same type (and have no constraints)
+            then this calls the :meth:`product` method.
             Otherwise, it generates a :class:`TaggedProductSearchSpace`.
         """
         # If the search space has any constraints, always return a tagged product search space.
         if not self.has_constraints and not other.has_constraints and isinstance(other, type(self)):
-            return self.product(other)
+            try:
+                return self.product(other)
+            except NotImplementedError:
+                # Subclass opts out of a same-type product; fall back to a tagged product.
+                pass
         return TaggedProductSearchSpace((self, other))
 
     def __pow__(self: SearchSpaceType, other: int) -> SearchSpaceType:
@@ -504,6 +573,39 @@ class DiscreteSearchSpace(GeneralDiscreteSearchSpace):
         if not isinstance(other, DiscreteSearchSpace):
             return NotImplemented
         return bool(tf.reduce_all(tf.sort(self.points, 0) == tf.sort(other.points, 0)))
+
+
+class BooleanSearchSpace(DiscreteSearchSpace):
+    r"""
+    A 1-D :class:`DiscreteSearchSpace` restricted to :math:`\{0, 1\}`, representing a single
+    Boolean indicator variable from the GDP formulation. Provides a distinct type for
+    dispatch in validation and downstream consumers (e.g. GA bitflip mutation, kernel
+    active/inactive checks).
+
+    Example:
+
+        >>> space = BooleanSearchSpace()
+        >>> assert space.dimension == 1
+        >>> assert tf.constant([0.0], dtype=tf.float64) in space
+        >>> assert tf.constant([1.0], dtype=tf.float64) in space
+        >>> assert tf.constant([2.0], dtype=tf.float64) not in space
+
+    """
+
+    def __init__(self, dtype: tf.DType = DEFAULT_DTYPE) -> None:
+        """
+        :param dtype: The dtype of the points. Defaults to :data:`DEFAULT_DTYPE`.
+        """
+        super().__init__(points=tf.constant([[0], [1]], dtype=dtype))
+
+    def __repr__(self) -> str:
+        """"""
+        return f"BooleanSearchSpace({self.points.dtype!r})"
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BooleanSearchSpace):
+            return NotImplemented
+        return self.points.dtype == other.points.dtype
 
 
 @runtime_checkable
@@ -1412,6 +1514,792 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
             return tf.concat(components, axis=-1)
 
         return encoder
+
+
+def _reject_duplicate_tags(seq_name: str, tags: Sequence[str]) -> None:
+    """Raise ``ValueError`` if ``tags`` contains duplicates (shared by the hierarchy helper and
+    :class:`HierarchicalSearchSpace`)."""
+    duplicates = sorted(t for t, count in Counter(tags).items() if count > 1)
+    if duplicates:
+        raise ValueError(f"`{seq_name}` contains duplicate tags: {duplicates}.")
+
+
+def _build_tag_to_columns_map(tag_sizes: Sequence[tuple[str, int]]) -> dict[str, list[int]]:
+    """Lay tags out in order along the flat vector, each occupying ``size`` consecutive columns.
+
+    :param tag_sizes: ``(tag, dimension)`` pairs in flat-vector order.
+    :return: a mapping from tag to its flat-vector column indices.
+    """
+    tag_to_columns: dict[str, list[int]] = {}
+    cursor = 0
+    for tag, size in tag_sizes:
+        tag_to_columns[tag] = list(range(cursor, cursor + size))
+        cursor += size
+    return tag_to_columns
+
+
+@dataclass(frozen=True)
+class HierarchyNode:
+    """Tag-based specification of one node in a :class:`HierarchicalSearchSpace` hierarchy.
+
+    A node owns a set of non-indicator (feature) subspaces, referenced by tag, and is active
+    only when its gating indicators take the required values (also by tag). References are by
+    tag; the owning :class:`HierarchicalSearchSpace` resolves them to the flat-vector column
+    layout (and to a :class:`gpflow.kernels.HierarchyNode`) internally, so ``subspaces`` is
+    supplied once -- to the space -- rather than to every node.
+
+    :param name: Human-readable label for the node (also the kernel-association identifier).
+    :param subspace_tags: Tags of the non-indicator subspaces owned by this node. Each must be a
+        key of the space's ``subspaces`` and define numerical bounds (e.g. a :class:`Box`). Must
+        be non-empty and contain no duplicates.
+    :param activity_condition_tags: ``{indicator_tag: required_value}`` gating this node; empty
+        (the default) means the node is unconditionally active.
+    """
+
+    name: str
+    subspace_tags: Sequence[str]
+    activity_condition_tags: Mapping[str, int] = field(default_factory=dict)
+
+
+def _resolve_node(
+    node: HierarchyNode,
+    subspaces: Mapping[str, SearchSpace],
+    tag_to_columns: Mapping[str, Sequence[int]],
+) -> gpflow.kernels.HierarchyNode:
+    """Resolve a tag-based :class:`HierarchyNode` to the gpflow column-based node.
+
+    The GPflow type is keyed on integer column indices (``feature_dims``) and an
+    :class:`ActivityCondition` whose keys are also flat-vector columns, in the layout given by
+    ``tag_to_columns`` (one column per dimension of each subspace, in ``subspaces`` order).
+    Values are coerced to ``int`` so K-ary categorical category indices survive without
+    bool-coercion. GPflow performs node-local validation downstream.
+    """
+    if not node.subspace_tags:
+        raise ValueError(
+            f"node '{node.name}': `subspace_tags` must be non-empty; every node must own at "
+            f"least one (feature) subspace."
+        )
+    _reject_duplicate_tags(f"node '{node.name}' subspace_tags", node.subspace_tags)
+
+    feature_dims: list[int] = []
+    bounds_rows: list[tuple[float, float]] = []
+    for stag in node.subspace_tags:
+        if stag not in tag_to_columns:
+            raise ValueError(
+                f"subspace_tag '{stag}' is not a key of `subspaces` {list(tag_to_columns)}."
+            )
+        sub = subspaces[stag]
+        # Non-indicator subspaces are encoded as (lower, upper) feature bounds, so they must
+        # expose numerical bounds. Box and the discrete spaces qualify; categorical subspaces
+        # (``has_bounds`` is False) are rejected here with a clear message.
+        if not sub.has_bounds:
+            raise ValueError(
+                f"subspace_tag '{stag}' refers to a {type(sub).__name__} without numerical "
+                f"bounds; non-indicator subspaces must define bounds (e.g. a Box or a discrete "
+                f"space)."
+            )
+        lower = tf.cast(sub.lower, dtype=tf.float64).numpy().tolist()
+        upper = tf.cast(sub.upper, dtype=tf.float64).numpy().tolist()
+        for col, lo, hi in zip(tag_to_columns[stag], lower, upper):
+            feature_dims.append(col)
+            bounds_rows.append((float(lo), float(hi)))
+
+    requirements: dict[int, int] = {}
+    for ind_tag, required in node.activity_condition_tags.items():
+        if ind_tag not in tag_to_columns:
+            raise ValueError(
+                f"activity_condition_tags key '{ind_tag}' is not a key of `subspaces` "
+                f"{list(tag_to_columns)}."
+            )
+        if len(tag_to_columns[ind_tag]) != 1:
+            raise ValueError(
+                f"Indicator '{ind_tag}' must be 1-dimensional, got "
+                f"{len(tag_to_columns[ind_tag])} columns."
+            )
+        requirements[tag_to_columns[ind_tag][0]] = int(required)
+
+    return gpflow.kernels.HierarchyNode(
+        name=node.name,
+        feature_dims=feature_dims,
+        feature_bounds=tf.constant(bounds_rows, dtype=tf.float64),
+        activity_condition=ActivityCondition(requirements=requirements),
+    )
+
+
+INACTIVE_CONSTRAINT_RESIDUAL: float = 1e10
+"""Large positive residual returned for an inactive :class:`ConditionalConstraint`, so the
+point is trivially feasible with respect to that constraint. This is inspired by the "big-M"
+MI(N)LP reformulation of a generalized disjunctive program: allocating feasible-with-huge-
+margin on the inactive branch."""
+
+
+@dataclass(frozen=True)
+class ConditionalConstraint:
+    r"""A disjunctive constraint :math:`h(x) \leq 0` enforced only when a set of indicator
+    variables take specified values.
+
+    When the ``indicator_conditions`` all hold for a point, the wrapped ``constraint`` is
+    evaluated on the slice of that point identified by ``active_subspace_tags`` (concatenated in
+    the given order). When they do not hold, the residual is set to
+    :data:`INACTIVE_CONSTRAINT_RESIDUAL`, making the point feasible with respect to this
+    constraint. References are by tag, so a conditional constraint survives
+    :meth:`HierarchicalSearchSpace.product` unchanged.
+
+    :param constraint: The underlying :class:`LinearConstraint` / :class:`NonlinearConstraint`,
+        defined on the concatenated ``active_subspace_tags`` slice.
+    :param indicator_conditions: ``{indicator_tag: required_value}`` gating the constraint.
+    :param active_subspace_tags: Non-indicator subspace tags whose columns the constraint reads.
+    """
+
+    constraint: Constraint
+    indicator_conditions: Mapping[str, int]
+    active_subspace_tags: Sequence[str]
+
+    def residual(self, points: TensorType, space: HierarchicalSearchSpace) -> TensorType:
+        """Constraint residuals, big-M where the indicator conditions are not met.
+
+        :param points: Points in the flat-vector representation, shape ``[..., D]``.
+        :param space: The owning :class:`HierarchicalSearchSpace` (provides tag slicing).
+        :return: Residuals with shape ``[..., C]`` matching the wrapped constraint.
+        """
+        active = tf.ones(tf.shape(points)[:-1], dtype=tf.bool)
+        for ind_tag, required in self.indicator_conditions.items():
+            ind_vals = space.get_subspace_component(ind_tag, points)  # [..., 1]
+            target = tf.cast(int(required), ind_vals.dtype)
+            active = active & (tf.abs(ind_vals[..., 0] - target) < 0.5)
+
+        sub_points = tf.concat(
+            [space.get_subspace_component(tag, points) for tag in self.active_subspace_tags],
+            axis=-1,
+        )
+        real_residual = self.constraint.residual(sub_points)  # [..., C]
+        inactive_residual = tf.fill(
+            tf.shape(real_residual),
+            tf.constant(INACTIVE_CONSTRAINT_RESIDUAL, dtype=real_residual.dtype),
+        )
+        mask = tf.broadcast_to(active[..., None], tf.shape(real_residual))
+        return tf.where(mask, real_residual, inactive_residual)
+
+
+@dataclass(frozen=True)
+class LogicalProposition:
+    r"""A feasibility constraint on the indicator variables alone, :math:`\Omega(Y)`.
+
+    ``fun`` receives ``{indicator_tag: values}`` where each value has shape ``[..., 1]`` (values
+    in the indicator's permitted set) and must return a boolean tensor of shape ``[...]``.
+    Logical propositions are checked by :meth:`HierarchicalSearchSpace.is_feasible` but are
+    **not** included in :meth:`HierarchicalSearchSpace.constraints_residuals`, as they have no
+    useful gradient for continuous optimizers. They reference indicators by tag, so they survive
+    :meth:`HierarchicalSearchSpace.product` unchanged.
+
+    :param fun: Maps ``{indicator_tag: [..., 1]}`` to a boolean feasibility tensor ``[...]``.
+    :param name: Optional human-readable label.
+    """
+
+    fun: Callable[[Mapping[str, TensorType]], TensorType]
+    name: str = ""
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}(name={self.name!r})"
+
+
+class HierarchicalSearchSpace(CollectionSearchSpace):
+    r"""
+    A :class:`SearchSpace` that extends :class:`CollectionSearchSpace` with a hierarchy
+    specification describing conditional activation of subspaces.
+
+    The hierarchy is described by a sequence of tag-based :class:`HierarchyNode`
+    objects (each owning ``subspace_tags`` and gated by ``activity_condition_tags``); the
+    space resolves them to gpflow's column-based representation internally (see
+    :meth:`to_gpflow_hierarchy`). Variables fall into three roles:
+
+    - **Indicators** (:class:`BooleanSearchSpace` or dimension-1
+      :class:`CategoricalSearchSpace`), inferred by role as the subspaces referenced
+      as ``activity_condition_tags`` keys in the hierarchy.
+      Boolean indicators take values in :math:`\{0, 1\}`, ``K``-ary categorical
+      indicators in :math:`\{0, \ldots, K-1\}`. Indicators are always
+      unconditional; they must not appear in any node's ``subspace_tags``.
+    - **Unconditional variables** owned by a node with empty
+      ``activity_condition_tags``. Always active.
+    - **Conditional variables** owned by a node with non-empty
+      ``activity_condition_tags``. Active only when the referenced
+      indicators take the required values.
+
+    Points are represented as flat vectors concatenated in the iteration order
+    of ``subspaces`` (a ``dict`` preserves insertion order in Python 3.7+), the
+    same convention as :class:`TaggedProductSearchSpace`.
+
+    .. note::
+        ``sample`` and ``contains`` operate on the full flat vector and do **not**
+        enforce "active-branch" semantics: every subspace always contributes its
+        columns regardless of the indicator values, and inactive-branch columns are
+        neither masked nor ignored. This matches the flat-vector convention expected
+        by the hierarchical GP kernel, which reads the indicator columns itself to
+        decide which features are active.
+
+    .. note::
+        Non-indicator subspaces must define numerical bounds (e.g. :class:`Box`).
+        Categorical (non-indicator) subspaces are not supported, since the hierarchy
+        encodes each non-indicator dimension as a ``(lower, upper)`` bound and there
+        is no one-hot handling here; constructing such a space raises ``ValueError``.
+
+    Example::
+
+        subspaces = {
+            "x1": Box([0.0], [1.0]),
+            "y1": BooleanSearchSpace(),
+            "x2": Box([0.0], [5.0]),
+            "x4": Box([-2.0], [2.0]),
+            "x3": Box([-1.0], [1.0]),
+        }
+        hierarchy = [
+            HierarchyNode("shared", subspace_tags=["x1"]),
+            HierarchyNode("branch_A", subspace_tags=["x2", "x4"],
+                          activity_condition_tags={"y1": 1}),
+            HierarchyNode("branch_B", subspace_tags=["x3"],
+                          activity_condition_tags={"y1": 0}),
+        ]
+        space = HierarchicalSearchSpace(subspaces, hierarchy)
+    """
+
+    def __init__(
+        self,
+        subspaces: Mapping[str, SearchSpace],
+        hierarchy: Sequence[HierarchyNode],
+        constraints: Optional[Sequence[Constraint]] = None,
+        conditional_constraints: Sequence[ConditionalConstraint] = (),
+        logical_propositions: Sequence[LogicalProposition] = (),
+        ctol: float | TensorType = 1e-7,
+    ) -> None:
+        """
+        :param subspaces: Tag-keyed mapping of subspaces; iteration order
+            defines the flat-vector layout.
+        :param hierarchy: A sequence of tag-based :class:`HierarchyNode` objects
+            defining the conditional structure. Every non-indicator subspace tag
+            must appear in at least one node's ``subspace_tags``. Indicators are
+            inferred by role: a subspace referenced as an ``activity_condition_tags``
+            key is an indicator and must be a :class:`BooleanSearchSpace` or a
+            dimension-1 :class:`CategoricalSearchSpace`.
+        :param constraints: Optional explicit (global) constraints enforced on the
+            full flat-vector representation, following the same ``constraints``
+            contract as :class:`Box`. Consumed by :meth:`constraints_residuals`
+            and :meth:`is_feasible`, so a constrained space plugs into the usual
+            Bayesian optimization machinery unchanged.
+        :param conditional_constraints: Disjunctive constraints, each enforced only
+            when its indicator conditions hold (see :class:`ConditionalConstraint`);
+            inactive rows contribute :data:`INACTIVE_CONSTRAINT_RESIDUAL`.
+        :param logical_propositions: Indicator-only feasibility constraints (see
+            :class:`LogicalProposition`); applied in :meth:`is_feasible` but excluded
+            from :meth:`constraints_residuals` (no continuous gradient).
+        :param ctol: Tolerance used by :meth:`is_feasible` when checking that
+            residuals are non-negative.
+        :raises ValueError: If any validation rule is violated.
+        """
+        subspaces = dict(subspaces)  # decouple from caller, preserve order
+        super().__init__(list(subspaces.values()), list(subspaces.keys()))
+        self._hierarchy = tuple(hierarchy)
+        self._indicator_value_sets: dict[str, tuple[int, ...]] = {}
+        self._constraints: Sequence[Constraint] = [] if constraints is None else list(constraints)
+        self._conditional_constraints: tuple[ConditionalConstraint, ...] = tuple(
+            conditional_constraints
+        )
+        self._logical_propositions: tuple[LogicalProposition, ...] = tuple(logical_propositions)
+        self._ctol = ctol
+
+        subspace_sizes = self.subspace_dimension
+        self._subspace_sizes_by_tag: dict[str, TensorType] = dict(zip(self._tags, subspace_sizes))
+        self._subspace_starting_indices: dict[str, TensorType] = dict(
+            zip(self._tags, tf.cumsum(subspace_sizes, exclusive=True))
+        )
+        self._dimension = tf.cast(tf.reduce_sum(subspace_sizes), dtype=tf.int32)
+
+        # Pre-compute a flat tag -> [column indices] map and its inverse
+        # (column index -> owning tag) for resolving tag-based nodes and for the
+        # activity/query methods.
+        self._tag_to_columns = _build_tag_to_columns_map(
+            [(tag, int(self._subspace_sizes_by_tag[tag])) for tag in self._tags]
+        )
+        self._column_to_tag = {
+            col: tag for tag, cols in self._tag_to_columns.items() for col in cols
+        }
+        self._total_columns = sum(len(cols) for cols in self._tag_to_columns.values())
+
+        # Resolve the tag-based nodes to gpflow's column-based representation, used by the
+        # kernel (:meth:`to_gpflow_hierarchy`) and by column-level validation. ``subspaces``
+        # is needed only here.
+        self._gpflow_hierarchy: tuple[gpflow.kernels.HierarchyNode, ...] = tuple(
+            _resolve_node(node, subspaces, self._tag_to_columns) for node in self._hierarchy
+        )
+
+        # Infer the indicator tags by role: an indicator is a subspace referenced as an
+        # ``activity_condition`` key somewhere in the hierarchy (kept in subspace order).
+        referenced_tags = {tag for node in self._hierarchy for tag in node.activity_condition_tags}
+        self._indicator_tags = tuple(tag for tag in self._tags if tag in referenced_tags)
+
+        self._validate()
+
+    def _validate(self) -> None:
+        # Node-shape and tag-existence checks already ran during resolution to the gpflow
+        # representation (see ``_resolve_node``): every ``subspace_tags`` / ``activity_condition``
+        # key exists, is bounded where required, and indicators are single-column. This method
+        # adds the space-level semantics. Indicators are inferred (by role) from the unique
+        # subspace tags, so they cannot be duplicated or unknown.
+
+        # Indicators must reference a BooleanSearchSpace or a 1-D CategoricalSearchSpace;
+        # record each indicator's permitted value set.
+        for itag in self._indicator_tags:
+            sub = self.get_subspace(itag)
+            if isinstance(sub, BooleanSearchSpace):
+                self._indicator_value_sets[itag] = (0, 1)
+            elif isinstance(sub, CategoricalSearchSpace):
+                if len(sub.tags) != 1:
+                    raise ValueError(
+                        f"Indicator tag '{itag}' must reference a dimension-1 "
+                        f"CategoricalSearchSpace, got a categorical of dimension "
+                        f"{len(sub.tags)}."
+                    )
+                self._indicator_value_sets[itag] = tuple(range(len(sub.tags[0])))
+            else:
+                raise ValueError(
+                    f"Indicator tag '{itag}' must reference a BooleanSearchSpace or a "
+                    f"dimension-1 CategoricalSearchSpace, got {type(sub).__name__}."
+                )
+
+        # Non-indicator subspaces must expose numerical bounds: the hierarchy
+        # encodes each as a (lower, upper) ``feature_bounds`` row, which requires
+        # ``lower``/``upper`` to be defined. Categorical (non-indicator) subspaces
+        # have no numerical bounds (``has_bounds`` is False) and no one-hot
+        # handling here, so reject them with a clear error rather than letting
+        # ``sub.lower``/``sub.upper`` raise an opaque ``AttributeError`` later.
+        for ntag in self.non_indicator_tags:
+            if not self.get_subspace(ntag).has_bounds:
+                raise ValueError(
+                    f"Non-indicator subspace '{ntag}' "
+                    f"({type(self.get_subspace(ntag)).__name__}) has no numerical "
+                    f"bounds and is not supported in a HierarchicalSearchSpace. "
+                    f"Non-indicator subspaces must define numerical bounds (e.g. Box)."
+                )
+
+        all_tags = set(self.subspace_tags)
+        indicator_set = set(self._indicator_tags)
+        for node in self._hierarchy:
+            # A tag cannot be both an owned feature and an indicator.
+            owned_indicators = [t for t in node.subspace_tags if t in indicator_set]
+            if owned_indicators:
+                raise ValueError(
+                    f"HierarchyNode '{node.name}' lists indicator tag(s) {owned_indicators} in "
+                    f"`subspace_tags`; an indicator cannot be owned as a feature."
+                )
+            # Each required value must be in the gating indicator's permitted set.
+            for ind_tag, required in node.activity_condition_tags.items():
+                permitted = self._indicator_value_sets[ind_tag]
+                if int(required) not in permitted:
+                    raise ValueError(
+                        f"HierarchyNode '{node.name}' requires value {required!r} for indicator "
+                        f"'{ind_tag}', which is not in its permitted set {list(permitted)}."
+                    )
+
+        # Every non-indicator subspace must be owned by some node.
+        covered = {tag for node in self._hierarchy for tag in node.subspace_tags}
+        orphans = sorted(set(self.non_indicator_tags) - covered)
+        if orphans:
+            raise ValueError(
+                f"Non-indicator subspace tags {orphans} are orphaned: they do not appear in "
+                f"any HierarchyNode.subspace_tags."
+            )
+
+        # Conditional constraints: indicator conditions must reference declared indicators
+        # with permitted values, and active_subspace_tags must be existing non-indicators.
+        for i, cc in enumerate(self._conditional_constraints):
+            for ind_tag, required in cc.indicator_conditions.items():
+                if ind_tag not in indicator_set:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] references indicator '{ind_tag}', "
+                        f"which is not a declared indicator tag {sorted(indicator_set)}."
+                    )
+                permitted = self._indicator_value_sets[ind_tag]
+                if int(required) not in permitted:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] requires indicator '{ind_tag}' = "
+                        f"{required!r}, which is not in its permitted set {list(permitted)}."
+                    )
+            for tag in cc.active_subspace_tags:
+                if tag not in all_tags:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] active_subspace_tag '{tag}' is not a "
+                        f"key of `subspaces` {sorted(all_tags)}."
+                    )
+                if tag in indicator_set:
+                    raise ValueError(
+                        f"conditional_constraints[{i}] active_subspace_tag '{tag}' is an "
+                        f"indicator; constraints operate on the non-indicator slice only."
+                    )
+
+    def __eq__(self, other: object) -> bool:
+        """
+        :param other: A search space.
+        :return: Whether the search space is identical to this one, including its
+            hierarchy and indicator tags (the base-class comparison only covers the
+            subspaces and their tags).
+        """
+        if not isinstance(other, HierarchicalSearchSpace):
+            return NotImplemented
+        if not super().__eq__(other):
+            return False
+        return (
+            self._indicator_tags == other._indicator_tags
+            and self._constraints == other._constraints
+            and self._conditional_constraints == other._conditional_constraints
+            and self._logical_propositions == other._logical_propositions
+            and self._hierarchy == other._hierarchy
+        )
+
+    def __repr__(self) -> str:
+        return (
+            f"{self.__class__.__name__}("
+            f"spaces={[self.get_subspace(tag) for tag in self.subspace_tags]}, "
+            f"tags={list(self.subspace_tags)}, "
+            f"hierarchy={list(self._hierarchy)}, "
+            f"indicator_tags={list(self._indicator_tags)}, "
+            f"constraints={self._constraints!r}, "
+            f"conditional_constraints={self._conditional_constraints!r}, "
+            f"logical_propositions={self._logical_propositions!r}, "
+            f"ctol={self._ctol!r})"
+        )
+
+    @property
+    def hierarchy(self) -> tuple[HierarchyNode, ...]:
+        """The tag-based hierarchy specification (the :class:`HierarchyNode`\\ s as supplied)."""
+        return self._hierarchy
+
+    def to_gpflow_hierarchy(self) -> list[gpflow.kernels.HierarchyNode]:
+        """The hierarchy resolved to gpflow's column-based
+        :class:`gpflow.kernels.HierarchyNode`\\ s, ready to build a hierarchical kernel, e.g.
+        ``ArcHierarchical(space.to_gpflow_hierarchy(), active_dims=...)``."""
+        return list(self._gpflow_hierarchy)
+
+    @property
+    def indicator_tags(self) -> tuple[str, ...]:
+        """The declared indicator tags (Boolean or categorical)."""
+        return self._indicator_tags
+
+    @property
+    def indicator_dims(self) -> list[int]:
+        """Flat-vector column indices corresponding to ``indicator_tags``, in declared order.
+
+        These are the columns referenced by the keys of each node's
+        ``activity_condition.requirements`` (gpflow's convention). Each indicator
+        subspace contributes exactly one column (dimension 1).
+        """
+        return [self._tag_to_columns[t][0] for t in self._indicator_tags]
+
+    @property
+    def indicator_value_sets(self) -> dict[str, tuple[int, ...]]:
+        """The permitted integer-valued set for each indicator tag, as built during
+        validation. ``(0, 1)`` for a :class:`BooleanSearchSpace` indicator and
+        ``(0, ..., K-1)`` for a ``K``-ary :class:`CategoricalSearchSpace` indicator."""
+        return dict(self._indicator_value_sets)
+
+    @property
+    def non_indicator_tags(self) -> tuple[str, ...]:
+        """All subspace tags that are not indicators, in tag order."""
+        indicator_set = set(self._indicator_tags)
+        return tuple(t for t in self.subspace_tags if t not in indicator_set)
+
+    @property
+    def constraints(self) -> Sequence[Constraint]:
+        """The explicit (global) constraints enforced on the full flat-vector representation."""
+        return self._constraints
+
+    @property
+    def ctol(self) -> float | TensorType:
+        """The tolerance applied when checking the explicit constraints."""
+        return self._ctol
+
+    @property
+    def conditional_constraints(self) -> tuple[ConditionalConstraint, ...]:
+        """The disjunctive constraints gated by indicator conditions."""
+        return self._conditional_constraints
+
+    @property
+    def logical_propositions(self) -> tuple[LogicalProposition, ...]:
+        """The indicator-only feasibility constraints."""
+        return self._logical_propositions
+
+    @property
+    def has_constraints(self) -> bool:
+        """``True`` if any global, conditional, or logical constraints are present."""
+        return bool(
+            self._constraints or self._conditional_constraints or self._logical_propositions
+        )
+
+    def constraints_residuals(self, points: TensorType) -> TensorType:
+        """
+        Return residuals for all global and conditional constraints in this search space.
+        Global constraints are evaluated on the full flat vector; conditional constraints
+        return :data:`INACTIVE_CONSTRAINT_RESIDUAL` on rows where their indicator conditions
+        do not hold. Logical propositions are excluded (no continuous gradient); use
+        :meth:`is_feasible` to account for them.
+
+        :param points: The points to get the residuals for, with shape ``[..., D]``.
+        :return: A tensor of all the residuals with shape ``[..., C]``, where ``C`` is the
+            total number of constraint residual columns.
+        :raise NotImplementedError: If this search space has no global or conditional
+            constraints.
+        """
+        residuals = [constraint.residual(points) for constraint in self._constraints]
+        residuals += [cc.residual(points, self) for cc in self._conditional_constraints]
+        if not residuals:
+            raise NotImplementedError(
+                "No constraints to compute residuals for in this search space."
+            )
+        return tf.concat(residuals, axis=-1)
+
+    def is_feasible(self, points: TensorType) -> TensorType:
+        """
+        Check whether points satisfy all constraints of this search space — global and
+        conditional (via residuals) and logical propositions. Note that membership of the space
+        (the conditional activity structure) is not checked here.
+
+        :param points: The points to check, with shape ``[..., D]``.
+        :return: A boolean tensor of shape ``[...]``, ``True`` where the point is feasible.
+        """
+        if self._constraints or self._conditional_constraints:
+            feasible = tf.math.reduce_all(
+                self.constraints_residuals(points) >= -self._ctol, axis=-1
+            )
+        else:
+            feasible = tf.cast(tf.ones(tf.shape(points)[:-1]), dtype=bool)
+
+        if self._logical_propositions:
+            indicator_values = {
+                tag: self.get_subspace_component(tag, points) for tag in self._indicator_tags
+            }
+            for proposition in self._logical_propositions:
+                feasible = tf.logical_and(feasible, proposition.fun(indicator_values))
+
+        return feasible
+
+    @property
+    @check_shapes("return: []")
+    def dimension(self) -> TensorType:
+        """The total number of dimensions across all subspaces."""
+        return self._dimension
+
+    @property
+    @check_shapes("return: [D]")
+    def lower(self) -> TensorType:
+        """The lowest values taken by each dimension, concatenated across subspaces."""
+        lower_for_each = self.subspace_lower
+        return (
+            tf.concat(lower_for_each, axis=-1)
+            if lower_for_each
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
+
+    @property
+    @check_shapes("return: [D]")
+    def upper(self) -> TensorType:
+        """The highest values taken by each dimension, concatenated across subspaces."""
+        upper_for_each = self.subspace_upper
+        return (
+            tf.concat(upper_for_each, axis=-1)
+            if upper_for_each
+            else tf.constant([], dtype=DEFAULT_DTYPE)
+        )
+
+    @check_shapes("return: [num_samples, D]")
+    def sample(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """Sample from the space by sampling each subspace and concatenating.
+
+        Every subspace is sampled and contributes its columns; this does **not**
+        enforce active-branch semantics (inactive-branch columns are still filled).
+        See the class docstring.
+        """
+        subspace_samples = self.subspace_sample(num_samples, seed)
+        return tf.concat(subspace_samples, -1)
+
+    def _contains(self, value: TensorType) -> TensorType:
+        # Membership requires every subspace component to be in bounds; this does
+        # not enforce active-branch semantics (inactive-branch columns are still
+        # checked against their subspace). See the class docstring.
+        in_each_subspace = [
+            self._spaces[tag].contains(self.get_subspace_component(tag, value))
+            for tag in self._tags
+        ]
+        return tf.reduce_all(in_each_subspace, axis=0)
+
+    def get_subspace_component(self, tag: str, values: TensorType) -> TensorType:
+        """
+        Extract the columns of ``values`` corresponding to a particular subspace.
+
+        :param tag: The subspace tag.
+        :param values: Points from this space, shape ``[N, D]``.
+        :return: The sub-components, shape ``[N, D_sub]``.
+        """
+        start = self._subspace_starting_indices[tag]
+        end = start + self._subspace_sizes_by_tag[tag]
+        return values[..., start:end]
+
+    def _node_subspace_tags(self, node: HierarchyNode) -> list[str]:
+        """The (unique, ordered) non-indicator subspace tags a node owns."""
+        seen: list[str] = []
+        for tag in node.subspace_tags:
+            if tag not in seen:
+                seen.append(tag)
+        return seen
+
+    def active_subspace_tags(self, indicator_config: Mapping[str, int]) -> list[str]:
+        """
+        Return the non-indicator subspace tags that are active for a given indicator
+        configuration.
+
+        :param indicator_config: A mapping ``{indicator_tag: value}`` providing a value for
+            every indicator of this space. Extra keys are ignored.
+        :return: List of active non-indicator subspace tags.
+        :raise ValueError: If ``indicator_config`` omits any indicator.
+        """
+        self._require_complete_config(indicator_config)
+        active: list[str] = []
+        for node in self._hierarchy:
+            if self._node_is_active(node, indicator_config):
+                for stag in self._node_subspace_tags(node):
+                    if stag not in active:
+                        active.append(stag)
+        return active
+
+    def enumerate_tasks(self, feasible_only: bool = False) -> list[dict[str, int]]:
+        """
+        Return indicator configurations as the Cartesian product of each indicator's
+        permitted value set.
+
+        Both Boolean and ``K``-ary categorical indicators contribute the integer values
+        ``[0, 1, ..., K-1]`` (with ``K = 2`` for Boolean indicators); the total number of
+        configurations equals :math:`\\prod_k |\\mathcal{C}_k|`.
+
+        :param feasible_only: By default the full Cartesian product is returned, ignoring any
+            :class:`LogicalProposition`\\ s. When ``True``, configurations that violate any logical
+            proposition are dropped (global/conditional constraints, which involve the continuous
+            variables, are not considered here).
+        :return: A list of ``{indicator_tag: value}`` dictionaries, one per task.
+        """
+        if not self._indicator_tags:
+            return [{}]
+        per_indicator_values: list[Sequence[int]] = [
+            list(self._indicator_value_sets[t]) for t in self._indicator_tags
+        ]
+        tasks = [
+            dict(zip(self._indicator_tags, combo))
+            for combo in itertools_product(*per_indicator_values)
+        ]
+        if feasible_only and self._logical_propositions:
+            # Evaluate the propositions on all configs at once, reusing the ``{tag: [N, 1]}`` input
+            # shape that ``is_feasible`` builds from the flat vector.
+            indicator_values = {
+                tag: tf.constant([[task[tag]] for task in tasks], dtype=DEFAULT_DTYPE)
+                for tag in self._indicator_tags
+            }
+            feasible = tf.ones(len(tasks), dtype=bool)
+            for proposition in self._logical_propositions:
+                feasible = tf.logical_and(feasible, proposition.fun(indicator_values))
+            tasks = [task for task, ok in zip(tasks, feasible.numpy()) if ok]
+        return tasks
+
+    def is_active(self, tag: str, indicator_config: Mapping[str, int]) -> bool:
+        """
+        Check whether a non-indicator subspace is active for a given indicator configuration.
+
+        :param tag: A non-indicator subspace tag.
+        :param indicator_config: A mapping ``{indicator_tag: value}`` providing a value for
+            every indicator of this space. Extra keys are ignored.
+        :return: True if the subspace is active.
+        :raise ValueError: If ``indicator_config`` omits any indicator.
+        """
+        self._require_complete_config(indicator_config)
+        for node in self._hierarchy:
+            if tag in self._node_subspace_tags(node) and self._node_is_active(
+                node, indicator_config
+            ):
+                return True
+        return False
+
+    def node_for_subspace(self, tag: str) -> list[HierarchyNode]:
+        """
+        Return the :class:`HierarchyNode` objects that own the given subspace tag.
+
+        :param tag: A non-indicator subspace tag.
+        :return: List of nodes containing this tag.
+        """
+        return [node for node in self._hierarchy if tag in self._node_subspace_tags(node)]
+
+    def _require_complete_config(self, indicator_config: Mapping[str, int]) -> None:
+        """Reject a partial configuration: ``indicator_config`` must provide a value for every
+        indicator of this space (extra keys are ignored). Catches forgotten or mistyped
+        indicator keys, which would otherwise be silently treated as unsatisfied."""
+        missing = [tag for tag in self._indicator_tags if tag not in indicator_config]
+        if missing:
+            raise ValueError(
+                f"`indicator_config` must provide a value for every indicator "
+                f"{list(self._indicator_tags)}; missing: {missing}."
+            )
+
+    def product(self, other: HierarchicalSearchSpace) -> HierarchicalSearchSpace:
+        """
+        Return a new :class:`HierarchicalSearchSpace` that is the combination of this space and
+        ``other``. Tags in the two spaces must be disjoint. The (tag-based) hierarchy nodes,
+        conditional constraints and logical propositions reference subspaces and indicators by
+        tag, so they compose across the disjoint-tag product unchanged and are simply
+        concatenated; the combined space re-resolves the nodes against the merged column layout.
+        Global (positional) constraints are remapped via :func:`_embed_constraint`: ``self``'s
+        keep columns ``[0, D_self)`` and ``other``'s shift to ``[D_self, D_self + D_other)``.
+        The combined space takes the tighter (minimum) of the two operands' constraint
+        tolerances.
+
+        :param other: Another :class:`HierarchicalSearchSpace`.
+        :return: The combined hierarchical space.
+        :raises ValueError: If the two spaces share any tags.
+        """
+        overlap = set(self.subspace_tags) & set(other.subspace_tags)
+        if overlap:
+            raise ValueError(f"Cannot combine spaces with overlapping tags: {overlap}")
+        combined_subspaces: dict[str, SearchSpace] = {
+            **{tag: self.get_subspace(tag) for tag in self.subspace_tags},
+            **{tag: other.get_subspace(tag) for tag in other.subspace_tags},
+        }
+        offset = int(self.dimension)
+        combined_dim = int(self.dimension) + int(other.dimension)
+        constraints = [
+            _embed_constraint(c, 0, int(self.dimension), combined_dim) for c in self._constraints
+        ] + [
+            _embed_constraint(c, offset, int(other.dimension), combined_dim)
+            for c in other._constraints
+        ]
+        # Tag-based nodes compose unchanged across disjoint tags; the new space re-resolves
+        # them to the merged column layout.
+        hierarchy = list(self.hierarchy) + list(other.hierarchy)
+        conditional_constraints = list(self._conditional_constraints) + list(
+            other._conditional_constraints
+        )
+        logical_propositions = list(self._logical_propositions) + list(other._logical_propositions)
+        return HierarchicalSearchSpace(
+            combined_subspaces,
+            hierarchy,
+            constraints=constraints,
+            conditional_constraints=conditional_constraints,
+            logical_propositions=logical_propositions,
+            ctol=min(self.ctol, other.ctol),
+        )
+
+    def _node_is_active(self, node: HierarchyNode, indicator_config: Mapping[str, int]) -> bool:
+        """Check whether a node's ``activity_condition_tags`` are all satisfied by
+        ``indicator_config`` (both keyed by indicator tag). Uses integer equality so that
+        K-ary categorical indicators are compared exactly rather than via Boolean truthiness.
+        Assumes a complete config (see :meth:`_require_complete_config`, enforced by the public
+        callers)."""
+        for ind_tag, required in node.activity_condition_tags.items():
+            if int(indicator_config[ind_tag]) != int(required):
+                return False
+        return True
 
 
 class TaggedMultiSearchSpace(CollectionSearchSpace):

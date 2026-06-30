@@ -1,0 +1,3 @@
+replace:
+  - { from: "n_bo_steps = \\d+", to: "n_bo_steps = 1" }
+  - { from: "num_candidates = \\d+", to: "num_candidates = 20" }

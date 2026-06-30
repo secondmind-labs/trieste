@@ -32,15 +32,15 @@ setup(
         "trieste": ["py.typed", "VERSION"],
     },
     classifiers=[
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
-    python_requires="~=3.9",
+    python_requires="~=3.10",
     install_requires=[
         "absl-py",
         "dill",
-        "gpflow>=2.9.2",
+        "gpflow>=2.11.1",
         "gpflux>=0.4.4",
         "numpy",
         "tensorflow>=2.5,<2.17; platform_system!='Darwin' or platform_machine!='arm64'",
