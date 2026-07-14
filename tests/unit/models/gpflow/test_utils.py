@@ -18,6 +18,7 @@ import copy
 import operator
 import tempfile
 from typing import cast
+from unittest.mock import patch
 
 import gpflow
 import numpy as np
@@ -330,3 +331,42 @@ def test_check_optimizer_raises_for_invalid_optimizer_wrapper_combination() -> N
     with pytest.raises(ValueError):
         optimizer2 = Optimizer(tf_keras.optimizers.Adam())
         check_optimizer(optimizer2)
+
+
+def test_gaussian_process_usable_with_float32(gpflow_interface_factory: ModelFactoryType) -> None:
+    """
+    Check that we can make float32 copies of float64 models and that predict uses the copied
+    posterior cache rather than performing any float32 Cholesky decompositions.
+    """
+    x = tf.constant(np.arange(5).reshape(-1, 1), dtype=gpflow.default_float())
+    model, _ = gpflow_interface_factory(x, fnc_2sin_x_over_3(x))
+
+    # TODO: move the following function to gpflow.utilities.traversal
+    from gpflow.utilities.traversal import M, _get_leaf_components, deepcopy
+
+    def to_float32(input_module: M) -> M:
+        """
+        Returns a deepcopy of the input tf.Module with all values cast to tf.float32.
+
+        :param input_module: tf.Module or gpflow.Module.
+        :return: Returns a float32 deepcopy of an input object.
+        """
+        objects_to_freeze = _get_leaf_components(input_module)
+        memo_tensors = {id(v): tf.cast(v, dtype=tf.float32) for v in objects_to_freeze.values()}
+        return deepcopy(input_module, memo_tensors)
+
+    # ensure that from the point onwards we don't perform any Cholesky decompositions
+    with patch("tensorflow.linalg.cholesky", side_effect=AssertionError):
+
+        # create a float32 copy of the model, including the computed posterior cache
+        gpr32 = to_float32(model.model)
+        posterior32 = to_float32(model._posterior)
+        model32 = type(model)(gpr32, posterior=posterior32)  # type: ignore[call-arg]
+
+        # check that the predictions match the original float64 model
+        f_mean, f_var = model.predict(x)
+        f_mean32, f_var32 = model32.predict(tf.cast(x, tf.float32))
+        assert f_mean32.dtype is tf.float32
+        npt.assert_allclose(f_mean, f_mean32, rtol=1e-6)
+        assert f_var32.dtype is tf.float32
+        npt.assert_allclose(f_var, f_var32, rtol=1e-6)
