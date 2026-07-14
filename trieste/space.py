@@ -1488,6 +1488,169 @@ class TaggedProductSearchSpace(CollectionSearchSpace, HasOneHotEncoder):
         subspace_samples = self.subspace_sample(num_samples, seed)
         return tf.concat(subspace_samples, -1)
 
+    @check_shapes("return: [num_samples, D]")
+    def sample_parallel(self, num_samples: int, seed: Optional[int] = None) -> TensorType:
+        """
+        High-performance parallel sampling using pure TensorFlow operations.
+
+        Automatically falls back to cached parallel or sequential for unsupported cases.
+        """
+        if num_samples == 0:
+            return tf.zeros((0, self.dimension), dtype=DEFAULT_DTYPE)
+
+        if seed is not None:
+            tf.random.set_seed(seed)
+
+        # Check if all subspaces have the same dimension for parallel execution
+        dimensions = [int(self.get_subspace(tag).dimension) for tag in self.subspace_tags]
+
+        if len(set(dimensions)) == 1:
+            common_dim = dimensions[0]
+            
+            # Pure TensorFlow parallel sampling for maximum performance
+            pure_tf_result = self._try_pure_tf_parallel(num_samples, seed, common_dim)
+            if pure_tf_result is not None:
+                return pure_tf_result
+                
+            # Fallback to cached parallel sampling
+            # TODO: remove as benchmarks reveal it's always slower than sequential due to overhead
+            return self._sample_with_map_fn(num_samples, seed, common_dim)
+        else:
+            # Fall back to sequential sampling
+            return self.sample(num_samples, seed)
+    
+    def _try_pure_tf_parallel(self, num_samples: int, seed: Optional[int], common_dim: int) -> Optional[TensorType]:
+        """
+        Pure TensorFlow parallel sampling - eliminates tf.py_function overhead.
+        
+        Returns None if any subspace types are unsupported, triggering fallback.
+        """
+        
+        subspaces = [self.get_subspace(tag) for tag in self.subspace_tags]
+        
+        # Analyze subspace types and extract parameters
+        box_subspaces = []
+        discrete_subspaces = []
+        subspace_order = []
+        
+        # Track dtypes to ensure consistency
+        box_dtype = None
+        discrete_dtype = None
+        
+        for i, subspace in enumerate(subspaces):
+            if isinstance(subspace, Box):
+                # Check dtype consistency for Box subspaces
+                if box_dtype is None:
+                    box_dtype = subspace.lower.dtype
+                elif box_dtype != subspace.lower.dtype:
+                    # Dtype mismatch - return None for fallback
+                    return None
+                
+                box_subspaces.append({
+                    'lower': subspace.lower,
+                    'upper': subspace.upper,
+                })
+                subspace_order.append(('box', len(box_subspaces) - 1))
+                
+            elif isinstance(subspace, DiscreteSearchSpace):
+                # Check dtype consistency for Discrete subspaces
+                if discrete_dtype is None:
+                    discrete_dtype = subspace.points.dtype
+                elif discrete_dtype != subspace.points.dtype:
+                    # Dtype mismatch - return None for fallback
+                    return None
+                
+                discrete_subspaces.append({
+                    'points': subspace.points,
+                })
+                subspace_order.append(('discrete', len(discrete_subspaces) - 1))
+            else:
+                # Unsupported type - return None for fallback
+                return None
+        
+        # Ensure Box and Discrete dtypes are compatible if both exist
+        if box_dtype is not None and discrete_dtype is not None and box_dtype != discrete_dtype:
+            # Mixed dtypes between Box and Discrete - return None for fallback
+            return None
+        
+        # Determine the common dtype
+        common_dtype = box_dtype if box_dtype is not None else discrete_dtype
+        if common_dtype is None:
+            common_dtype = DEFAULT_DTYPE
+
+        @tf.function
+        def pure_tf_vectorized_sampler(num_samples_tf, base_seed):
+            """Vectorized parallel sampling with pure TensorFlow operations."""
+            result_samples = []
+            
+            # Batch sample all Box subspaces at once (most efficient)
+            if box_subspaces:
+                box_lowers = tf.stack([params['lower'] for params in box_subspaces])
+                box_uppers = tf.stack([params['upper'] for params in box_subspaces])
+                
+                # Vectorized sampling for all boxes using correct dtype
+                box_samples = tf.random.uniform(
+                    (len(box_subspaces), num_samples_tf, common_dim),
+                    minval=tf.expand_dims(box_lowers, 1),
+                    maxval=tf.expand_dims(box_uppers, 1),
+                    dtype=common_dtype,
+                    seed=base_seed
+                )
+                box_samples = tf.transpose(box_samples, perm=[1, 0, 2])  # [num_samples, num_boxes, common_dim]
+            
+            # Handle discrete subspaces with optimized approach
+            discrete_samples = None
+            if discrete_subspaces:
+                discrete_samples_list = []
+                for i, params in enumerate(discrete_subspaces):
+                    num_points = tf.shape(params['points'])[0]
+                    discrete_seed = base_seed + i + len(box_subspaces) if base_seed is not None else None
+                    
+                    # Optimized discrete sampling: sample indices instead
+                    random_indices = tf.random.uniform(
+                        (num_samples_tf,),
+                        minval=0,
+                        maxval=num_points,
+                        dtype=tf.int32,
+                        seed=discrete_seed
+                    )
+                    sample = tf.gather(params['points'], random_indices)
+                    # Ensure discrete samples match common dtype
+                    if sample.dtype != common_dtype:
+                        sample = tf.cast(sample, common_dtype)
+                    discrete_samples_list.append(sample)
+                
+                if discrete_samples_list:
+                    discrete_samples = tf.stack(discrete_samples_list, axis=1)
+            
+            # Reconstruct samples in original subspace order
+            box_idx = 0
+            discrete_idx = 0
+            
+            for subspace_type, type_idx in subspace_order:
+                if subspace_type == 'box':
+                    result_samples.append(box_samples[:, box_idx, :])
+                    box_idx += 1
+                else:  # discrete
+                    result_samples.append(discrete_samples[:, discrete_idx, :])
+                    discrete_idx += 1
+            
+            return tf.concat(result_samples, axis=-1)
+        
+        num_samples_tf = tf.constant(num_samples, dtype=tf.int32)
+        base_seed = seed if seed is not None else None
+        
+        return pure_tf_vectorized_sampler(num_samples_tf, base_seed)
+
+    def _sample_with_map_fn(self, num_samples: int, seed: Optional[int],
+                            common_dim: int) -> TensorType:
+        """Simple sampling approach using compiled parallel sampling with tf.map_fn."""
+        
+        subspaces = [self.get_subspace(tag) for tag in self.subspace_tags]
+        seeds = [seed + i if seed is not None else None for i in range(len(subspaces))]
+
+        return _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim)
+
     def product(self, other: TaggedProductSearchSpace) -> TaggedProductSearchSpace:
         r"""
         Return the Cartesian product of the two :class:`TaggedProductSearchSpace`\ s,
@@ -2434,3 +2597,115 @@ class TaggedMultiSearchSpace(CollectionSearchSpace):
         samples = tf.reshape(samples, [-1, self.dimension])  # Flatten the samples across subspaces.
         samples = tf.random.shuffle(samples)[:num_samples]  # Randomly pick num_samples points.
         return DiscreteSearchSpace(points=samples)
+
+
+
+# Global cache for compiled parallel sampling functions
+_PARALLEL_SAMPLER_CACHE = {}
+
+def _create_subspace_signature(subspace: SearchSpace) -> str:
+    """
+    Create a detailed signature for a subspace that captures its actual configuration.
+    This ensures different subspaces with different parameters get different cache keys.
+
+    NOTE: for the time being, dtype is not taken into account for simplicity
+    """
+    import hashlib
+    
+    if isinstance(subspace, Box):
+        # Include actual bounds in signature
+        lower_hash = hashlib.md5(subspace.lower.numpy().tobytes()).hexdigest()[:8]
+        upper_hash = hashlib.md5(subspace.upper.numpy().tobytes()).hexdigest()[:8]
+        return f"Box_{lower_hash}_{upper_hash}"
+    
+    elif isinstance(subspace, DiscreteSearchSpace):
+        # Include actual discrete points
+        points_hash = hashlib.md5(subspace.points.numpy().tobytes()).hexdigest()[:8]
+        return f"Discrete_{points_hash}"
+    
+    elif isinstance(subspace, CategoricalSearchSpace):
+        # Include actual categories/points
+        try:
+            points_hash = hashlib.md5(subspace.points.numpy().tobytes()).hexdigest()[:8]
+            return f"Categorical_{points_hash}"
+        except:
+            # Fallback for any issues with points access
+            return f"Categorical_{id(subspace)}"
+    
+    else:
+        # Unknown subspace type - use class name + object id
+        return f"{type(subspace).__name__}_{id(subspace)}"
+
+def _create_cache_key(subspaces: Sequence[SearchSpace], common_dim: int) -> str:
+    """
+    Create a comprehensive cache key based on the actual subspace configurations.
+    """
+    import hashlib
+
+    subspace_sigs = [_create_subspace_signature(subspace) for subspace in subspaces]
+    combined_sig = "_".join(subspace_sigs)
+    cache_key = f"parallel_{len(subspaces)}_{common_dim}_{combined_sig}"
+    
+    # Hash to keep key length reasonable
+    return hashlib.md5(cache_key.encode()).hexdigest()
+
+def _sample_subspaces_parallel(subspaces, num_samples, seeds, common_dim):
+    """
+    Parallel sampling using cached @tf.function to avoid recompilation.
+    
+    Uses content-based caching that properly handles different subspace configurations
+    (e.g., Box with different bounds, DiscreteSearchSpace with different points).
+    """
+
+    cache_key = _create_cache_key(subspaces, common_dim)
+    
+    # Get or create compiled function
+    if cache_key not in _PARALLEL_SAMPLER_CACHE:
+
+        @tf.function
+        def compiled_parallel_sampler(num_samples_tf, num_subspaces):
+            """Compiled function that performs parallel sampling."""
+            
+            def sample_single_subspace(i):
+                """Sample from i-th subspace"""
+                
+                def python_sample_fn(index_tensor, num_samples_tensor):
+                    idx = int(index_tensor.numpy())
+                    n_samples = int(num_samples_tensor.numpy())
+
+                    subspace = subspaces[idx]
+                    seed = seeds[idx]
+
+                    result = subspace.sample(n_samples, seed=seed)
+                    return result.numpy()
+                
+                # Bridge to Python using tf.py_function
+                result = tf.py_function(
+                    func=python_sample_fn,
+                    inp=[i, num_samples_tf],
+                    Tout=tf.float64
+                )
+
+                result.set_shape([None, common_dim])
+                return tf.cast(result, DEFAULT_DTYPE)
+
+            indices = tf.range(num_subspaces, dtype=tf.int32)
+            subspace_samples = tf.map_fn(
+                fn=sample_single_subspace,
+                elems=indices,
+                fn_output_signature=tf.TensorSpec([None, common_dim], dtype=DEFAULT_DTYPE),
+                parallel_iterations=num_subspaces
+            )
+            
+            # Reshape from [num_subspaces, num_samples, common_dim] to [num_samples, total_dim]
+            transposed = tf.transpose(subspace_samples, perm=[1, 0, 2])
+            return tf.reshape(transposed, [num_samples_tf, num_subspaces * common_dim])
+
+        _PARALLEL_SAMPLER_CACHE[cache_key] = compiled_parallel_sampler
+    
+    # Use the cached compiled function
+    compiled_fn = _PARALLEL_SAMPLER_CACHE[cache_key]
+    num_samples_tf = tf.constant(num_samples, dtype=tf.int32)
+    num_subspaces = len(subspaces)
+    
+    return compiled_fn(num_samples_tf, num_subspaces)
