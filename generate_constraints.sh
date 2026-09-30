@@ -32,9 +32,11 @@ generate_for_env () {
       pip install swig
   fi
   if [ "$2" = true ]; then
-      pip install -e .[qhsri]
+      # install together so the resolver respects the library's constraints (e.g. numpy<2)
+      pip install -e .[qhsri] -r $1/requirements.txt
+  else
+      pip install -r $1/requirements.txt
   fi
-  pip install -r $1/requirements.txt
   pip freeze --exclude-editable trieste > $1/constraints.txt
   deactivate
 }
