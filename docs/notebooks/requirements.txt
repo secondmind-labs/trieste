@@ -20,15 +20,7 @@ jupyterlab
 jupytext
 imageio
 
-# TODO: the lunar lander notebook is currently excluded from the docs, because these
-# dependencies don't install on Python 3.11: gym[box2d] pins pygame 2.1.0 (which has no
-# Python 3.11 wheels), and box2d-kengz needs a system swig to build. A possible fix is to
-# replace the unmaintained gym with its successor, gymnasium. When restoring these, note
-# that box2d-kengz overwrites box2d.py and must be installed last (see tox.ini and the
-# deploy workflows).
-# gym[box2d]
-# box2d
-# box2d-kengz
+gymnasium[box2d]
 
 # tensorflow requires old protobuf
 protobuf<5.0
