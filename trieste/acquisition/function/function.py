@@ -15,6 +15,7 @@
 This module contains acquisition function builders, which build and define our acquisition
 functions --- functions that estimate the utility of evaluating sets of candidate points.
 """
+
 from __future__ import annotations
 
 import math

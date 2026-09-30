@@ -144,12 +144,10 @@ class GumbelSampler(ThompsonSampler[ProbabilisticModel]):
         """
 
         if not sample_min_value:
-            raise ValueError(
-                f"""
+            raise ValueError(f"""
                 Gumbel samplers can only sample a function's minimal value,
                 however received sample_min_value={sample_min_value}
-                """
-            )
+                """)
 
         super().__init__(sample_min_value)
 

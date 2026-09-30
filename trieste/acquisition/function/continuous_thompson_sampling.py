@@ -14,6 +14,7 @@
 """
 This module contains acquisition function builders for continuous Thompson sampling.
 """
+
 from __future__ import annotations
 
 from typing import Any, Callable, Optional, Type

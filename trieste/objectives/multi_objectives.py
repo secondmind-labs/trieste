@@ -14,6 +14,7 @@
 """
 This module contains synthetic multi-objective functions, useful for experimentation.
 """
+
 from __future__ import annotations
 
 import math
