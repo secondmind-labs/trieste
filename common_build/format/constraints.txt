@@ -10,5 +10,3 @@ platformdirs==4.12.2
 pycodestyle==2.15.0
 pyflakes==4.0.0
 pytokens==0.4.1
-tomli==2.4.1
-typing_extensions==4.16.0

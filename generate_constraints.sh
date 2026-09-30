@@ -27,10 +27,11 @@ generate_for_env () {
   python3 -m venv $VENV_DIR/$1
   source $VENV_DIR/$1/bin/activate
   pip install --upgrade pip
-  if [ "$1" == "notebooks" ]; then
-      # box2d requires swig to be installed first
-      pip install swig
-  fi
+  # TODO: restore when re-enabling the lunar lander notebook (see notebooks/requirements.txt)
+  # if [ "$1" == "notebooks" ]; then
+  #     # box2d requires swig to be installed first
+  #     pip install swig
+  # fi
   if [ "$2" = true ]; then
       # install together so the resolver respects the library's constraints (e.g. numpy<2)
       pip install -e .[qhsri] -r $1/requirements.txt

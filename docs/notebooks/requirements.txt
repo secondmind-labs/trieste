@@ -18,10 +18,15 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
-gym[box2d]
-box2d
-box2d-kengz
 imageio
+
+# TODO: the lunar lander notebook is currently excluded from the docs, as gym[box2d] pins
+# pygame 2.1.0 (no Python 3.11 wheels) and box2d-kengz needs a system swig to build
+# (e.g. migrate to gymnasium). Note that box2d-kengz overwrites box2d.py and must be
+# installed last (see tox.ini and the deploy workflows).
+# gym[box2d]
+# box2d
+# box2d-kengz
 
 # tensorflow requires old protobuf
 protobuf<5.0

@@ -3,6 +3,5 @@ librt==0.16.0
 mypy==2.3.1
 mypy_extensions==1.1.0
 pathspec==1.1.1
-tomli==2.4.1
 types-PyYAML==6.0.12.20260906
 typing_extensions==4.16.0

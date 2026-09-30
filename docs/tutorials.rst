@@ -20,6 +20,9 @@ Optimization problems
 
 The following tutorials illustrate solving different types of optimization problems using Trieste.
 
+.. TODO: restore notebooks/openai_gym_lunar_lander (after feasible_sets) once its gym dependency
+   supports Python 3.11 (e.g. by migrating to gymnasium). It is also excluded in conf.py.
+
 .. toctree::
    :maxdepth: 1
 
@@ -36,7 +39,6 @@ The following tutorials illustrate solving different types of optimization probl
    notebooks/active_learning
    notebooks/active_learning_for_binary_classification
    notebooks/feasible_sets
-   notebooks/openai_gym_lunar_lander
    notebooks/scalable_thompson_sampling_using_sparse_gaussian_processes
    notebooks/qhsri-tutorial
    notebooks/multifidelity_modelling
