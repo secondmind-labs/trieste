@@ -540,10 +540,9 @@ def test_ask_tell_optimizer_uses_specified_acquisition_state(
 
     ask_tell = optimizer(search_space, init_dataset, model, rule, acquisition_state=starting_state)
     _ = ask_tell.ask()
-    state_record: Record[State[int, TensorType], TrainableProbabilisticModel] = ask_tell.to_record()
+    state_record: Record[Optional[int], TrainableProbabilisticModel] = ask_tell.to_record()
 
-    # mypy cannot see that this is in fact int
-    assert state_record.acquisition_state == expected_state  # type: ignore
+    assert state_record.acquisition_state == expected_state
     assert ask_tell.acquisition_state == expected_state
 
 

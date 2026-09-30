@@ -133,7 +133,7 @@ ray.init(ignore_reinit_error=True)
 
 # %%
 points_observed = 0
-workers = []
+workers: list[ray.ObjectRef] = []
 
 
 # a helper function to launch a worker for a numpy array representing a single point
