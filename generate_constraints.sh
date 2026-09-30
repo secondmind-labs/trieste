@@ -24,6 +24,9 @@ generate_for_env () {
   #
   # $1: The base path of the requirements and constraints files
   # $2: If true, installs the library dependencies
+  local header="generate_for_env($1, $2)"
+  local border=$(printf '#%.0s' $(seq ${#header}))
+  printf '\n%s\n%s\n%s\n\n' "$border" "$header" "$border"
   python3 -m venv $VENV_DIR/$1
   source $VENV_DIR/$1/bin/activate
   pip install --upgrade pip
@@ -42,13 +45,16 @@ generate_for_env () {
   deactivate
 }
 
+# should be generated in Python 3.11
 generate_for_env docs false
 generate_for_env common_build/format false
 generate_for_env common_build/taskipy false
 generate_for_env common_build/types false
 generate_for_env notebooks true
-generate_for_env tests/old true
 generate_for_env tests/prod true
 generate_for_env tests/latest true
+
+# should be generated in Python 3.10
+# generate_for_env tests/old true
 
 rm -rf $VENV_DIR

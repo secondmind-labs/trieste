@@ -11,7 +11,7 @@ check-shapes==1.1.1
 clarabel==0.11.1
 cloudpickle==3.1.2
 cma==4.5.0
-contourpy==1.3.2
+contourpy==1.3.3
 cryptography==50.0.1
 cvxpy==1.7.5
 cycler==0.12.1
@@ -20,9 +20,8 @@ Deprecated==1.3.1
 dill==0.4.1
 dm-tree==0.1.10
 dropstackframe==0.1.1
-exceptiongroup==1.3.1
 flatbuffers==25.12.19
-fonttools==4.65.0
+fonttools==4.66.1
 gast==0.7.0
 google-auth==2.59.0
 google-auth-oauthlib==1.0.0
@@ -41,9 +40,9 @@ keras==2.14.0
 kiwisolver==1.5.1
 lark==1.3.1
 libclang==18.1.1
-Markdown==3.10.3
+Markdown==3.11
 MarkupSafe==3.0.3
-matplotlib==3.10.9
+matplotlib==3.11.2
 ml-dtypes==0.2.0
 moocore==0.3.2
 multipledispatch==1.0.0
@@ -67,7 +66,7 @@ python-dateutil==2.9.0.post0
 PyYAML==6.0.3
 requests==2.34.2
 requests-oauthlib==2.0.0
-scipy==1.15.3
+scipy==1.17.1
 scs==3.3.1
 six==1.17.0
 tabulate==0.10.0
@@ -78,7 +77,6 @@ tensorflow-estimator==2.14.0
 tensorflow-io-gcs-filesystem==0.37.1
 tensorflow-probability==0.22.1
 termcolor==3.3.0
-tomli==2.4.1
 typing_extensions==4.16.0
 urllib3==2.8.0
 Werkzeug==3.1.9
