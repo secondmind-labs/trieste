@@ -128,14 +128,10 @@ from IPython.display import HTML
 def load_video(filename):
     video = io.open("./lunar_lander_videos/" + filename, "r+b").read()
     encoded = base64.b64encode(video)
-    return HTML(
-        data="""
+    return HTML(data="""
             <video width="360" height="auto" alt="test" controls>
                 <source src="data:video/mp4;base64,{0}" type="video/mp4" />
-            </video>""".format(
-            encoded.decode("ascii")
-        )
-    )
+            </video>""".format(encoded.decode("ascii")))
 
 
 # %% [markdown]
