@@ -107,8 +107,6 @@ exclude_patterns = [
     "_build",
     "Thumbs.db",
     ".DS_Store",
-    # TODO: re-enable once its gym dependency supports Python 3.11 (e.g. by migrating to gymnasium)
-    "notebooks/openai_gym_lunar_lander.pct.py",
 ]
 
 # -- Options for HTML output -------------------------------------------------
