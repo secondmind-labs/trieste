@@ -38,6 +38,6 @@ authors:
 - family-names: "Mowbray"
   given-names: "Max"
 title: "Trieste"
-version: 4.6.0
-date-released: 2026-06-17
+version: 4.6.1
+date-released: 2026-10-01
 url: "https://github.com/secondmind-labs/trieste"
