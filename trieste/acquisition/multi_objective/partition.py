@@ -13,6 +13,7 @@
 # limitations under the License.
 """This module contains functions of different methods for
 partitioning the dominated/non-dominated region in multi-objective optimization problems."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

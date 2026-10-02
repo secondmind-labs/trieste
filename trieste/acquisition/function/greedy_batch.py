@@ -14,6 +14,7 @@
 """
 This module contains local penalization-based acquisition function builders.
 """
+
 from __future__ import annotations
 
 from typing import Callable, Dict, Mapping, Optional, Union, cast

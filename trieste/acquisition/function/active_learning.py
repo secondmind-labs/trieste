@@ -100,11 +100,9 @@ def predictive_variance(model: SupportsPredictJoint, jitter: float) -> Acquisiti
         try:
             _, covariance = model.predict_joint(x)
         except NotImplementedError:
-            raise ValueError(
-                """
+            raise ValueError("""
                 PredictiveVariance only supports models with a predict_joint method.
-                """
-            )
+                """)
         return tf.exp(tf.linalg.logdet(covariance + jitter))
 
     return acquisition

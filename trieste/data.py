@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module contains utilities for :class:`~trieste.observer.Observer` data."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass

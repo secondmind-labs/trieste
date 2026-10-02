@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Definitions and utilities for observers of objective functions."""
+
 from __future__ import annotations
 
 from typing import Callable, Mapping, Union

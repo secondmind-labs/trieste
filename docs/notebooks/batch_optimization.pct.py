@@ -42,7 +42,6 @@ initial_data = observer(initial_query_points)
 import gpflow
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-
 gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
 model = GaussianProcessRegression(gpflow_model)
 

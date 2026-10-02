@@ -142,21 +142,17 @@ def check_optimizer(optimizer: Union[BatchOptimizer, Optimizer]) -> None:
     """
     if isinstance(optimizer.optimizer, gpflow.optimizers.Scipy):
         if isinstance(optimizer, BatchOptimizer):
-            raise ValueError(
-                f"""
+            raise ValueError(f"""
                 The gpflow.optimizers.Scipy can only be used with an Optimizer wrapper,
                 however received {optimizer}.
-                """
-            )
+                """)
 
     if isinstance(optimizer.optimizer, tf_keras.optimizers.Optimizer):
         if not isinstance(optimizer, BatchOptimizer):
-            raise ValueError(
-                f"""
+            raise ValueError(f"""
                 The tf.optimizers.Optimizer can only be used with a BatchOptimizer wrapper,
                 however received {optimizer}.
-                """
-            )
+                """)
 
 
 def _covariance_between_points_for_variational_models(

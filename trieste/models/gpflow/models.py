@@ -339,12 +339,10 @@ class GaussianProcessRegression(
             sampler with a model that has more than one latent GP.
         """
         if self.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
+            raise NotImplementedError(f"""
                 Trajectory sampler does not currently support models with multiple latent
                 GPs, however received a model with {self.model.num_latent_gps} latent GPs.
-                """
-            )
+                """)
 
         if self._use_decoupled_sampler:
             return DecoupledTrajectorySampler(self, self._num_rff_features)
@@ -596,13 +594,11 @@ class SparseGaussianProcessRegression(
 
         if isinstance(self.model.inducing_variable, SeparateIndependentInducingVariables):
             if inducing_point_selector is not None:
-                raise NotImplementedError(
-                    f"""
+                raise NotImplementedError(f"""
                     InducingPointSelectors only currently support models with a single set
                     of inducing points however received inducing points of
                     type {type(self.model.inducing_variable)}.
-                    """
-                )
+                    """)
         self._inducing_point_selector = inducing_point_selector
 
         self._ensure_variable_model_data()
@@ -732,12 +728,10 @@ class SparseGaussianProcessRegression(
         """
 
         if isinstance(new_inducing_points, list):
-            raise NotImplementedError(
-                f"""
+            raise NotImplementedError(f"""
                 We do not currently support updating models with multiple sets of
                 inducing points however received; {new_inducing_points}
-                """
-            )
+                """)
 
         old_inducing_points, _, _, _ = self.get_inducing_variables()
         tf.assert_equal(
@@ -770,12 +764,10 @@ class SparseGaussianProcessRegression(
         :raise NotImplementedError: If the model has more than one latent GP.
         """
         if self.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
+            raise NotImplementedError(f"""
                 We do not currently support models with more than one latent GP,
                 however received a model with {self.model.num_latent_gps} outputs.
-                """
-            )
+                """)
 
         inducing_variable = self.model.inducing_variable
 
@@ -835,12 +827,10 @@ class SparseGaussianProcessRegression(
             sampler with a model that has more than one latent GP.
         """
         if self.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
+            raise NotImplementedError(f"""
                 Trajectory sampler does not currently support models with multiple latent
                 GPs, however received a model with {self.model.num_latent_gps} latent GPs.
-                """
-            )
+                """)
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 
@@ -920,13 +910,11 @@ class SparseVariational(
 
         if isinstance(self.model.inducing_variable, SeparateIndependentInducingVariables):
             if inducing_point_selector is not None:
-                raise NotImplementedError(
-                    f"""
+                raise NotImplementedError(f"""
                     InducingPointSelectors only currently support models with a single set
                     of inducing points however received inducing points of
                     type {type(self.model.inducing_variable)}.
-                    """
-                )
+                    """)
 
         self._inducing_point_selector = inducing_point_selector
         self._ensure_variable_model_data()
@@ -1028,12 +1016,10 @@ class SparseVariational(
         """
 
         if isinstance(new_inducing_points, list):
-            raise NotImplementedError(
-                f"""
+            raise NotImplementedError(f"""
                 We do not currently support updating models with multiple sets of
                 inducing points however received; {new_inducing_points}
-                """
-            )
+                """)
 
         old_inducing_points, _, _, whiten = self.get_inducing_variables()
         tf.assert_equal(
@@ -1198,27 +1184,21 @@ class VariationalGaussianProcess(
 
         if use_natgrads:
             if not isinstance(self.optimizer.optimizer, tf_keras.optimizers.Optimizer):
-                raise ValueError(
-                    f"""
+                raise ValueError(f"""
                     Natgrads can only be used with a BatchOptimizer wrapper using an instance of
                     tf.optimizers.Optimizer, however received {self.optimizer}.
-                    """
-                )
+                    """)
             natgrad_gamma = 0.1 if natgrad_gamma is None else natgrad_gamma
         else:
             if isinstance(self.optimizer.optimizer, tf_keras.optimizers.Optimizer):
-                raise ValueError(
-                    f"""
+                raise ValueError(f"""
                     If not using natgrads an Optimizer wrapper should be used with
                     gpflow.optimizers.Scipy, however received {self.optimizer}.
-                    """
-                )
+                    """)
             if natgrad_gamma is not None:
-                raise ValueError(
-                    """
+                raise ValueError("""
                     natgrad_gamma is only to be specified when use_natgrads is True.
-                    """
-                )
+                    """)
 
         if num_rff_features <= 0:
             raise ValueError(
@@ -1370,12 +1350,10 @@ class VariationalGaussianProcess(
             sampler with a model that has more than one latent GP.
         """
         if self.model.num_latent_gps > 1:
-            raise NotImplementedError(
-                f"""
+            raise NotImplementedError(f"""
                 Trajectory sampler does not currently support models with multiple latent
                 GPs, however received a model with {self.model.num_latent_gps} latent GPs.
-                """
-            )
+                """)
 
         return DecoupledTrajectorySampler(self, self._num_rff_features)
 

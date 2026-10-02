@@ -18,10 +18,9 @@ matplotlib
 ray[default]
 jupyterlab
 jupytext
-gym[box2d]
-box2d
-box2d-kengz
 imageio
+
+gymnasium[box2d]
 
 # tensorflow requires old protobuf
 protobuf<5.0

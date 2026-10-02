@@ -82,14 +82,12 @@ class KerasPredictor(EncodedProbabilisticModel, ABC):
         return self.model.predict(query_points)
 
     def sample_encoded(self, query_points: TensorType, num_samples: int) -> TensorType:
-        raise NotImplementedError(
-            """
+        raise NotImplementedError("""
             KerasPredictor does not implement sampling. Acquisition
             functions relying on it cannot be used with this class by default. Certain
             types of neural networks might be able to generate samples and
             such subclasses should overwrite this method.
-            """
-        )
+            """)
 
     def log(self, dataset: Optional[Dataset] = None) -> None:
         return

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module contains implementations of various types of search space."""
+
 from __future__ import annotations
 
 import operator
