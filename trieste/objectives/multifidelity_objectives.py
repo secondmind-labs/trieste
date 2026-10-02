@@ -14,6 +14,7 @@
 """
 This module contains synthetic multi-fidelity objective functions, useful for experimentation.
 """
+
 from dataclasses import dataclass
 
 import numpy as np

@@ -33,6 +33,7 @@ setup(
     },
     classifiers=[
         "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
         "License :: OSI Approved :: Apache Software License",
         "Operating System :: OS Independent",
     ],
@@ -41,11 +42,10 @@ setup(
         "absl-py",
         "dill",
         "gpflow>=2.11.1",
-        "gpflux>=0.4.4",
-        "numpy",
-        "tensorflow>=2.5,<2.17; platform_system!='Darwin' or platform_machine!='arm64'",
-        "tensorflow-macos>=2.5,<2.17; platform_system=='Darwin' and platform_machine=='arm64'",
-        "tensorflow-probability>=0.13,<0.25",
+        "gpflux>=0.4.5",
+        "numpy<2",
+        "tensorflow>=2.9,<2.19",
+        "tensorflow-probability>=0.17,<0.26",
         "greenlet>=1.1.0",
     ],
     extras_require={

@@ -1,24 +1,21 @@
-"""This script is used to generate videos for the OpenAI Gym notebook.
+"""This script is used to generate videos for the OpenAI Gym (Gymnasium) notebook.
 
 First two functions, as well as constants, shall be in sync with the notebook.
 At the bottom of this file there are parameters and random seeds used to generate each video.
-The video and several json files will be created in this folder, with some auto-generated names.
+The video will be created in this folder, with an auto-generated name.
 
 Depending on your environment, there might be various dependecies you'd need to run this script.
 In general, these may include:
-apt install python-opengl
 apt install ffmpeg
-apt install xvfb
-apt install x111-utils
-pip install pyglet
+pip install moviepy
 
-That is, of course, in addition to `gym` and `box2d` required to run the environment itself.
+That is, of course, in addition to `gymnasium[box2d]` required to run the environment itself.
 You may also need additional software depending on your OS setup (e.g. if you are using Ubuntu on WSL).
 """
 
 import numpy as np
-import gym
-from gym import wrappers
+import gymnasium as gym
+from gymnasium import wrappers
 
 
 # copied verbatim from https://github.com/uber-research/TuRBO
@@ -55,23 +52,23 @@ def demo_heuristic_lander(env, w, seed=None):
     total_reward = 0
     steps = 0
 
-    env = wrappers.Monitor(env, "./", force=True)
-    env.reset(seed=seed)
-    s = env.reset()
+    env = wrappers.RecordVideo(env, "./", episode_trigger=lambda _: True)
+    s, _ = env.reset(seed=seed)
 
     while True:
         if steps > STEPS_LIMIT:
             total_reward -= TIMEOUT_REWARD
-            return total_reward
+            break
 
         a = heuristic_Controller(s, w)
-        s, r, done, info = env.step(a)
+        s, r, terminated, truncated, _ = env.step(a)
         total_reward += r
 
         steps += 1
-        if done:
+        if terminated or truncated:
             break
 
+    env.close()
     return total_reward
 
 
@@ -95,4 +92,4 @@ def demo_heuristic_lander(env, w, seed=None):
 # seed = 1
 # w = np.array([0.3408491530995111, 0.21393609845608644, 0.6957018757563389, 0.0, 0.9776271241238772, 0.2960463399024492, 0.7020102045624167, 1.006012538196605, 0.0, 0.0, 0.0, 0.0])
 
-demo_heuristic_lander(gym.make("LunarLander-v2"), w, seed)  # type: ignore
+demo_heuristic_lander(gym.make("LunarLander-v3", render_mode="rgb_array"), w, seed)  # type: ignore

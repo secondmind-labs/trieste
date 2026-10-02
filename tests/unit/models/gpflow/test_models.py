@@ -1249,7 +1249,7 @@ def test_variational_gaussian_process_optimize_with_and_without_natgrads(
             compile=compile,
         )
     else:
-        optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=compile)  # type:ignore
+        optimizer = Optimizer(gpflow.optimizers.Scipy(), compile=compile)  # type: ignore
 
     model = VariationalGaussianProcess(
         vgp_model(x_observed[:10], y_observed[:10]), optimizer=optimizer, use_natgrads=use_natgrads

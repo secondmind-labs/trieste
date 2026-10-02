@@ -14,6 +14,7 @@
 """
 This module contains utility functions for acquisition functions.
 """
+
 from typing import Callable, Tuple
 
 import tensorflow as tf

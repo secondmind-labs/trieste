@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This folder contains single-objective optimization functions."""
+
 from .active_learning import (
     BayesianActiveLearningByDisagreement,
     ExpectedFeasibility,

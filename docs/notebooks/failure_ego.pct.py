@@ -119,7 +119,6 @@ from trieste.models.gpflow.models import (
 from trieste.models.optimizer import BatchOptimizer
 from trieste.types import Tag
 
-
 models: dict[Tag, TrainableProbabilisticModel] = {
     OBJECTIVE: GaussianProcessRegression(regression_model),
     FAILURE: VariationalGaussianProcess(

@@ -17,7 +17,6 @@ This module contains the Ask/Tell API for users of Trieste who would like to
 perform Bayesian Optimization with external control of the optimization loop.
 """
 
-
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

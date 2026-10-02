@@ -1,9 +1,9 @@
 # %% [markdown]
-# # OpenAI Gym
+# # OpenAI Gym (Gymnasium)
 #
-# This notebook demonstrates how to use Trieste to apply Bayesian optimization to a problem that is slightly more practical than classical optimization benchmarks shown used in other tutorials. We will use OpenAI Gym, which is a popular toolkit for reinforcement learning (RL) algorithms.
+# This notebook demonstrates how to use Trieste to apply Bayesian optimization to a problem that is slightly more practical than classical optimization benchmarks shown used in other tutorials. We will use [Gymnasium](https://gymnasium.farama.org/), the maintained successor to OpenAI Gym, which is a popular toolkit for reinforcement learning (RL) algorithms.
 #
-# Concretely, we are going to take the [Lunar Lander](https://gym.openai.com/envs/LunarLander-v2/) environment, define a search space and describe it as an optimization problem, and use Trieste to find an optimal solution for the problem. And hopefully avoid too many landers crashing on the Moon surface along the way.
+# Concretely, we are going to take the [Lunar Lander](https://gymnasium.farama.org/environments/box2d/lunar_lander/) environment, define a search space and describe it as an optimization problem, and use Trieste to find an optimal solution for the problem. And hopefully avoid too many landers crashing on the Moon surface along the way.
 
 # %%
 import tensorflow as tf
@@ -12,9 +12,9 @@ import trieste
 import gpflow
 
 
-import gym
+import gymnasium as gym
 
-env_name = "LunarLander-v2"
+env_name = "LunarLander-v3"
 env = gym.make(env_name)
 
 seed = 1793
@@ -35,13 +35,13 @@ env.reset(seed=seed)
 #
 # Now let's see how this task can be formulated as an optimization problem. We will be following an approach used by Turbo <cite data-cite="eriksson2019scalable"/> and BOSH <cite data-cite="Moss2020BOSHBO"/> papers. The environment comes with a heuristic controller that makes decisions based on the current position and velocity of the module. This controller can be tuned by modifying 12 of its internal numerical parameters. These parameters form our optimization search space. The objective is the same as in the original RL setup: maximize the reward. Therefore we will be using Trieste to learn how to land the module safely on the designated pad, without taking too much time and wasting too much fuel.
 #
-# The original code for the heuristic controller can be found in [OpenAI Gym GitHub repo](https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py). Here is the parametrized version, taken from the [repository](https://github.com/uber-research/TuRBO) of the Turbo paper:
+# The original code for the heuristic controller can be found in [Gymnasium GitHub repo](https://github.com/Farama-Foundation/Gymnasium/blob/main/gymnasium/envs/box2d/lunar_lander.py). Here is the parametrized version, taken from the [repository](https://github.com/uber-research/TuRBO) of the Turbo paper:
 
 
 # %%
 # controller code is copied verbatim from https://github.com/uber-research/TuRBO
 # s is the state of the environment, an array of shape (1, 8)
-# for details on its content see https://github.com/openai/gym/blob/master/gym/envs/box2d/lunar_lander.py
+# for details on its content see https://github.com/Farama-Foundation/Gymnasium/blob/main/gymnasium/envs/box2d/lunar_lander.py
 # w is the array of controller parameters, of shape (1, 12)
 def heuristic_Controller(s, w):
     angle_targ = s[0] * w[0] + s[2] * w[1]
@@ -79,7 +79,7 @@ timeout_reward = -100
 def demo_heuristic_lander(env, w, print_reward=False):
     total_reward = 0
     steps = 0
-    s = env.reset()[0]
+    s, _ = env.reset()
 
     while True:
         if steps > steps_limit:
@@ -87,11 +87,11 @@ def demo_heuristic_lander(env, w, print_reward=False):
             break
 
         a = heuristic_Controller(s, w)
-        s, r, done, info, _ = env.step(a)
+        s, r, terminated, truncated, _ = env.step(a)
         total_reward += r
 
         steps += 1
-        if done:
+        if terminated or truncated:
             break
 
     if print_reward:
@@ -101,7 +101,7 @@ def demo_heuristic_lander(env, w, print_reward=False):
 
 
 # %% [markdown]
-# In the original OpenAI Gym Lunar Lander code controller parameters have fixed values. The smallest parameter is set to 0.05, and the biggest parameter value is 1.0. Thus we will set the search range for each parameter to be the same from 0.0 to 1.2.
+# In the original Lunar Lander code controller parameters have fixed values. The smallest parameter is set to 0.05, and the biggest parameter value is 1.0. Thus we will set the search range for each parameter to be the same from 0.0 to 1.2.
 
 # %%
 search_space = trieste.space.Box([0.0] * 12, [1.2] * 12)
@@ -117,7 +117,7 @@ for _ in range(10):
 # %% [markdown]
 # As you can see, most of the random sets of parameters result in a negative reward. So picking a value from this search space at random can result in a various unwanted behaviors. Here we show some examples of the landing not going according to plan. Each of these examples was created with a sample of the parameter values from the search space.
 #
-# **Warning:** all the videos in this notebook were pre-generated. Creating renders of OpenAI Gym environments requires various dependencies depending on software setups and operating systems, so we have chosen not to do it here in the interest of transferability of this notebook. For those interested in reproducing these videos, we have saved the input parameters and the code we used to generate them in the Trieste repository, in the folder next to this notebook. However because of the stochastic nature of the environment and the optimization described here, your results might differ slightly from those shown here.
+# **Warning:** all the videos in this notebook were pre-generated. Creating renders of Gymnasium environments requires various dependencies depending on software setups and operating systems, so we have chosen not to do it here in the interest of transferability of this notebook. For those interested in reproducing these videos, we have saved the input parameters and the code we used to generate them in the Trieste repository, in the folder next to this notebook. However because of the stochastic nature of the environment and the optimization described here, your results might differ slightly from those shown here.
 
 # %%
 import io
@@ -128,14 +128,10 @@ from IPython.display import HTML
 def load_video(filename):
     video = io.open("./lunar_lander_videos/" + filename, "r+b").read()
     encoded = base64.b64encode(video)
-    return HTML(
-        data="""
+    return HTML(data="""
             <video width="360" height="auto" alt="test" controls>
                 <source src="data:video/mp4;base64,{0}" type="video/mp4" />
-            </video>""".format(
-            encoded.decode("ascii")
-        )
-    )
+            </video>""".format(encoded.decode("ascii")))
 
 
 # %% [markdown]

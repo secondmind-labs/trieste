@@ -143,7 +143,7 @@ def test_constrained_optimizer_finds_minima_of_custom_problem(
 
     if acquisition_function_builder is ExpectedConstrainedImprovement:
         feas = FastConstraintsFeasibility(search_space)  # Search space with constraints.
-        eci = acquisition_function_builder(OBJECTIVE, feas.using(OBJECTIVE))  # type: ignore
+        eci = acquisition_function_builder(OBJECTIVE, feas.using(OBJECTIVE))
         rule: EfficientGlobalOptimization[Box, ProbabilisticModel] = EfficientGlobalOptimization(
             eci
         )
