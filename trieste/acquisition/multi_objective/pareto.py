@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module contains functions and classes for Pareto based multi-objective optimization."""
+
 from __future__ import annotations
 
 try:

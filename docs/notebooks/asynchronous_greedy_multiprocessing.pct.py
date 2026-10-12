@@ -18,7 +18,6 @@ import numpy as np
 import time
 import timeit
 
-
 # %% [markdown]
 # First, let's define a simple objective that will emulate evaluations taking variable time. We will be using a classic Bayesian optimisation benchmark function [Branin](https://www.sfu.ca/~ssurjano/branin.html) with a sleep call inserted in the middle of the calculation to emulate delay. Our sleep delay is a scaled sum of all input values to make sure delays are uneven.
 # %%
@@ -85,7 +84,6 @@ from trieste.acquisition.rule import (
     EfficientGlobalOptimization,
 )
 from trieste.ask_tell_optimization import AskTellOptimizer
-
 
 # %% [markdown]
 # ## Multiprocessing setup

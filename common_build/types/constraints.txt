@@ -1,6 +1,7 @@
-mypy==1.17.1
+ast_serialize==0.11.2
+librt==0.16.0
+mypy==2.3.1
 mypy_extensions==1.1.0
-pathspec==0.12.1
-tomli==2.2.1
-types-PyYAML==6.0.12.20250822
-typing_extensions==4.15.0
+pathspec==1.1.1
+types-PyYAML==6.0.12.20260906
+typing_extensions==4.16.0

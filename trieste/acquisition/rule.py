@@ -15,6 +15,7 @@
 This module contains acquisition rules, which choose the optimal point(s) to query on each step of
 the Bayesian optimization process.
 """
+
 from __future__ import annotations
 
 import copy
@@ -722,10 +723,8 @@ class AsynchronousGreedy(
         if not isinstance(
             builder, (GreedyAcquisitionFunctionBuilder, SingleModelGreedyAcquisitionBuilder)
         ):
-            raise NotImplementedError(
-                f"""Only greedy acquisition strategies are supported,
-                    got {type(builder)}"""
-            )
+            raise NotImplementedError(f"""Only greedy acquisition strategies are supported,
+                    got {type(builder)}""")
 
         if optimizer is None:
             optimizer = automatic_optimizer_selector
@@ -933,12 +932,10 @@ class DiscreteThompsonSampling(AcquisitionRule[TensorType, SearchSpace, Probabil
 
         if thompson_sampler is not None:
             if thompson_sampler.sample_min_value:
-                raise ValueError(
-                    """
+                raise ValueError("""
                     Thompson sampling requires a thompson_sampler that samples minimizers,
                     not just minimum values. However the passed sampler has sample_min_value=True.
-                    """
-                )
+                    """)
         else:
             thompson_sampler = ExactThompsonSampler(sample_min_value=False)
 

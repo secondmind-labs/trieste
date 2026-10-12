@@ -470,13 +470,11 @@ class HasReparamSamplerModelStack(ModelStack[HasReparamSampler], HasReparamSampl
             shared_sampler_type = type(samplers[0])
             return shared_sampler_type(num_samples, self)
         else:
-            raise NotImplementedError(
-                f"""
+            raise NotImplementedError(f"""
                 Reparameterization sampling is only currently supported for model
                 stacks built from models that use the same reparameterization sampler,
                 however, received samplers of types {unique_sampler_types}.
-                """
-            )
+                """)
 
 
 class PredictJointModelStack(ModelStack[SupportsPredictJoint], SupportsPredictJoint):

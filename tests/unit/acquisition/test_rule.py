@@ -1992,8 +1992,8 @@ def test_multi_trust_region_box_updated_datasets_are_in_regions(
 
 def test_multi_trust_region_box_acquire_filters() -> None:
     """Create some dummy models and datasets."""
-    models: Mapping[Tag, ANY] = {"global_tag": MagicMock()}
-    datasets: Mapping[Tag, ANY] = {
+    models: Mapping[Tag, Any] = {"global_tag": MagicMock()}
+    datasets: Mapping[Tag, Any] = {
         LocalizedTag("tag1", 1): MagicMock(),
         LocalizedTag("tag1", 2): MagicMock(),
         LocalizedTag("tag2", 1): MagicMock(),
@@ -2590,13 +2590,15 @@ def test_batch_trust_region_product_no_subspace(
         subregions = subspace.regions
         assert len(subregions) == 3
         assert subregions.keys() == {"0", "1", "2"}
+        # explicitly typed, as otherwise mypy infers the metaclass ABCMeta
+        region_types: list[type[UpdatableTrustRegion]] = [
+            FixedPointTrustRegionDiscrete,
+            SingleObjectiveTrustRegionBox,
+            FixedPointTrustRegionDiscrete,
+        ]
         for r, t, g in zip(
             subregions.values(),
-            [
-                FixedPointTrustRegionDiscrete,
-                SingleObjectiveTrustRegionBox,
-                FixedPointTrustRegionDiscrete,
-            ],
+            region_types,
             [discrete_search_space, continuous_search_space, discrete_search_space],
         ):
             assert isinstance(r, t)

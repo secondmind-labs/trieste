@@ -15,6 +15,7 @@
 This module contains the interfaces relating to acquisition function --- functions that estimate
 the utility of evaluating sets of candidate points.
 """
+
 from __future__ import annotations
 
 from abc import ABC, abstractmethod

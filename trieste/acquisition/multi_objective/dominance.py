@@ -13,6 +13,7 @@
 # limitations under the License.
 """This module contains functionality for computing the non-dominated set
 given a set of data points."""
+
 from __future__ import annotations
 
 import tensorflow as tf

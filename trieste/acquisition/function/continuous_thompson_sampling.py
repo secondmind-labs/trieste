@@ -14,9 +14,10 @@
 """
 This module contains acquisition function builders for continuous Thompson sampling.
 """
+
 from __future__ import annotations
 
-from typing import Any, Callable, Optional, Type
+from typing import Any, Callable, Optional, Type, cast
 
 import tensorflow as tf
 
@@ -220,8 +221,9 @@ def negate_trajectory_function(
                 dict[str, Any],
             ]:
                 # make this pickleable
-                state = (
-                    self.__getstate__() if hasattr(self, "__getstate__") else self.__dict__.copy()
+                state = cast(
+                    dict[str, Any],
+                    self.__getstate__() if hasattr(self, "__getstate__") else self.__dict__.copy(),
                 )
                 return (
                     negate_trajectory_function,

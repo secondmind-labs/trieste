@@ -190,13 +190,10 @@ def test_optimize_continuous_raises_for_impossible_optimization(
     )
     with pytest.raises(FailedOptimizationError) as e:
         optimizer(search_space, _delta_function(10))
-    assert (
-        str(e.value)
-        == f"""
+    assert str(e.value) == f"""
                     Acquisition function optimization failed,
                     even after {num_recovery_runs + num_optimization_runs} restarts.
                     """
-    )
 
 
 @pytest.mark.parametrize("batch_size", [0, -2])

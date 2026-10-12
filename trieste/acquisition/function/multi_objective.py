@@ -14,6 +14,7 @@
 """
 This module contains multi-objective acquisition function builders.
 """
+
 from __future__ import annotations
 
 import math

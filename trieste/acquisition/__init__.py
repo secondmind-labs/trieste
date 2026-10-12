@@ -34,6 +34,7 @@ acquisition function should take. Additionally, acquisition functions and builde
 are designed to minimize the objective function. For example, we do not provide an implementation of
 UCB.
 """
+
 from . import optimizer, rule
 from .combination import Product, Reducer, Sum
 from .function import (

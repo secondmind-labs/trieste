@@ -77,12 +77,10 @@ class InducingPointSelector(ABC, Generic[ProbabilisticModelType]):
         tf.debugging.Assert(current_inducing_points is not None, [tf.constant([])])
 
         if isinstance(current_inducing_points, list):
-            raise NotImplementedError(
-                """
+            raise NotImplementedError("""
                 InducingPointSelectors only currently support models with a single set
                 of inducing points.
-                """
-            )
+                """)
 
         if (
             not self._initialized

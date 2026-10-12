@@ -113,7 +113,6 @@ model.optimize(data)
 # %%
 import matplotlib.pyplot as plt
 
-
 # test data that includes extrapolation points
 test_points = tf.linspace(-6, 6, 1000)
 

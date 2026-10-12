@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-import unittest
+import unittest.mock
 
 import gpflow
 import numpy as np

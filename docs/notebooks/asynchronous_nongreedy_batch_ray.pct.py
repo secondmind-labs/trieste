@@ -23,7 +23,6 @@ import ray
 import numpy as np
 import time
 
-
 # %% [markdown]
 # Just as in the other [notebook on asynchronous optimization](asynchronous_greedy_multiprocessing.ipynb), we use Branin function with delays.
 
@@ -87,7 +86,6 @@ initial_data = Dataset(
 import gpflow
 from trieste.models.gpflow import GaussianProcessRegression, build_gpr
 
-
 # We set the likelihood variance to a small number because
 # we are dealing with a noise-free problem.
 gpflow_model = build_gpr(initial_data, search_space, likelihood_variance=1e-7)
@@ -133,7 +131,7 @@ ray.init(ignore_reinit_error=True)
 
 # %%
 points_observed = 0
-workers = []
+workers: list[ray.ObjectRef] = []
 
 
 # a helper function to launch a worker for a numpy array representing a single point

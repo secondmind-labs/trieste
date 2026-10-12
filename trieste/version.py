@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """This module exposes the trieste version number."""
+
 from pathlib import Path
 
 BASE_PATH = Path(__file__).parents[0]

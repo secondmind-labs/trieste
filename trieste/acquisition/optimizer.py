@@ -114,11 +114,9 @@ def automatic_optimizer_selector(
         )(space, target_func)
 
     else:
-        raise NotImplementedError(
-            f""" No optimizer currently supports acquisition function
+        raise NotImplementedError(f""" No optimizer currently supports acquisition function
                     maximisation over search spaces of type {space}.
-                    Try specifying the optimize_random optimizer"""
-        )
+                    Try specifying the optimize_random optimizer""")
 
 
 def _get_max_discrete_points(
@@ -137,13 +135,11 @@ def _get_max_discrete_points(
     target_func_values = target_func(tiled_points)
     tf.debugging.assert_shapes(
         [(target_func_values, ("_", V))],
-        message=(
-            f"""
+        message=(f"""
             The result of function target_func has shape
             {tf.shape(target_func_values)}, however, expected a trailing
             dimension of size {V}.
-            """
-        ),
+            """),
     )
 
     best_indices = tf.math.argmax(target_func_values, axis=0)  # [V]
@@ -272,12 +268,10 @@ def generate_initial_points(
             tf.debugging.assert_equal(
                 remainder,
                 tf.constant(0, dtype=remainder.dtype),
-                message=(
-                    f"""
+                message=(f"""
                     The vectorization of the target function {vectorization} must be a multiple of
                     the batch shape of initial samples {tf.shape(candidates)[1]}.
-                    """
-                ),
+                    """),
             )
             multiple = vectorization // tf.shape(candidates)[1]
             tiled_candidates = tf.tile(candidates, [1, multiple, 1])  # [samples, V, D]
@@ -285,12 +279,10 @@ def generate_initial_points(
             tf.debugging.assert_rank(
                 candidates,
                 2,
-                message=(
-                    f"""
+                message=(f"""
                     The initial samples must be a tensor of rank 2, got a tensor of rank
                     {tf.rank(candidates)}.
-                    """
-                ),
+                    """),
             )
             tiled_candidates = tf.tile(
                 candidates[:, None, :], [1, vectorization, 1]
@@ -299,13 +291,11 @@ def generate_initial_points(
         target_func_values = target_func(tiled_candidates)  # [samples, V]
         tf.debugging.assert_shapes(
             [(target_func_values, ("_", vectorization))],
-            message=(
-                f"""
+            message=(f"""
                 The result of function target_func has shape
                 {tf.shape(target_func_values)}, however, expected a trailing
                 dimension of size {vectorization}.
-                """
-            ),
+                """),
         )
 
         # now that we know the output dimension and dtypes, initialize empty top tensors
@@ -384,12 +374,10 @@ def generate_continuous_optimizer(
         raise ValueError(f"num_optimization_runs must be positive, got {num_optimization_runs}")
 
     if not callable(num_initial_samples) and num_initial_samples < num_optimization_runs:
-        raise ValueError(
-            f"""
+        raise ValueError(f"""
             num_initial_samples {num_initial_samples} must be at
             least num_optimization_runs {num_optimization_runs}
-            """
-        )
+            """)
 
     if num_recovery_runs < 0:
         raise ValueError(f"num_recovery_runs must be zero or greater, got {num_recovery_runs}")
@@ -470,12 +458,10 @@ def generate_continuous_optimizer(
                 tf.debugging.assert_equal(
                     remainder,
                     tf.constant(0, dtype=remainder.dtype),
-                    message=(
-                        f"""
+                    message=(f"""
                         The vectorization of the target function {V} must be a multiple of the batch
                         shape of random samples {tf.shape(random_points)[1]}.
-                        """
-                    ),
+                        """),
                 )
                 multiple = V // tf.shape(random_points)[1]
                 tiled_random_points = tf.tile(
@@ -485,12 +471,10 @@ def generate_continuous_optimizer(
                 tf.debugging.assert_rank(
                     random_points,
                     2,
-                    message=(
-                        f"""
+                    message=(f"""
                         The random samples must be a tensor of rank 2, got a tensor of rank
                         {tf.rank(random_points)}.
-                        """
-                    ),
+                        """),
                 )
                 tiled_random_points = tf.tile(
                     random_points[:, None, :], [1, V, 1]
@@ -522,12 +506,10 @@ def generate_continuous_optimizer(
             recovery_run = True
 
         if not successful_optimization:  # return error if still failed
-            raise FailedOptimizationError(
-                f"""
+            raise FailedOptimizationError(f"""
                     Acquisition function optimization failed,
                     even after {num_recovery_runs + num_optimization_runs} restarts.
-                    """
-            )
+                    """)
 
         summary_writer = logging.get_tensorboard_writer()
         if summary_writer:
@@ -862,12 +844,10 @@ def get_bounds_of_optimization(space: SearchSpace, starting_points: TensorType) 
         tf.debugging.assert_equal(
             remainder,
             0,
-            message=(
-                f"""
+            message=(f"""
                 The vectorization of the target function {V} must be a multiple of the number of
                 subspaces {len(subspaces)}.
-                """
-            ),
+                """),
         )
         multiple = V // len(subspaces)
         subspaces = subspaces * multiple

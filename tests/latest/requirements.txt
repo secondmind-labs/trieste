@@ -15,3 +15,7 @@
 packaging
 pytest
 PyYAML
+
+# latest tested version of TF
+tensorflow ~= 2.18.1
+tensorflow-probability ~= 0.25.0

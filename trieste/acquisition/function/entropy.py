@@ -14,6 +14,7 @@
 """
 This module contains entropy-based acquisition function builders.
 """
+
 from __future__ import annotations
 
 from typing import List, Optional, TypeVar, cast, overload
@@ -101,12 +102,10 @@ class MinValueEntropySearch(SingleModelAcquisitionBuilder[ProbabilisticModelType
 
         if min_value_sampler is not None:
             if not min_value_sampler.sample_min_value:
-                raise ValueError(
-                    """
+                raise ValueError("""
                     Minvalue Entropy Search requires a min_value_sampler that samples minimum
                     values, however the passed sampler has sample_min_value=False.
-                    """
-                )
+                    """)
         else:
             min_value_sampler = ExactThompsonSampler(sample_min_value=True)
 
@@ -295,12 +294,10 @@ class GIBBON(SingleModelGreedyAcquisitionBuilder[GIBBONModelType]):
 
         if min_value_sampler is not None:
             if not min_value_sampler.sample_min_value:
-                raise ValueError(
-                    """
+                raise ValueError("""
                     GIBBON requires a min_value_sampler that samples minimum values,
                     however the passed sampler has sample_min_value=False.
-                    """
-                )
+                    """)
         else:
             min_value_sampler = ExactThompsonSampler(sample_min_value=True)
 
@@ -459,12 +456,10 @@ class gibbon_quality_term(AcquisitionFunctionClass):
         try:
             model.get_observation_noise()
         except NotImplementedError:
-            raise ValueError(
-                """
+            raise ValueError("""
                 GIBBON only currently supports homoscedastic gpflow models
                 with a likelihood.variance attribute.
-                """
-            )
+                """)
 
         self._model = model
         self._samples = tf.Variable(samples)
@@ -549,19 +544,15 @@ class gibbon_repulsion_term(UpdatablePenalizationFunction):
         try:
             model.get_observation_noise()
         except NotImplementedError:
-            raise ValueError(
-                """
+            raise ValueError("""
                 GIBBON only currently supports homoscedastic gpflow models
                 with a likelihood.variance attribute.
-                """
-            )
+                """)
 
         if not hasattr(model, "covariance_between_points"):
-            raise AttributeError(
-                """
+            raise AttributeError("""
                 GIBBON only supports models with a covariance_between_points method.
-                """
-            )
+                """)
 
         self._model = model
         self._pending_points = tf.Variable(pending_points, shape=[None, *pending_points.shape[1:]])

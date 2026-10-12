@@ -24,28 +24,32 @@ generate_for_env () {
   #
   # $1: The base path of the requirements and constraints files
   # $2: If true, installs the library dependencies
+  local header="generate_for_env($1, $2)"
+  local border=$(printf '#%.0s' $(seq ${#header}))
+  printf '\n%s\n%s\n%s\n\n' "$border" "$header" "$border"
   python3 -m venv $VENV_DIR/$1
   source $VENV_DIR/$1/bin/activate
   pip install --upgrade pip
-  if [ "$1" == "notebooks" ]; then
-      # box2d requires swig to be installed first
-      pip install swig
-  fi
   if [ "$2" = true ]; then
-      pip install -e .[qhsri]
+      # install together so the resolver respects the library's constraints (e.g. numpy<2)
+      pip install -e .[qhsri] -r $1/requirements.txt
+  else
+      pip install -r $1/requirements.txt
   fi
-  pip install -r $1/requirements.txt
   pip freeze --exclude-editable trieste > $1/constraints.txt
   deactivate
 }
 
+# should be generated in Python 3.11
 generate_for_env docs false
 generate_for_env common_build/format false
 generate_for_env common_build/taskipy false
 generate_for_env common_build/types false
 generate_for_env notebooks true
-generate_for_env tests/old true
 generate_for_env tests/prod true
 generate_for_env tests/latest true
+
+# should be generated in Python 3.10
+# generate_for_env tests/old true
 
 rm -rf $VENV_DIR

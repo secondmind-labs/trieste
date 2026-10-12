@@ -16,6 +16,7 @@
 A script to apply modifications to the notebook scripts based on YAML config,
 used to make them run more quickly in continuous integration.
 """
+
 from jsonschema import validate
 from pathlib import Path
 import re

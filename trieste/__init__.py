@@ -20,6 +20,7 @@ for Ask-Tell optimization and manual control of the optimization loop.
 The :mod:`~trieste.objectives` package contains several popular objective functions,
 useful for experimentation.
 """
+
 from . import (
     acquisition,
     ask_tell_optimization,
