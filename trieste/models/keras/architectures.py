@@ -257,10 +257,12 @@ class KerasEnsemble:
         # Single stacked input: [batch, E * input_dim]
         stacked_input = keras.Input(shape=(E * input_dim,), dtype=dtype, name="ensemble_input")
 
-        # Reshape to [E, batch, input_dim] for vectorized layers
+        # Reshape to [E, batch, input_dim] for vectorized layers.
+        # Lambda defaults to floatx (float32) and would cast float64 inputs before the matmul.
         h = keras.layers.Lambda(
             lambda x: tf.transpose(tf.reshape(x, [-1, E, input_dim]), [1, 0, 2]),
             name="ensemble_reshape",
+            dtype=dtype,
         )(stacked_input)
 
         # Vectorized hidden layers
@@ -276,8 +278,11 @@ class KerasEnsemble:
         # Output layer: 2 parameters per member (mean + raw scale)
         params = vectorized_dense_layer(E, 2, None, name="vec_params", dtype=dtype)(h)
         # [E, batch, 2] → [batch, E, 2]
+        # Same dtype as the reshape: otherwise float64 parameters are cast back to float32.
         params_T = keras.layers.Lambda(
-            lambda x: tf.transpose(x, [1, 0, 2]), name="ensemble_transpose"
+            lambda x: tf.transpose(x, [1, 0, 2]),
+            name="ensemble_transpose",
+            dtype=dtype,
         )(params)
 
         def _dist_fn(t: TensorType) -> tfp.distributions.Distribution:

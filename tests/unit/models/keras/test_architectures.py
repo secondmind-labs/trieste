@@ -169,6 +169,45 @@ def test_keras_ensemble_can_be_compiled() -> None:
     assert keras_ensemble.model.optimizer is not None
 
 
+def test_vectorized_ensemble_preserves_sub_float32_perturbations() -> None:
+    """A shift below float32 resolution must change a float64 ensemble's prediction.
+
+    ``Lambda`` defaults to float32. Without an explicit dtype, float64 query points are cast
+    before the first matmul, so perturbing an O(1) input by ``1e-10`` leaves the prediction
+    unchanged.
+    """
+    ensemble_size = 3
+    input_dim = 2
+    example_data = empty_dataset([input_dim], [1])
+    keras_ensemble = build_keras_ensemble(
+        example_data, ensemble_size, num_hidden_layers=0, units=4, activation="linear"
+    )
+    model = keras_ensemble.model
+    assert is_vectorized_ensemble_model(model)
+
+    for layer_name in ("ensemble_reshape", "ensemble_transpose"):
+        assert tf.as_dtype(model.get_layer(layer_name).dtype) == tf.float64
+
+    # Identity on the first feature's mean, so the perturbation passes through unchanged.
+    kernel = np.zeros((ensemble_size, input_dim, 2), dtype=np.float64)
+    kernel[:, 0, 0] = 1.0
+    bias = np.zeros((ensemble_size, 2), dtype=np.float64)
+    model.get_layer("vec_params").set_weights([kernel, bias])
+
+    query = tf.constant([[1.0, -0.5]], dtype=tf.float64)
+    perturbation = np.float64(1e-10)
+
+    def _stacked(points: tf.Tensor) -> tf.Tensor:
+        repeated = tf.repeat(points[:, tf.newaxis, :], ensemble_size, axis=1)
+        return tf.reshape(repeated, [tf.shape(points)[0], ensemble_size * input_dim])
+
+    mean = model(_stacked(query)).mean()
+    mean_perturbed = model(_stacked(query + perturbation)).mean()
+
+    assert mean.dtype == tf.float64
+    np.testing.assert_allclose(mean_perturbed - mean, perturbation)
+
+
 def test_vectorized_keras_ensemble_pickles() -> None:
     """Pickle round-trip must restore ``VectorizedEnsembleDenseLayer`` (e.g. for model export)."""
     example_data = empty_dataset([2], [1])
