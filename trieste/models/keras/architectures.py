@@ -232,11 +232,18 @@ class KerasEnsemble:
 
         A kernel of shape ``[E, fan_in, units]`` requires the same width at each layer, and one
         shared stack requires the same depth and activation. Scalar output is required because
-        the vectorized head emits two Gaussian parameters per member.
+        the vectorized head emits two Gaussian parameters per member. Only exact
+        :class:`GaussianNetwork` instances qualify: a subclass may override ``connect_layers``,
+        which this path does not call.
 
         :return: True when the vectorized build applies.
         """
-        networks = [network for network in self._networks if isinstance(network, GaussianNetwork)]
+        # ``isinstance`` alone would include subclasses and skip their ``connect_layers`` override.
+        networks = [
+            network
+            for network in self._networks
+            if isinstance(network, GaussianNetwork) and network.__class__ is GaussianNetwork
+        ]
         if len(networks) != len(self._networks):
             return False
         if any(network.flattened_output_shape != 1 for network in networks):

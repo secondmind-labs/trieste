@@ -257,6 +257,31 @@ def test_vectorized_ensemble_requires_identical_hidden_architectures() -> None:
     assert "model_1_dense_1" in layer_names
 
 
+def test_vectorized_ensemble_does_not_apply_to_gaussian_network_subclasses() -> None:
+    """A subclass must keep the per-member path so its ``connect_layers`` override is used."""
+
+    class _CustomHiddenGaussianNetwork(GaussianNetwork):
+        def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
+            return tf_keras.layers.Dense(
+                7, activation="relu", name=self.network_name + "custom_hidden"
+            )(input_tensor)
+
+    example_data = empty_dataset([2], [1])
+    input_spec, output_spec = get_tensor_spec_from_data(example_data)
+    hidden = ({"units": 8, "activation": "relu"},)
+    ensemble = KerasEnsemble(
+        [
+            _CustomHiddenGaussianNetwork(input_spec, output_spec, hidden),
+            _CustomHiddenGaussianNetwork(input_spec, output_spec, hidden),
+        ]
+    )
+
+    assert not is_vectorized_ensemble_model(ensemble.model)
+    layer_names = {layer.name for layer in ensemble.model.layers}
+    assert "model_0_custom_hidden" in layer_names
+    assert "model_1_custom_hidden" in layer_names
+
+
 def test_vectorized_keras_ensemble_pickles() -> None:
     """Pickle round-trip must restore ``VectorizedEnsembleDenseLayer`` (e.g. for model export)."""
     example_data = empty_dataset([2], [1])
