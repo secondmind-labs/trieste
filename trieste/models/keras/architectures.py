@@ -88,35 +88,109 @@ def _glorot_uniform_vectorized_class(keras: Any) -> type:
     return _GlorotUniformVectorized
 
 
+def _per_member_initializer_class(keras: Any) -> type:
+    class _PerMemberInitializer(keras.initializers.Initializer):  # type: ignore[misc]
+        """Apply a Dense initializer to each member, then stack on the ensemble axis.
+
+        The vectorized kernel has shape ``[E, fan_in, units]``. Calling a Keras initializer on
+        that whole tensor is not the same as initializing E separate ``[fan_in, units]`` kernels.
+        For rank greater than 2, Glorot treats every axis but the last two as a receptive field
+        and multiplies it into the fan, so ``E`` would shrink the initialization scale by about
+        ``sqrt(E)``. This wrapper initializes each ``shape[1:]`` slice on its own and stacks them.
+
+        Each member also needs a new initializer instance. Keras returns the same tensor on every
+        call of one unseeded initializer, so reusing a single instance would give every member
+        identical weights.
+        """
+
+        def __init__(self, initializer: Any):
+            if (
+                isinstance(initializer, dict)
+                and initializer.get("class_name") == "_PerMemberInitializer"
+            ):
+                initializer = initializer["config"]["initializer"]
+            self._initializer = keras.initializers.get(initializer)
+
+        def __call__(self, shape: Any, dtype: Any = None) -> tf.Tensor:
+            # New instance per member; one unseeded initializer repeats its first draw.
+            config = keras.initializers.serialize(self._initializer)
+            member_shape = tuple(int(dim) for dim in shape[1:])
+            members = [
+                keras.initializers.get(config)(member_shape, dtype=dtype)
+                for _ in range(int(shape[0]))
+            ]
+            return tf.stack(members, axis=0)
+
+        def get_config(self) -> dict[str, Any]:
+            return {"initializer": keras.initializers.serialize(self._initializer)}
+
+    _PerMemberInitializer.__name__ = "_PerMemberInitializer"
+    _PerMemberInitializer.__qualname__ = "_PerMemberInitializer"
+    return _PerMemberInitializer
+
+
 def _vectorized_ensemble_dense_layer_class(keras: Any) -> type:
-    glorot_uniform_vectorized = _glorot_uniform_vectorized_class(keras)
+    per_member_initializer = _per_member_initializer_class(keras)
 
     class VectorizedEnsembleDenseLayer(keras.layers.Layer):  # type: ignore[misc]
-        """Dense layer that processes E ensemble members in parallel via a single batched matmul."""
+        """Dense layer that processes E ensemble members in parallel via a single batched matmul.
 
-        def __init__(self, ensemble_size: int, units: int, activation: Any = None, **kwargs: Any):
-            super().__init__(**kwargs)
+        Accepts the same arguments as :class:`~tf.keras.layers.Dense` besides ``units``.
+        """
+
+        def __init__(
+            self,
+            ensemble_size: int,
+            units: int,
+            activation: Any = None,
+            use_bias: bool = True,
+            kernel_initializer: Any = "glorot_uniform",
+            bias_initializer: Any = "zeros",
+            kernel_regularizer: Any = None,
+            bias_regularizer: Any = None,
+            activity_regularizer: Any = None,
+            kernel_constraint: Any = None,
+            bias_constraint: Any = None,
+            **kwargs: Any,
+        ):
+            super().__init__(activity_regularizer=activity_regularizer, **kwargs)
             self.ensemble_size = ensemble_size
-            self.units = units
+            self.units = int(units)
             self._activation = activation
             self.activation_fn = keras.activations.get(activation)
+            self.use_bias = use_bias
+            self.kernel_initializer = per_member_initializer(kernel_initializer)
+            self.bias_initializer = per_member_initializer(bias_initializer)
+            self.kernel_regularizer = keras.regularizers.get(kernel_regularizer)
+            self.bias_regularizer = keras.regularizers.get(bias_regularizer)
+            self.kernel_constraint = keras.constraints.get(kernel_constraint)
+            self.bias_constraint = keras.constraints.get(bias_constraint)
 
         def build(self, input_shape: Any) -> None:
             fan_in = int(input_shape[-1])
             self.kernel = self.add_weight(
                 "kernel",
                 shape=[self.ensemble_size, fan_in, self.units],
-                initializer=glorot_uniform_vectorized(),
+                initializer=self.kernel_initializer,
+                regularizer=self.kernel_regularizer,
+                constraint=self.kernel_constraint,
             )
-            self.bias = self.add_weight(
-                "bias",
-                shape=[self.ensemble_size, self.units],
-                initializer="zeros",
-            )
+            if self.use_bias:
+                self.bias = self.add_weight(
+                    "bias",
+                    shape=[self.ensemble_size, self.units],
+                    initializer=self.bias_initializer,
+                    regularizer=self.bias_regularizer,
+                    constraint=self.bias_constraint,
+                )
+            else:
+                self.bias = None
             super().build(input_shape)
 
         def call(self, x: TensorType) -> TensorType:
-            h = tf.matmul(x, self.kernel) + self.bias[:, tf.newaxis, :]
+            h = tf.matmul(x, self.kernel)
+            if self.use_bias:
+                h = h + self.bias[:, tf.newaxis, :]
             if self.activation_fn is not None:
                 h = self.activation_fn(h)
             return h
@@ -126,7 +200,15 @@ def _vectorized_ensemble_dense_layer_class(keras: Any) -> type:
                 **super().get_config(),
                 "ensemble_size": self.ensemble_size,
                 "units": self.units,
-                "activation": self._activation,
+                "activation": keras.activations.serialize(self.activation_fn),
+                "use_bias": self.use_bias,
+                "kernel_initializer": keras.initializers.serialize(self.kernel_initializer),
+                "bias_initializer": keras.initializers.serialize(self.bias_initializer),
+                "kernel_regularizer": keras.regularizers.serialize(self.kernel_regularizer),
+                "bias_regularizer": keras.regularizers.serialize(self.bias_regularizer),
+                "activity_regularizer": keras.regularizers.serialize(self.activity_regularizer),
+                "kernel_constraint": keras.constraints.serialize(self.kernel_constraint),
+                "bias_constraint": keras.constraints.serialize(self.bias_constraint),
             }
 
     VectorizedEnsembleDenseLayer.__name__ = "VectorizedEnsembleDenseLayer"
@@ -289,14 +371,19 @@ class KerasEnsemble:
             dtype=dtype,
         )(stacked_input)
 
-        # Vectorized hidden layers
+        # Vectorized hidden layers. Remaining entries are Dense arguments (bias, initializers,
+        # regularizers, constraints) and are forwarded rather than dropped.
         for j, layer_args in enumerate(network._hidden_layer_args):  # type: ignore
+            hidden_kwargs = dict(layer_args)
+            units = hidden_kwargs.pop("units")
+            activation = hidden_kwargs.pop("activation", None)
             h = vectorized_dense_layer(
                 E,
-                layer_args["units"],
-                layer_args.get("activation"),
+                units,
+                activation,
                 name=f"vec_dense_{j}",
                 dtype=dtype,
+                **hidden_kwargs,
             )(h)
 
         # Output layer: 2 parameters per member (mean + raw scale)
@@ -476,6 +563,7 @@ def keras_ensemble_custom_objects(*, use_tensorflow_keras: bool = False) -> dict
         "MultivariateNormalTriL": MultivariateNormalTriL,
         "VectorizedEnsembleDenseLayer": _vectorized_ensemble_dense_layer_class(keras),
         "_GlorotUniformVectorized": _glorot_uniform_vectorized_class(keras),
+        "_PerMemberInitializer": _per_member_initializer_class(keras),
     }
 
 

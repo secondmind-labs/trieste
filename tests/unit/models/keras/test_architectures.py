@@ -156,7 +156,10 @@ def test_keras_ensemble_build_ensemble_seems_correct(
         ensemble_size, num_hidden_layers, vectorized=vectorized
     )
     if vectorized:
-        assert len(vectorized_hidden_layers(keras_ensemble.model)) == num_hidden_layers
+        hidden_layers = vectorized_hidden_layers(keras_ensemble.model)
+        assert len(hidden_layers) == num_hidden_layers
+        member_kernels = hidden_layers[0].kernel
+        assert not np.allclose(member_kernels[0], member_kernels[1])
 
 
 def test_keras_ensemble_can_be_compiled() -> None:
@@ -255,6 +258,34 @@ def test_vectorized_ensemble_requires_identical_hidden_architectures() -> None:
     assert "model_0_dense_1" not in layer_names
     assert "model_1_dense_0" in layer_names
     assert "model_1_dense_1" in layer_names
+
+
+def test_vectorized_ensemble_forwards_dense_kwargs() -> None:
+    """Vectorized hidden layers keep Dense arguments other than units and activation."""
+    example_data = empty_dataset([2], [1])
+    input_spec, output_spec = get_tensor_spec_from_data(example_data)
+    hidden = (
+        {
+            "units": 8,
+            "activation": "relu",
+            "use_bias": False,
+            "kernel_initializer": "zeros",
+            "kernel_regularizer": "l2",
+        },
+    )
+    ensemble = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, hidden),
+            GaussianNetwork(input_spec, output_spec, hidden),
+        ]
+    )
+
+    assert is_vectorized_ensemble_model(ensemble.model)
+    hidden_layer = ensemble.model.get_layer("vec_dense_0")
+    assert hidden_layer.use_bias is False
+    assert hidden_layer.bias is None
+    assert hidden_layer.kernel_regularizer is not None
+    np.testing.assert_array_equal(hidden_layer.kernel.numpy(), 0.0)
 
 
 def test_vectorized_ensemble_does_not_apply_to_gaussian_network_subclasses() -> None:
