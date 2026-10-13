@@ -30,6 +30,7 @@ from tests.util.models.keras.ensemble_layers import (
 from tests.util.models.keras.models import trieste_keras_ensemble_model
 from trieste.models.keras import (
     GaussianNetwork,
+    KerasEnsemble,
     KerasEnsembleNetwork,
     build_keras_ensemble,
     get_tensor_spec_from_data,
@@ -206,6 +207,54 @@ def test_vectorized_ensemble_preserves_sub_float32_perturbations() -> None:
 
     assert mean.dtype == tf.float64
     np.testing.assert_allclose(mean_perturbed - mean, perturbation)
+
+
+def test_vectorized_ensemble_requires_identical_hidden_architectures() -> None:
+    """Differing hidden layers stay on the per-member model and keep each member's layers."""
+    example_data = empty_dataset([2], [1])
+    input_spec, output_spec = get_tensor_spec_from_data(example_data)
+
+    same = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+        ]
+    )
+    assert is_vectorized_ensemble_model(same.model)
+
+    different_units = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+            GaussianNetwork(input_spec, output_spec, ({"units": 4, "activation": "relu"},)),
+        ]
+    )
+    assert not is_vectorized_ensemble_model(different_units.model)
+    hidden_units = {
+        layer.name: layer.units
+        for layer in different_units.model.layers
+        if isinstance(layer, tf_keras.layers.Dense) and layer.name.endswith("dense_0")
+    }
+    assert hidden_units == {"model_0_dense_0": 8, "model_1_dense_0": 4}
+
+    different_depth = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+            GaussianNetwork(
+                input_spec,
+                output_spec,
+                (
+                    {"units": 8, "activation": "relu"},
+                    {"units": 3, "activation": "tanh"},
+                ),
+            ),
+        ]
+    )
+    assert not is_vectorized_ensemble_model(different_depth.model)
+    layer_names = {layer.name for layer in different_depth.model.layers}
+    assert "model_0_dense_0" in layer_names
+    assert "model_0_dense_1" not in layer_names
+    assert "model_1_dense_0" in layer_names
+    assert "model_1_dense_1" in layer_names
 
 
 def test_vectorized_keras_ensemble_pickles() -> None:

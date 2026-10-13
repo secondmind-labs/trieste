@@ -214,18 +214,35 @@ class KerasEnsemble:
         """
         Builds the ensemble model by combining all the individual networks in a single Keras model.
 
-        For :class:`GaussianNetwork` ensembles with a single output dimension, a vectorized
-        model is constructed using batched matmuls across all ensemble members in one pass.
-        For other network types, falls back to the original per-member functional model.
+        For scalar-output :class:`GaussianNetwork` ensembles whose members share the same hidden
+        layers, a vectorized model is constructed using batched matmuls across all ensemble
+        members in one pass. Other ensembles use the original per-member functional model, so
+        members with different widths, depths, or activations keep their own layers.
 
         :return: The Keras model.
         """
-        if all(
-            isinstance(n, GaussianNetwork) and n.flattened_output_shape == 1 for n in self._networks
-        ):
+        if self._can_build_vectorized_ensemble():
             return self._build_vectorized_ensemble()
         inputs, outputs = zip(*[network.connect_layers() for network in self._networks])
         return tf_keras.Model(inputs=inputs, outputs=outputs)
+
+    def _can_build_vectorized_ensemble(self) -> bool:
+        """
+        Whether every member can share one batched matmul per layer.
+
+        A kernel of shape ``[E, fan_in, units]`` requires the same width at each layer, and one
+        shared stack requires the same depth and activation. Scalar output is required because
+        the vectorized head emits two Gaussian parameters per member.
+
+        :return: True when the vectorized build applies.
+        """
+        networks = [network for network in self._networks if isinstance(network, GaussianNetwork)]
+        if len(networks) != len(self._networks):
+            return False
+        if any(network.flattened_output_shape != 1 for network in networks):
+            return False
+        reference = list(networks[0]._hidden_layer_args)
+        return all(list(network._hidden_layer_args) == reference for network in networks)
 
     def _build_vectorized_ensemble(self) -> tf_keras.Model:
         """Vectorized ensemble with a single stacked input and a single batched output.
