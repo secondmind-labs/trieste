@@ -654,6 +654,9 @@ class DeepEnsemble(
                     KEY_SPLITTER = {
                         # map history keys to prefix and suffix
                         "loss": ("loss", ""),
+                        # Vectorized models have one output, so the metric name is ``ensemble_mse``
+                        # rather than ``model_0_output_mse``.
+                        r"ensemble_(?P<metric>.+)": (r"\g<metric>", ""),
                         r"(?P<model>model_\d+)_output_loss": ("loss", r"_\g<model>"),
                         r"(?P<model>model_\d+)_output_(?P<metric>.+)": (
                             r"\g<metric>",

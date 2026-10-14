@@ -219,7 +219,8 @@ def compile_metrics_for_ensemble(
 
     Vectorized models use one output with shape ``[batch, E, ...]``; a single ``"mse"`` metric can
     collide with per-member metrics when ``steps_per_execution`` > 1. Legacy multi-output models
-    need one uniquely named metric per output.
+    need a nested list, one uniquely named metric list per output. A flat list is applied to every
+    output.
 
     :param n_outputs: Number of Keras model outputs.
     :param metrics: Metric(s) from :class:`~trieste.models.optimizer.KerasOptimizer`, or ``None``.
@@ -254,17 +255,22 @@ def compile_metrics_for_ensemble(
         return [_metric_with_unique_name(metrics, _default_vectorized_metric_name(metrics))]
 
     n_members = ensemble_size if ensemble_size is not None else n_outputs
-    if isinstance(metrics, (list, tuple)) and len(metrics) == n_members:
-        return [
-            _metric_with_unique_name(metric, f"{_metric_base_name(metric)}_{index}")
-            for index, metric in enumerate(metrics)
-        ]
+    # One sub-list per Keras output. A flat list would be broadcast onto every output.
+    return [_metrics_for_one_output(metrics, index) for index in range(n_members)]
 
-    base = metrics[0] if isinstance(metrics, (list, tuple)) and len(metrics) == 1 else metrics
-    return [
-        _metric_with_unique_name(base, f"{_metric_base_name(base)}_{index}")
-        for index in range(n_members)
-    ]
+
+def _metrics_for_one_output(metrics: Any, output_index: int) -> list[tf_keras.metrics.Metric]:
+    """Copy ``metrics`` onto one ensemble output, with names unique across outputs."""
+    items = list(metrics) if isinstance(metrics, (list, tuple)) else [metrics]
+    named: list[tf_keras.metrics.Metric] = []
+    used_names: set[str] = set()
+    for metric_index, metric in enumerate(items):
+        name = f"{_metric_base_name(metric)}_{output_index}"
+        if name in used_names:
+            name = f"{name}_{metric_index}"
+        used_names.add(name)
+        named.append(_metric_with_unique_name(metric, name))
+    return named
 
 
 def _metric_base_name(metric: Any) -> str:

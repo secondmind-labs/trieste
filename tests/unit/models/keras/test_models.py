@@ -923,6 +923,37 @@ def test_deep_ensemble_log(
     assert mocked_summary_histogram.call_count == num_histogram
 
 
+@unittest.mock.patch("trieste.logging.tf.summary.histogram")
+@unittest.mock.patch("trieste.logging.tf.summary.scalar")
+def test_deep_ensemble_log_includes_vectorized_metric(
+    mocked_summary_scalar: unittest.mock.MagicMock,
+    mocked_summary_histogram: unittest.mock.MagicMock,
+) -> None:
+    """Vectorized history records ``ensemble_mse``, which ``log`` must not skip."""
+    example_data = _get_example_data([16, 2], [16, 1])
+    keras_ensemble = trieste_keras_ensemble_model(example_data, _ENSEMBLE_SIZE, False)
+    model = DeepEnsemble(
+        keras_ensemble,
+        KerasOptimizer(
+            tf_keras.optimizers.Adam(),
+            {"epochs": 1, "verbose": 0, "batch_size": 8},
+            metrics=["mse"],
+        ),
+    )
+    model.optimize(example_data)
+
+    assert "ensemble_mse" in model.model.history.history
+
+    with tensorboard_writer(unittest.mock.MagicMock()):
+        with step_number(1):
+            model.log(None)
+
+    scalar_names = [call.args[0] for call in mocked_summary_scalar.call_args_list]
+    assert "mse/final" in scalar_names
+    histogram_names = [call.args[0] for call in mocked_summary_histogram.call_args_list]
+    assert "mse/epoch" in histogram_names
+
+
 @pytest.mark.slow
 @pytest.mark.skipif(Version(tf.__version__) < Version("2.9"), reason="unclear")
 @random_seed
