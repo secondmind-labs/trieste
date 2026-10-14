@@ -26,6 +26,7 @@ from tests.util.models.keras.models import trieste_keras_ensemble_model
 from trieste.data import Dataset
 from trieste.models.keras import DeepEnsemble, build_keras_ensemble, negative_log_likelihood
 from trieste.models.keras.utils import (
+    aggregate_member_losses,
     compile_metrics_for_ensemble,
     ensemble_negative_log_likelihood,
 )
@@ -91,6 +92,20 @@ def test_deep_ensemble_compile_uses_aggregated_loss() -> None:
         )
     )
     npt.assert_allclose(eval_loss, manual, rtol=1e-5)
+
+
+def test_aggregate_member_losses_scales_keras_loss_by_ensemble_size() -> None:
+    """A Keras Loss already reduces to a scalar; aggregation must undo the 1/E factor."""
+    ensemble_size = 5
+    y_true = tf.random.uniform([32, ensemble_size, 1], dtype=tf.float64)
+    y_pred = tf.random.uniform([32, ensemble_size, 1], dtype=tf.float64)
+    mse = tf_keras.losses.MeanSquaredError()
+
+    reduced = mse(y_true, y_pred)
+    aggregated = aggregate_member_losses(mse)(y_true, y_pred)
+
+    npt.assert_allclose(aggregated / reduced, float(ensemble_size), rtol=1e-5)
+    assert mse.reduction == tf_keras.losses.Reduction.AUTO
 
 
 @random_seed

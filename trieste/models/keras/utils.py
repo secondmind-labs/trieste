@@ -148,12 +148,16 @@ def aggregate_member_losses(
     axes, scaling gradients by about ``1/E``. This wrapper returns
     ``sum_m mean_batch(loss[..., m, ...])`` instead.
 
-    :param loss_fn: Loss function, typically :func:`negative_log_likelihood`.
+    A :class:`~tf.keras.losses.Loss` already reduces to a scalar, so the ensemble axis would be
+    averaged away. Those instances are evaluated with ``reduction="none"`` before aggregating.
+
+    :param loss_fn: Loss function, typically :func:`negative_log_likelihood`, or a Keras ``Loss``.
     :return: Loss function returning a scalar for vectorized single-output models.
     """
+    unreduced_loss = _loss_with_no_reduction(loss_fn)
 
     def aggregated(y_true: TensorType, y_pred: Any) -> TensorType:
-        values = loss_fn(y_true, y_pred)
+        values = unreduced_loss(y_true, y_pred)
         if len(values.shape) == 0:
             return values
         if len(values.shape) >= 2:
@@ -161,6 +165,19 @@ def aggregate_member_losses(
         return tf.reduce_mean(values, axis=0)
 
     return aggregated
+
+
+def _loss_with_no_reduction(
+    loss_fn: Callable[[TensorType, Any], TensorType],
+) -> Callable[[TensorType, Any], TensorType]:
+    """Return ``loss_fn`` unchanged, or a copy of a Keras ``Loss`` with ``reduction="none"``."""
+    if not isinstance(loss_fn, tf_keras.losses.Loss):
+        return loss_fn
+    if loss_fn.reduction == tf_keras.losses.Reduction.NONE:
+        return loss_fn
+    config = loss_fn.get_config()
+    config["reduction"] = tf_keras.losses.Reduction.NONE
+    return type(loss_fn).from_config(config)
 
 
 def ensemble_negative_log_likelihood(
