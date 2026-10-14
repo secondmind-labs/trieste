@@ -666,6 +666,20 @@ def test_deep_ensemble_prepare_data_call(
             assert tf.reduce_all(prepared_inputs[member_data] == x)
 
 
+@pytest.mark.parametrize("observation_shape", [[1], [3]])
+def test_prepare_dataset_bootstrap_raises_for_empty_dataset(observation_shape: list[int]) -> None:
+    """Both the vectorized and per-member bootstrap paths reject an empty dataset."""
+    dataset = empty_dataset([1], observation_shape)
+    model, _, _ = trieste_deep_ensemble_model(dataset, 2, bootstrap_data=True, diversify=False)
+
+    with pytest.raises(tf.errors.InvalidArgumentError, match="Dataset must not be empty"):
+        model.prepare_dataset(dataset)
+
+    inputs, outputs = model.prepare_dataset(dataset, do_not_bootstrap=True)
+    assert next(iter(inputs.values())).shape[0] == 0
+    assert next(iter(outputs.values())).shape[0] == 0
+
+
 @pytest.mark.parametrize("do_not_bootstrap", [True, False])
 def test_deep_ensemble_prepare_data_bootstrap_combinations(do_not_bootstrap: bool) -> None:
     """Test all combinations of bootstrap and do_not_bootstrap arguments."""

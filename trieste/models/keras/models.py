@@ -240,8 +240,12 @@ class DeepEnsemble(
         :param do_not_bootstrap: If True, do not bootstrap the data, even if the model is set to
             bootstrap. This can be useful for preparing validation data.
         :return: A dictionary with input data and a dictionary with output data.
+        :raise tf.errors.InvalidArgumentError: If bootstrapping is enabled and ``dataset`` is empty.
         """
         E = self.ensemble_size
+        if self._bootstrap and not do_not_bootstrap:
+            # Inlined bootstrap no longer calls sample_with_replacement, which checked this.
+            tf.debugging.assert_positive(len(dataset), message="Dataset must not be empty.")
         single_input = len(self.model.input_names) == 1
 
         if single_input:
