@@ -14,10 +14,11 @@
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import Any, Callable, Mapping, Optional, Union
 
 import tensorflow as tf
 import tensorflow_probability as tfp
+from gpflow.keras import tf_keras
 
 from ...data import Dataset
 from ...types import TensorType
@@ -134,3 +135,164 @@ def negative_log_likelihood(
     :return: Negative log likelihood values.
     """
     return -y_pred.log_prob(y_true)
+
+
+def aggregate_member_losses(
+    loss_fn: Callable[[TensorType, Any], TensorType],
+) -> Callable[[TensorType, Any], TensorType]:
+    """
+    Wrap a per-sample loss so the compiled scalar matches legacy multi-output Keras ensembles.
+
+    Legacy models compile ``loss=[fn] * E``; Keras sums E batch-mean losses. Vectorized models
+    have one output with shape ``[batch, E, ...]``; default Keras reduction averages over all
+    axes, scaling gradients by about ``1/E``. This wrapper returns
+    ``sum_m mean_batch(loss[..., m, ...])`` instead.
+
+    A :class:`~tf.keras.losses.Loss` already reduces to a scalar, so the ensemble axis would be
+    averaged away. Those instances are evaluated with ``reduction="none"`` before aggregating.
+
+    :param loss_fn: Loss function, typically :func:`negative_log_likelihood`, or a Keras ``Loss``.
+    :return: Loss function returning a scalar for vectorized single-output models.
+    """
+    unreduced_loss = _loss_with_no_reduction(loss_fn)
+
+    def aggregated(y_true: TensorType, y_pred: Any) -> TensorType:
+        values = unreduced_loss(y_true, y_pred)
+        if len(values.shape) == 0:
+            return values
+        if len(values.shape) >= 2:
+            return tf.reduce_sum(tf.reduce_mean(values, axis=0))
+        return tf.reduce_mean(values, axis=0)
+
+    return aggregated
+
+
+def _loss_with_no_reduction(
+    loss_fn: Callable[[TensorType, Any], TensorType],
+) -> Callable[[TensorType, Any], TensorType]:
+    """Return ``loss_fn`` unchanged, or a copy of a Keras ``Loss`` with ``reduction="none"``."""
+    if not isinstance(loss_fn, tf_keras.losses.Loss):
+        return loss_fn
+    if loss_fn.reduction == tf_keras.losses.Reduction.NONE:
+        return loss_fn
+    config = loss_fn.get_config()
+    config["reduction"] = tf_keras.losses.Reduction.NONE
+    return type(loss_fn).from_config(config)
+
+
+def ensemble_negative_log_likelihood(
+    y_true: TensorType, y_pred: tfp.distributions.Distribution
+) -> TensorType:
+    """
+    Negative log-likelihood for vectorized ensembles (sum of per-member batch-mean NLL).
+
+    :param y_true: Observations, shape ``[batch, E, ...]``.
+    :param y_pred: Distribution with batch shape ``[batch, E, ...]``.
+    :return: Scalar loss matching legacy ``loss=[negative_log_likelihood] * E`` compile.
+    """
+    return aggregate_member_losses(negative_log_likelihood)(y_true, y_pred)
+
+
+_STRING_METRIC_CLASSES: dict[str, type[tf_keras.metrics.Metric]] = {
+    "mse": tf_keras.metrics.MeanSquaredError,
+    "mae": tf_keras.metrics.MeanAbsoluteError,
+    "mape": tf_keras.metrics.MeanAbsolutePercentageError,
+    "msle": tf_keras.metrics.MeanSquaredLogarithmicError,
+}
+
+
+def _metric_with_unique_name(metric: Any, name: str) -> tf_keras.metrics.Metric:
+    if isinstance(metric, str):
+        metric_class = _STRING_METRIC_CLASSES.get(metric)
+        if metric_class is not None:
+            return metric_class(name=name)
+        resolved = tf_keras.metrics.get(metric)
+        if isinstance(resolved, type) and issubclass(resolved, tf_keras.metrics.Metric):
+            return resolved(name=name)
+        return tf_keras.metrics.MeanMetricWrapper(resolved, name=name)
+    if isinstance(metric, type) and issubclass(metric, tf_keras.metrics.Metric):
+        return metric(name=name)
+    if isinstance(metric, tf_keras.metrics.Metric):
+        return type(metric).from_config({**metric.get_config(), "name": name})
+    return tf_keras.metrics.MeanMetricWrapper(metric, name=name)
+
+
+def _default_vectorized_metric_name(metric: Any) -> str:
+    if isinstance(metric, str):
+        return f"ensemble_{metric}"
+    if isinstance(metric, tf_keras.metrics.Metric):
+        return f"ensemble_{metric.name}"
+    return "ensemble_metric"
+
+
+def compile_metrics_for_ensemble(
+    n_outputs: int,
+    metrics: Optional[Union[list[Any], Any]],
+    ensemble_size: Optional[int] = None,
+    compile_args: Optional[Mapping[str, Any]] = None,
+) -> Optional[Union[list[tf_keras.metrics.Metric], tf_keras.metrics.Metric]]:
+    """
+    Build Keras compile metrics with unique names for vectorized and legacy ensemble layouts.
+
+    Vectorized models use one output with shape ``[batch, E, ...]``; a single ``"mse"`` metric can
+    collide with per-member metrics when ``steps_per_execution`` > 1. Legacy multi-output models
+    need a nested list, one uniquely named metric list per output. A flat list is applied to every
+    output.
+
+    :param n_outputs: Number of Keras model outputs.
+    :param metrics: Metric(s) from :class:`~trieste.models.optimizer.KerasOptimizer`, or ``None``.
+    :param ensemble_size: Ensemble size for legacy multi-output models (defaults to ``n_outputs``).
+    :param compile_args: Optional compile kwargs; when ``steps_per_execution`` > 1 on a
+        vectorized model, returns ``None`` because some Keras builds duplicate ``mse`` names.
+    :return: Metrics argument for :meth:`tf.keras.Model.compile`, or ``None``.
+    """
+    if metrics is None:
+        return None
+
+    steps_per_execution = 1
+    if compile_args is not None:
+        steps_per_execution = int(compile_args.get("steps_per_execution", 1) or 1)
+    if n_outputs == 1 and steps_per_execution > 1:
+        return None
+
+    if n_outputs == 1:
+        if isinstance(metrics, (list, tuple)):
+            if len(metrics) == 1:
+                return [
+                    _metric_with_unique_name(
+                        metrics[0], _default_vectorized_metric_name(metrics[0])
+                    )
+                ]
+            return [
+                _metric_with_unique_name(
+                    metric, f"{_default_vectorized_metric_name(metric)}_{index}"
+                )
+                for index, metric in enumerate(metrics)
+            ]
+        return [_metric_with_unique_name(metrics, _default_vectorized_metric_name(metrics))]
+
+    n_members = ensemble_size if ensemble_size is not None else n_outputs
+    # One sub-list per Keras output. A flat list would be broadcast onto every output.
+    return [_metrics_for_one_output(metrics, index) for index in range(n_members)]
+
+
+def _metrics_for_one_output(metrics: Any, output_index: int) -> list[tf_keras.metrics.Metric]:
+    """Copy ``metrics`` onto one ensemble output, with names unique across outputs."""
+    items = list(metrics) if isinstance(metrics, (list, tuple)) else [metrics]
+    named: list[tf_keras.metrics.Metric] = []
+    used_names: set[str] = set()
+    for metric_index, metric in enumerate(items):
+        name = f"{_metric_base_name(metric)}_{output_index}"
+        if name in used_names:
+            name = f"{name}_{metric_index}"
+        used_names.add(name)
+        named.append(_metric_with_unique_name(metric, name))
+    return named
+
+
+def _metric_base_name(metric: Any) -> str:
+    if isinstance(metric, str):
+        return metric
+    if isinstance(metric, tf_keras.metrics.Metric):
+        return metric.name
+    return "metric"

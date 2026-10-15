@@ -19,6 +19,13 @@ import tensorflow_probability as tfp
 from gpflow.keras import tf_keras
 
 from tests.util.misc import empty_dataset
+from tests.util.models.keras.ensemble_layers import (
+    activation_matches,
+    expected_ensemble_layer_count,
+    is_vectorized_ensemble_model,
+    per_member_hidden_layers,
+    vectorized_hidden_layers,
+)
 from trieste.models.keras import build_keras_ensemble
 
 
@@ -46,15 +53,28 @@ def test_build_keras_ensemble(
     )
 
     assert keras_ensemble.ensemble_size == ensemble_size
-    assert len(keras_ensemble.model.layers) == num_hidden_layers * ensemble_size + 3 * ensemble_size
+    model = keras_ensemble.model
+    vectorized = is_vectorized_ensemble_model(model)
+    assert len(model.layers) == expected_ensemble_layer_count(
+        ensemble_size, num_hidden_layers, vectorized=vectorized
+    )
     if num_outputs > 1:
         if independent_normal:
-            assert isinstance(keras_ensemble.model.layers[-1], tfp.layers.IndependentNormal)
+            assert isinstance(model.layers[-1], tfp.layers.IndependentNormal)
         else:
-            assert isinstance(keras_ensemble.model.layers[-1], tfp.layers.MultivariateNormalTriL)
+            assert isinstance(model.layers[-1], tfp.layers.MultivariateNormalTriL)
     else:
-        assert isinstance(keras_ensemble.model.layers[-1], tfp.layers.DistributionLambda)
+        assert isinstance(model.layers[-1], tfp.layers.DistributionLambda)
     if num_hidden_layers > 0:
-        for layer in keras_ensemble.model.layers[ensemble_size : -ensemble_size * 2]:
+        hidden_layers = (
+            vectorized_hidden_layers(model)
+            if vectorized
+            else per_member_hidden_layers(model, ensemble_size)
+        )
+        expected_hidden_count = (
+            num_hidden_layers if vectorized else num_hidden_layers * ensemble_size
+        )
+        assert len(hidden_layers) == expected_hidden_count
+        for layer in hidden_layers:
             assert layer.units == units
-            assert layer.activation == activation or layer.activation.__name__ == activation
+            assert activation_matches(layer, activation)

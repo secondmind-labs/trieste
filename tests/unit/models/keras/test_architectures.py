@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import pickle
 from typing import Any, List, Tuple
 
 import numpy as np
@@ -21,10 +22,17 @@ import tensorflow_probability as tfp
 from gpflow.keras import tf_keras
 
 from tests.util.misc import empty_dataset
+from tests.util.models.keras.ensemble_layers import (
+    expected_ensemble_layer_count,
+    is_vectorized_ensemble_model,
+    vectorized_hidden_layers,
+)
 from tests.util.models.keras.models import trieste_keras_ensemble_model
 from trieste.models.keras import (
     GaussianNetwork,
+    KerasEnsemble,
     KerasEnsembleNetwork,
+    build_keras_ensemble,
     get_tensor_spec_from_data,
     negative_log_likelihood,
 )
@@ -98,36 +106,60 @@ def test_keras_ensemble_build_ensemble_seems_correct(
     assert isinstance(keras_ensemble.model, tf_keras.Model)
     assert keras_ensemble.model.built
 
-    # check ensemble size
-    assert len(keras_ensemble.model.inputs) == ensemble_size
-    assert len(keras_ensemble.model.input_names) == ensemble_size
-    assert len(keras_ensemble.model.output_names) == ensemble_size
+    vectorized = is_vectorized_ensemble_model(keras_ensemble.model)
+    input_dim = int(np.prod(query_point_shape))
 
-    # check input shape
-    for shape in keras_ensemble.model.input_shape:
-        assert shape[1:] == tf.TensorShape(query_point_shape)
+    if vectorized:
+        assert len(keras_ensemble.model.inputs) == 1
+        assert keras_ensemble.model.input_names == ["ensemble_input"]
+        assert keras_ensemble.model.output_names == ["ensemble_output"]
+        assert keras_ensemble.model.input_shape == (None, ensemble_size * input_dim)
 
-    # testing output shape is more complex as probabilistic layers don't have some properties
-    # we make some predictions instead and then check the output is correct
-    predictions = keras_ensemble.model.predict([query_points] * ensemble_size)
-    assert len(predictions) == ensemble_size
-    for pred in predictions:
-        assert pred.shape == tf.TensorShape([n_obs] + observation_shape)
+        qp = query_points
+        if qp.shape.rank == 1:
+            qp = qp[..., tf.newaxis]
+        stacked = tf.reshape(
+            tf.repeat(qp[..., tf.newaxis, :], ensemble_size, axis=-2),
+            [n_obs, ensemble_size * int(np.prod(query_point_shape))],
+        )
+        predictions = keras_ensemble.model.predict(
+            {keras_ensemble.model.input_names[0]: stacked}, verbose=0
+        )
+        assert predictions.shape == tf.TensorShape([n_obs, ensemble_size] + observation_shape)
+    else:
+        assert len(keras_ensemble.model.inputs) == ensemble_size
+        assert len(keras_ensemble.model.input_names) == ensemble_size
+        assert len(keras_ensemble.model.output_names) == ensemble_size
 
-    # check input/output names
-    for ens in range(ensemble_size):
-        ins = ["model_" + str(ens) in i_name for i_name in keras_ensemble.model.input_names]
-        assert np.any(ins)
-        outs = ["model_" + str(ens) in o_name for o_name in keras_ensemble.model.output_names]
-        assert np.any(outs)
+        for shape in keras_ensemble.model.input_shape:
+            assert shape[1:] == tf.TensorShape(query_point_shape)
+
+        predictions = keras_ensemble.model.predict([query_points] * ensemble_size, verbose=0)
+        assert len(predictions) == ensemble_size
+        for pred in predictions:
+            assert pred.shape == tf.TensorShape([n_obs] + observation_shape)
+
+        for ens in range(ensemble_size):
+            ins = ["model_" + str(ens) in i_name for i_name in keras_ensemble.model.input_names]
+            assert np.any(ins)
+            outs = ["model_" + str(ens) in o_name for o_name in keras_ensemble.model.output_names]
+            assert np.any(outs)
 
     # check the model has not been compiled
     assert keras_ensemble.model.compiled_loss is None
     assert keras_ensemble.model.compiled_metrics is None
     assert keras_ensemble.model.optimizer is None
 
-    # check correct number of layers
-    assert len(keras_ensemble.model.layers) == 2 * ensemble_size + 3 * ensemble_size
+    # check correct number of layers (vectorized single-output vs per-member multi-output)
+    num_hidden_layers = 2
+    assert len(keras_ensemble.model.layers) == expected_ensemble_layer_count(
+        ensemble_size, num_hidden_layers, vectorized=vectorized
+    )
+    if vectorized:
+        hidden_layers = vectorized_hidden_layers(keras_ensemble.model)
+        assert len(hidden_layers) == num_hidden_layers
+        member_kernels = hidden_layers[0].kernel
+        assert not np.allclose(member_kernels[0], member_kernels[1])
 
 
 def test_keras_ensemble_can_be_compiled() -> None:
@@ -139,6 +171,159 @@ def test_keras_ensemble_can_be_compiled() -> None:
     assert keras_ensemble.model.compiled_loss is not None
     assert keras_ensemble.model.compiled_metrics is not None
     assert keras_ensemble.model.optimizer is not None
+
+
+def test_vectorized_ensemble_preserves_sub_float32_perturbations() -> None:
+    """A shift below float32 resolution must change a float64 ensemble's prediction.
+
+    ``Lambda`` defaults to float32. Without an explicit dtype, float64 query points are cast
+    before the first matmul, so perturbing an O(1) input by ``1e-10`` leaves the prediction
+    unchanged.
+    """
+    ensemble_size = 3
+    input_dim = 2
+    example_data = empty_dataset([input_dim], [1])
+    keras_ensemble = build_keras_ensemble(
+        example_data, ensemble_size, num_hidden_layers=0, units=4, activation="linear"
+    )
+    model = keras_ensemble.model
+    assert is_vectorized_ensemble_model(model)
+
+    for layer_name in ("ensemble_reshape", "ensemble_transpose"):
+        assert tf.as_dtype(model.get_layer(layer_name).dtype) == tf.float64
+
+    # Identity on the first feature's mean, so the perturbation passes through unchanged.
+    kernel = np.zeros((ensemble_size, input_dim, 2), dtype=np.float64)
+    kernel[:, 0, 0] = 1.0
+    bias = np.zeros((ensemble_size, 2), dtype=np.float64)
+    model.get_layer("vec_params").set_weights([kernel, bias])
+
+    query = tf.constant([[1.0, -0.5]], dtype=tf.float64)
+    perturbation = np.float64(1e-10)
+
+    def _stacked(points: tf.Tensor) -> tf.Tensor:
+        repeated = tf.repeat(points[:, tf.newaxis, :], ensemble_size, axis=1)
+        return tf.reshape(repeated, [tf.shape(points)[0], ensemble_size * input_dim])
+
+    mean = model(_stacked(query)).mean()
+    mean_perturbed = model(_stacked(query + perturbation)).mean()
+
+    assert mean.dtype == tf.float64
+    np.testing.assert_allclose(mean_perturbed - mean, perturbation)
+
+
+def test_vectorized_ensemble_requires_identical_hidden_architectures() -> None:
+    """Differing hidden layers stay on the per-member model and keep each member's layers."""
+    example_data = empty_dataset([2], [1])
+    input_spec, output_spec = get_tensor_spec_from_data(example_data)
+
+    same = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+        ]
+    )
+    assert is_vectorized_ensemble_model(same.model)
+
+    different_units = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+            GaussianNetwork(input_spec, output_spec, ({"units": 4, "activation": "relu"},)),
+        ]
+    )
+    assert not is_vectorized_ensemble_model(different_units.model)
+    hidden_units = {
+        layer.name: layer.units
+        for layer in different_units.model.layers
+        if isinstance(layer, tf_keras.layers.Dense) and layer.name.endswith("dense_0")
+    }
+    assert hidden_units == {"model_0_dense_0": 8, "model_1_dense_0": 4}
+
+    different_depth = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, ({"units": 8, "activation": "relu"},)),
+            GaussianNetwork(
+                input_spec,
+                output_spec,
+                (
+                    {"units": 8, "activation": "relu"},
+                    {"units": 3, "activation": "tanh"},
+                ),
+            ),
+        ]
+    )
+    assert not is_vectorized_ensemble_model(different_depth.model)
+    layer_names = {layer.name for layer in different_depth.model.layers}
+    assert "model_0_dense_0" in layer_names
+    assert "model_0_dense_1" not in layer_names
+    assert "model_1_dense_0" in layer_names
+    assert "model_1_dense_1" in layer_names
+
+
+def test_vectorized_ensemble_forwards_dense_kwargs() -> None:
+    """Vectorized hidden layers keep Dense arguments other than units and activation."""
+    example_data = empty_dataset([2], [1])
+    input_spec, output_spec = get_tensor_spec_from_data(example_data)
+    hidden = (
+        {
+            "units": 8,
+            "activation": "relu",
+            "use_bias": False,
+            "kernel_initializer": "zeros",
+            "kernel_regularizer": "l2",
+        },
+    )
+    ensemble = KerasEnsemble(
+        [
+            GaussianNetwork(input_spec, output_spec, hidden),
+            GaussianNetwork(input_spec, output_spec, hidden),
+        ]
+    )
+
+    assert is_vectorized_ensemble_model(ensemble.model)
+    hidden_layer = ensemble.model.get_layer("vec_dense_0")
+    assert hidden_layer.use_bias is False
+    assert hidden_layer.bias is None
+    assert hidden_layer.kernel_regularizer is not None
+    np.testing.assert_array_equal(hidden_layer.kernel.numpy(), 0.0)
+
+
+def test_vectorized_ensemble_does_not_apply_to_gaussian_network_subclasses() -> None:
+    """A subclass must keep the per-member path so its ``connect_layers`` override is used."""
+
+    class _CustomHiddenGaussianNetwork(GaussianNetwork):
+        def _gen_hidden_layers(self, input_tensor: tf.Tensor) -> tf.Tensor:
+            return tf_keras.layers.Dense(
+                7, activation="relu", name=self.network_name + "custom_hidden"
+            )(input_tensor)
+
+    example_data = empty_dataset([2], [1])
+    input_spec, output_spec = get_tensor_spec_from_data(example_data)
+    hidden = ({"units": 8, "activation": "relu"},)
+    ensemble = KerasEnsemble(
+        [
+            _CustomHiddenGaussianNetwork(input_spec, output_spec, hidden),
+            _CustomHiddenGaussianNetwork(input_spec, output_spec, hidden),
+        ]
+    )
+
+    assert not is_vectorized_ensemble_model(ensemble.model)
+    layer_names = {layer.name for layer in ensemble.model.layers}
+    assert "model_0_custom_hidden" in layer_names
+    assert "model_1_custom_hidden" in layer_names
+
+
+def test_vectorized_keras_ensemble_pickles() -> None:
+    """Pickle round-trip must restore ``VectorizedEnsembleDenseLayer`` (e.g. for model export)."""
+    example_data = empty_dataset([2], [1])
+    keras_ensemble = build_keras_ensemble(example_data, _ENSEMBLE_SIZE, 1, 10, "relu", False)
+    assert is_vectorized_ensemble_model(keras_ensemble.model)
+
+    restored = pickle.loads(pickle.dumps(keras_ensemble))
+
+    assert is_vectorized_ensemble_model(restored.model)
+    assert len(vectorized_hidden_layers(restored.model)) == 1
+    assert len(restored.model.get_weights()) == len(keras_ensemble.model.get_weights())
 
 
 class _DummyKerasEnsembleNetwork(KerasEnsembleNetwork):
