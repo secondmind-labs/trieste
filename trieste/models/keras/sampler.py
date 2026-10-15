@@ -131,6 +131,11 @@ class deep_ensemble_trajectory(TrajectoryFunctionClass):
         self._model = model
         self._diversify = diversify
         self._ensemble_size = self._model.ensemble_size
+        if seed is None:
+            # An unseeded shuffle inside tf.function does not share a counter across traces, so
+            # two trajectories can replay the same member indices. Draw one eager op seed so each
+            # trace is distinct.
+            seed = int(tf.random.uniform((), minval=1, maxval=2**31 - 1, dtype=tf.int32))
         self._seed = seed
 
         self._initialized = tf.Variable(False, trainable=False)
