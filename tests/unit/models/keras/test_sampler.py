@@ -163,6 +163,34 @@ def test_ensemble_trajectory_sampler_is_not_too_deterministic(
         )
 
 
+def test_unseeded_trajectories_draw_distinct_member_indices() -> None:
+    """
+    Two trajectories created without an operation seed must store different member indices.
+
+    With a global seed set, each ``tf.function`` starts the same random sequence, so an unseeded
+    shuffle of the ensemble repeats. The constructor draws one eager operation seed so the two
+    traces stay apart. Ensemble size 6 and batch size 5 are the sizes from the CI failure.
+    """
+    ensemble_size = _ENSEMBLE_SIZE * 2
+    batch_size = 5
+    example_data = empty_dataset([1], [1])
+    query_points = tf.zeros([1, batch_size, 1])
+    model, _, _ = trieste_deep_ensemble_model(example_data, ensemble_size)
+
+    tf.random.set_seed(0)
+    trajectory_1 = deep_ensemble_trajectory(model, diversify=False)
+    trajectory_2 = deep_ensemble_trajectory(model, diversify=False)
+    trajectory_1(query_points)
+    trajectory_2(query_points)
+
+    npt.assert_raises(
+        AssertionError,
+        npt.assert_array_equal,
+        getattr(trajectory_1, "_indices"),
+        getattr(trajectory_2, "_indices"),
+    )
+
+
 def test_ensemble_trajectory_sampler_samples_are_distinct_for_new_instances(
     diversify: bool,
 ) -> None:
